@@ -365,7 +365,6 @@ pub async fn fetch_and_curate(
     let mut articles: Vec<Article> = Vec::new();
 
     for chunk in all_raw.chunks(BATCH_SIZE) {
-        let _items: Vec<&RawItem> = chunk.iter().map(|(item, _)| item).collect();
         let source = chunk.first().map(|(_, s)| s.as_str()).unwrap_or("");
 
         // Build owned slice for the batch call
