@@ -297,6 +297,51 @@ class AnalyzeRequest(BaseModel):
     backend: str = "claude"
 
 
+class ServingRunRequest(BaseModel):
+    run_id: Optional[int] = None   # None = clear serving run
+
+
+@app.patch("/articles/{article_id}/serving-run")
+async def set_serving_run(article_id: int, req: ServingRunRequest):
+    article = db.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(404, "Article not found")
+    db.set_serving_run(article_id, req.run_id)
+    return {"status": "ok"}
+
+
+@app.get("/articles/{article_id}/content")
+async def get_article_content(article_id: int):
+    """
+    Returns the content to display for an article.
+    If a serving_run_id is set, returns that run's final_output.md.
+    Otherwise falls back to the raw markdown file.
+    Also returns serving_run_id as a version token for change detection.
+    """
+    article = db.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(404, "Article not found")
+
+    serving_run_id = article.get("serving_run_id")
+
+    if serving_run_id:
+        try:
+            r = _require_runner()
+            content = r.read_workspace_file(serving_run_id, "final_output.md")
+            if content:
+                return {"serving_run_id": serving_run_id, "source": "analysis",
+                        "content": content}
+        except HTTPException:
+            pass  # runner not configured, fall through to raw
+
+    md_path = article.get("markdown_path")
+    if md_path and Path(md_path).exists():
+        content = Path(md_path).read_text(encoding="utf-8")
+        return {"serving_run_id": None, "source": "raw", "content": content}
+
+    return {"serving_run_id": None, "source": "empty", "content": ""}
+
+
 @app.post("/articles/{article_id}/analyze")
 async def trigger_analysis(article_id: int, req: AnalyzeRequest):
     r = _require_runner()

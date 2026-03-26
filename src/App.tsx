@@ -26,7 +26,10 @@ interface Article {
   account?: string;
   markdown?: string;
   html_path?: string;
+  markdown_path?: string;
   account_id?: number;
+  serving_run_id?: number | null;
+  content_source?: "analysis" | "raw" | "empty";
 }
 
 function App() {
@@ -65,21 +68,41 @@ function App() {
     }
   }, [selectedAccountId]);
 
-  // Load full content when Article changes
+  // Load full content when Article selection changes
   useEffect(() => {
-    if (selectedArticleId !== null) {
-      const art = articles.find(a => a.id === selectedArticleId);
-      if (art) {
-        fetch(`${API_BASE}/check?url=${encodeURIComponent(art.url)}`)
-          .then(r => r.json())
-          .then(resp => {
-            if (resp.status === "cached") {
-              setActiveArticle(resp.data);
-            }
-          });
-      }
+    if (selectedArticleId === null) return;
+    const art = articles.find(a => a.id === selectedArticleId);
+    if (!art) return;
+    fetch(`${API_BASE}/articles/${art.id}/content`)
+      .then(r => r.json())
+      .then(resp => {
+        setActiveArticle({
+          ...art,
+          markdown: resp.content,
+          serving_run_id: resp.serving_run_id,
+          content_source: resp.source,
+        });
+      });
+  }, [selectedArticleId]);
+
+  // Version check: if serving_run_id changes in the article list, refresh content
+  useEffect(() => {
+    if (!activeArticle) return;
+    const updated = articles.find(a => a.id === activeArticle.id);
+    if (!updated) return;
+    if (updated.serving_run_id !== activeArticle.serving_run_id) {
+      fetch(`${API_BASE}/articles/${activeArticle.id}/content`)
+        .then(r => r.json())
+        .then(resp => {
+          setActiveArticle(prev => prev ? {
+            ...prev,
+            markdown: resp.content,
+            serving_run_id: resp.serving_run_id,
+            content_source: resp.source,
+          } : null);
+        });
     }
-  }, [selectedArticleId, articles]);
+  }, [articles]);
 
   // Listeners for background extraction
   useEffect(() => {
@@ -192,9 +215,18 @@ function App() {
       if (resp.status === "cached") {
         setStatus("✅ 已从缓存加载");
         setIsLoading(false);
-        setActiveArticle(resp.data);
         fetchAccounts();
         fetchArticles(selectedAccountId || -1);
+        // Load content via the canonical content endpoint
+        const artId = resp.data?.id;
+        if (artId) {
+          fetch(`${API_BASE}/articles/${artId}/content`)
+            .then(r => r.json())
+            .then(cr => setActiveArticle({ ...resp.data, markdown: cr.content,
+              serving_run_id: cr.serving_run_id, content_source: cr.source }));
+        } else {
+          setActiveArticle(resp.data);
+        }
       } else {
         setStatus("后台采集中...");
         await invoke("open_article", { url: trimmed });
@@ -340,7 +372,10 @@ function App() {
               </button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <ArticleAdminPanel article={activeArticle} />
+              <ArticleAdminPanel
+                article={activeArticle}
+                onArticleUpdate={() => fetchArticles(selectedAccountId ?? -1)}
+              />
             </div>
           </>
         ) : !isAdminMode && activeArticle ? (
@@ -352,6 +387,12 @@ function App() {
               <button className="btn-icon" title="打开原文" onClick={() => window.open(activeArticle.url)}>
                 <ExternalLink size={18} />
               </button>
+              {activeArticle.content_source === "analysis" && (
+                <span style={{ fontSize: '0.7rem', color: '#60a5fa', marginLeft: 4,
+                               background: '#1e3a5f', padding: '2px 6px', borderRadius: 4 }}>
+                  分析版
+                </span>
+              )}
             </div>
             <div className="reader-content animate-in">
               <div className="markdown-body">

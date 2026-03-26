@@ -19,6 +19,8 @@ export interface Article {
   html_path?: string;
   markdown_path?: string;
   account_id?: number;
+  serving_run_id?: number | null;
+  content_source?: "analysis" | "raw" | "empty";
 }
 
 export interface AnalysisRun {

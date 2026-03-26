@@ -89,12 +89,13 @@ class ArticleDB:
         c.execute("PRAGMA table_info(articles)")
         existing = {row["name"] for row in c.fetchall()}
         for col, typ in [
-            ("account_id",  "INTEGER"),
-            ("publish_time","TIMESTAMP"),
-            ("digest",      "TEXT"),
-            ("cover_url",   "TEXT"),
-            ("is_original", "BOOLEAN"),
-            ("read_status", "INTEGER DEFAULT 0"),
+            ("account_id",    "INTEGER"),
+            ("publish_time",  "TIMESTAMP"),
+            ("digest",        "TEXT"),
+            ("cover_url",     "TEXT"),
+            ("is_original",   "BOOLEAN"),
+            ("read_status",   "INTEGER DEFAULT 0"),
+            ("serving_run_id","INTEGER"),
         ]:
             if col not in existing:
                 c.execute(f"ALTER TABLE articles ADD COLUMN {col} {typ}")
@@ -165,6 +166,11 @@ class ArticleDB:
     def delete_article(self, article_id: int):
         c = self.conn.cursor()
         c.execute("DELETE FROM articles WHERE id = ?", (article_id,))
+        self.conn.commit()
+
+    def set_serving_run(self, article_id: int, run_id):
+        c = self.conn.cursor()
+        c.execute("UPDATE articles SET serving_run_id = ? WHERE id = ?", (run_id, article_id))
         self.conn.commit()
 
     def update_read_status(self, article_id: int, status: int):
