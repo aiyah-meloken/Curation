@@ -3,7 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Loader2, BookOpen, ExternalLink, RefreshCw, Rss, ChevronLeft, Menu, Layers, Settings, X } from 'lucide-react';
+import { Loader2, BookOpen, ExternalLink, RefreshCw, Rss, ChevronLeft, Menu, Layers, Settings, X, ShieldCheck } from 'lucide-react';
+import { ArticleAdminPanel } from './components/ArticleAdminPanel';
 import "./App.css";
 
 interface Account {
@@ -47,6 +48,7 @@ function App() {
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [isResizingList, setIsResizingList] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   const API_BASE = "http://127.0.0.1:8889";
 
@@ -262,6 +264,14 @@ function App() {
               <button className="btn-icon" style={{ background: '#21262d' }} onClick={() => setIsSettingsOpen(true)}>
                 <Settings size={18} />
               </button>
+              <button
+                className="btn-icon"
+                style={{ background: isAdminMode ? '#1d4ed8' : '#21262d' }}
+                title="管理员模式"
+                onClick={() => setIsAdminMode(v => !v)}
+              >
+                <ShieldCheck size={18} />
+              </button>
             )}
           </div>
           <div className="status-bar" style={{ fontSize: '0.75rem', color: '#8b949e', paddingLeft: isSidebarCollapsed ? '25px' : '5px' }}>
@@ -317,9 +327,23 @@ function App() {
         onMouseDown={() => setIsResizingList(true)}
       />
 
-      {/* Pane 3: Reader View */}
+      {/* Pane 3: Reader View / Admin Panel */}
       <main className="reader-pane">
-        {activeArticle ? (
+        {isAdminMode && activeArticle ? (
+          <>
+            <div className="reader-toolbar" style={{ borderBottom: '1px solid #30363d', paddingBottom: 8 }}>
+              <ShieldCheck size={16} style={{ color: '#60a5fa' }} />
+              <span style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 600 }}>管理员模式</span>
+              <span style={{ fontSize: '0.75rem', color: '#8b949e', flex: 1, marginLeft: 8 }}>{activeArticle.title}</span>
+              <button className="btn-icon" title="打开原文" onClick={() => window.open(activeArticle.url)}>
+                <ExternalLink size={18} />
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <ArticleAdminPanel article={activeArticle} />
+            </div>
+          </>
+        ) : !isAdminMode && activeArticle ? (
           <>
             <div className="reader-toolbar">
               <button className="btn-icon" title="刷新公众号" onClick={() => fetchAccounts()}>
@@ -331,7 +355,7 @@ function App() {
             </div>
             <div className="reader-content animate-in">
               <div className="markdown-body">
-                <ReactMarkdown 
+                <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
                     img: ({node, ...props}) => (
@@ -347,7 +371,7 @@ function App() {
         ) : (
           <div className="reader-empty">
             <div className="reader-empty-icon"><BookOpen size={64} /></div>
-            <h3>请选择文章或进入设置抓取链接</h3>
+            <h3>{isAdminMode ? "请选择文章以进行分析管理" : "请选择文章或进入设置抓取链接"}</h3>
           </div>
         )}
       </main>

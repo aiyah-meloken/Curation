@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-import os
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uvicorn
 import json
-from typing import Optional, List, Dict
+import logging
+import os
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
+
+import uvicorn
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
 from cleaner import cleaner
 from database import db
+from agent_runner import AgentRunner
 
-app = FastAPI(title="WeChat Reader Backend")
+logging.basicConfig(level=logging.INFO)
+
+app = FastAPI(title="Curation App Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,14 +27,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Use absolute path for saving articles
-BASE_DIR = Path(__file__).parent.absolute()
-SAVE_DIR = BASE_DIR / "received_articles"
-SAVE_DIR.mkdir(exist_ok=True)
+# ------------------------------------------------------------------
+# Paths (data dir is external — configured via CURATION_DATA_DIR)
+# ------------------------------------------------------------------
 
-# Mount the static directory to serve saved HTML files
+_data_dir = Path(os.environ.get("CURATION_DATA_DIR",
+                                str(Path(__file__).parent)))
+_agent_repo = Path(os.environ.get("CURATION_AGENT_REPO", ""))
+
+SAVE_DIR = _data_dir / "received_articles"
+SAVE_DIR.mkdir(parents=True, exist_ok=True)
+
 app.mount("/static", StaticFiles(directory=str(SAVE_DIR)), name="static")
 
+# AgentRunner (None if agent repo not configured)
+runner: Optional[AgentRunner] = None
+if _agent_repo.exists():
+    runner = AgentRunner(agent_repo=_agent_repo, data_dir=_data_dir, db=db)
+else:
+    logging.warning("CURATION_AGENT_REPO not set or not found — analysis features disabled")
+
+
+def _require_runner() -> AgentRunner:
+    if runner is None:
+        raise HTTPException(503, "Agent runner not configured (set CURATION_AGENT_REPO)")
+    return runner
+
+
+# ==================================================================
+# Existing article ingestion routes (unchanged)
+# ==================================================================
 
 class ArticlePayload(BaseModel):
     title: str
@@ -78,7 +106,6 @@ async def sync_articles():
         try:
             data = json.loads(json_file.read_text(encoding="utf-8"))
             if not db.get_article(data["url"]):
-                # Ensure account exists
                 account_id = None
                 if data.get("biz"):
                     account_id = db.save_account(
@@ -86,11 +113,8 @@ async def sync_articles():
                         name=data["account"],
                         avatar_url=data.get("avatar")
                     )
-                
-                # Find corresponding markdown
                 md_path = json_file.with_suffix(".md")
                 html_path = json_file.with_suffix(".html")
-                
                 db.save_article(
                     url=data["url"],
                     title=data["title"],
@@ -107,7 +131,6 @@ async def sync_articles():
                 count += 1
         except Exception as e:
             print(f"Error syncing {json_file.name}: {e}")
-            
     return {"status": "ok", "message": f"Synced {count} new articles"}
 
 
@@ -116,25 +139,20 @@ async def check_article(url: str):
     record = db.get_article(url)
     if record:
         markdown_content = ""
-        md_path_str = record.get("markdown_path") or record.get("markdown_file") # Support old/new naming
+        md_path_str = record.get("markdown_path") or record.get("markdown_file")
         if md_path_str:
             md_path = Path(md_path_str)
             if md_path.exists():
                 markdown_content = md_path.read_text(encoding="utf-8")
-        
         html_filename = ""
         html_path_str = record.get("html_path") or record.get("html_file")
         if html_path_str:
             html_filename = Path(html_path_str).name
-        
         return {
             "status": "cached",
             "message": f"Article found in cache: {record['title']}",
-            "data": {
-                **dict(record),
-                "markdown": markdown_content,
-                "html_filename": html_filename
-            }
+            "data": {**dict(record), "markdown": markdown_content,
+                     "html_filename": html_filename}
         }
     return {"status": "not_found"}
 
@@ -142,30 +160,28 @@ async def check_article(url: str):
 @app.post("/process")
 async def process_article(article: ArticlePayload):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    clean_title = "".join(x for x in article.title if x.isalnum() or x in " -_").strip()[:50]
+    clean_title = "".join(x for x in article.title
+                          if x.isalnum() or x in " -_").strip()[:50]
     filename_base = f"{ts}_{clean_title}"
 
     print(f"\n[{ts}] Processing: {article.title}")
 
-    # 1. Save full HTML with no-referrer meta to bypass image hotlinking in Source view
-    # Add no-referrer to bypass anti-scraping
     clean_html = article.html
     if "<head>" in clean_html:
-        clean_html = clean_html.replace("<head>", '<head><meta name="referrer" content="no-referrer">', 1)
+        clean_html = clean_html.replace(
+            "<head>", '<head><meta name="referrer" content="no-referrer">', 1)
     else:
-        # Fallback if no head tag, create a basic HTML structure
-        clean_html = f'<html><head><meta name="referrer" content="no-referrer"></head><body>{clean_html}</body></html>'
+        clean_html = (f'<html><head><meta name="referrer" content="no-referrer">'
+                      f'</head><body>{clean_html}</body></html>')
 
-    # Fix image lazy loading (data-src -> src)
     clean_html = clean_html.replace('data-src="', 'src="')
-    
-    # Add some basic styling to make it look premium
+
     style_injection = """
     <style>
-        body { 
-            background: #f8fafc; 
-            display: flex; 
-            justify-content: center; 
+        body {
+            background: #f8fafc;
+            display: flex;
+            justify-content: center;
             padding: 40px 20px;
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -175,7 +191,7 @@ async def process_article(article: ArticlePayload):
             max-width: 720px;
             width: 100%;
             padding: 40px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), 0 8px 10px -6px rgba(0,0,0,.1);
             border-radius: 12px;
             line-height: 1.8;
             color: #1e293b;
@@ -186,32 +202,27 @@ async def process_article(article: ArticlePayload):
     """
     if "</head>" in clean_html:
         clean_html = clean_html.replace("</head>", f"{style_injection}</head>", 1)
+    elif "<body>" in clean_html:
+        clean_html = clean_html.replace("<body>", f"<body>{style_injection}", 1)
     else:
-        # If no </head> (unlikely with previous check), try to inject at start of body or just prepend
-        if "<body>" in clean_html:
-            clean_html = clean_html.replace("<body>", f"<body>{style_injection}", 1)
-        else:
-            clean_html = f"{style_injection}{clean_html}" # Last resort, might not be valid HTML
+        clean_html = f"{style_injection}{clean_html}"
 
     if "<body>" in clean_html:
-        clean_html = clean_html.replace("<body>", '<body><div class="article-container">', 1)
+        clean_html = clean_html.replace(
+            "<body>", '<body><div class="article-container">', 1)
         clean_html = clean_html.replace("</body>", '</div></body>', 1)
     else:
-        # Fallback if no body tag, wrap the entire content
         clean_html = f'<div class="article-container">{clean_html}</div>'
 
     html_file = SAVE_DIR / f"{filename_base}.html"
     html_file.write_text(clean_html, encoding="utf-8")
-    
+
     msg = ""
     markdown_content = ""
     md_file = None
 
-    # 2. Clean HTML to Markdown and Prepend Metadata
     try:
         markdown_body = cleaner.clean(article.html)
-        
-        # Construct header
         header = f"# {article.title}\n\n"
         if article.account:
             header += f"**公众号**: {article.account}\n"
@@ -219,52 +230,37 @@ async def process_article(article: ArticlePayload):
             header += f"**作者**: {article.author}\n"
         if article.date:
             header += f"**日期**: {article.date}\n"
-        header += f"**原文**: {article.url}\n\n"
-        header += "---\n\n"
-        
+        header += f"**原文**: {article.url}\n\n---\n\n"
         markdown_content = header + markdown_body
-        
+
         md_file = SAVE_DIR / f"{filename_base}.md"
-        with open(md_file, "w", encoding="utf-8") as f:
-            f.write(markdown_content)
+        md_file.write_text(markdown_content, encoding="utf-8")
         msg = f"Successfully processed and cleaned: {article.title}"
         print(f"  ✅ Saved Markdown: {md_file.name}")
-        
-        # 3. Save to Database
+
         account_id = None
         if article.biz:
             account_id = db.save_account(
-                biz=article.biz,
-                name=article.account,
-                avatar_url=article.avatar
-            )
-        
+                biz=article.biz, name=article.account,
+                avatar_url=article.avatar)
+
         db.save_article(
-            url=article.url,
-            title=article.title,
-            author=article.author,
-            account=article.account,
-            publish_time=article.date,
+            url=article.url, title=article.title, author=article.author,
+            account=article.account, publish_time=article.date,
             html_path=str(html_file),
             markdown_path=str(md_file),
-            account_id=account_id,
-            digest=article.digest,
-            cover_url=article.cover_url,
-            is_original=article.is_original
-        )
+            account_id=account_id, digest=article.digest,
+            cover_url=article.cover_url, is_original=article.is_original)
     except Exception as e:
         markdown_content = f"Error during cleaning: {e}"
         md_file = None
         msg = f"Processed article but cleaning failed: {e}"
         print(f"  ⚠️ Cleaning failed: {e}")
 
-    # 4. Save Metadata JSON (Legacy, but keeping for compatibility)
     meta_file = SAVE_DIR / f"{filename_base}.json"
     meta = {
-        "title": article.title,
-        "author": article.author,
-        "account": article.account,
-        "date": article.date,
+        "title": article.title, "author": article.author,
+        "account": article.account, "date": article.date,
         "url": article.url,
         "html_file": str(html_file),
         "markdown_file": str(md_file) if md_file else None,
@@ -272,13 +268,11 @@ async def process_article(article: ArticlePayload):
         "markdown_length": len(markdown_content),
         "received_at": ts,
     }
-    with open(meta_file, "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
+    meta_file.write_text(json.dumps(meta, ensure_ascii=False, indent=2),
+                         encoding="utf-8")
 
     return {
-        "status": "ok",
-        "message": msg,
-        "url": article.url,
+        "status": "ok", "message": msg, "url": article.url,
         "html_filename": html_file.name,
         "markdown_preview": markdown_content[:500] + "...",
         "files": {
@@ -294,6 +288,139 @@ async def health():
     return {"status": "ok"}
 
 
+# ==================================================================
+# Analysis management routes (new)
+# ==================================================================
+
+class AnalyzeRequest(BaseModel):
+    agent_commit_hash: Optional[str] = None   # None = HEAD
+    backend: str = "claude"
+
+
+@app.post("/articles/{article_id}/analyze")
+async def trigger_analysis(article_id: int, req: AnalyzeRequest):
+    r = _require_runner()
+    article = db.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(404, "Article not found")
+
+    # Resolve commit hash
+    commit_hash = req.agent_commit_hash
+    commit_msg = ""
+    if not commit_hash:
+        info = r.get_current_commit()
+        commit_hash = info.get("hash", "HEAD")
+        commit_msg = info.get("message", "")
+    else:
+        # Find commit message from version list
+        for v in r.get_agent_versions(100):
+            if v["hash"].startswith(commit_hash) or v["short_hash"] == commit_hash:
+                commit_hash = v["hash"]
+                commit_msg = v["message"]
+                break
+
+    # Create workspace path
+    workspace = r.analyses_dir / str(0)  # temp, updated after insert
+    run_id = db.create_run(
+        article_id=article_id,
+        agent_commit_hash=commit_hash,
+        agent_commit_message=commit_msg,
+        backend=req.backend,
+        workspace_path="",   # set after we have the id
+    )
+    workspace = r.analyses_dir / str(run_id)
+    db.update_stage(run_id, "deconstruct", "pending")  # triggers updated_at + sets workspace
+    # Update workspace_path
+    import sqlite3 as _sqlite3
+    db.conn.execute("UPDATE analysis_runs SET workspace_path = ? WHERE id = ?",
+                    (str(workspace), run_id))
+    db.conn.commit()
+
+    r.trigger_pipeline(run_id)
+    return {"status": "ok", "run_id": run_id}
+
+
+@app.post("/runs/{run_id}/stage/{stage}")
+async def retrigger_stage(run_id: int, stage: str):
+    r = _require_runner()
+    valid = {"deconstruct", "evaluate", "synthesize", "write"}
+    if stage not in valid:
+        raise HTTPException(400, f"stage must be one of: {sorted(valid)}")
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    r.trigger_stage(run_id, stage)
+    return {"status": "ok", "run_id": run_id, "stage": stage}
+
+
+@app.get("/articles/{article_id}/runs")
+async def get_article_runs(article_id: int):
+    article = db.get_article_by_id(article_id)
+    if not article:
+        raise HTTPException(404, "Article not found")
+    runs = db.get_runs_for_article(article_id)
+    return {"status": "ok", "data": runs}
+
+
+@app.get("/runs/{run_id}")
+async def get_run(run_id: int):
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    return {"status": "ok", "data": run}
+
+
+@app.get("/runs/{run_id}/files")
+async def list_run_files(run_id: int):
+    r = _require_runner()
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    return {"status": "ok", "data": r.list_workspace_files(run_id)}
+
+
+@app.get("/runs/{run_id}/files/{filepath:path}")
+async def get_run_file(run_id: int, filepath: str):
+    r = _require_runner()
+    content = r.read_workspace_file(run_id, filepath)
+    if content is None:
+        raise HTTPException(404, f"File '{filepath}' not found in run {run_id}")
+    return {"status": "ok", "filepath": filepath, "content": content}
+
+
+@app.websocket("/runs/{run_id}/progress")
+async def run_progress_ws(websocket: WebSocket, run_id: int):
+    r = _require_runner()
+    await websocket.accept()
+    # Send current state immediately
+    run = db.get_run(run_id)
+    if run:
+        await websocket.send_json({"type": "snapshot", "run_id": run_id, "data": run})
+    try:
+        async for event in r.subscribe_progress(run_id):
+            await websocket.send_json(event)
+    except WebSocketDisconnect:
+        pass
+
+
+# ==================================================================
+# Agent version routes
+# ==================================================================
+
+@app.get("/agent/versions")
+async def get_agent_versions(n: int = 20):
+    r = _require_runner()
+    return {"status": "ok", "data": r.get_agent_versions(n)}
+
+
+@app.get("/agent/versions/current")
+async def get_current_version():
+    r = _require_runner()
+    return {"status": "ok", "data": r.get_current_commit()}
+
+
 if __name__ == "__main__":
-    print(f"Backend started. Saving to: {SAVE_DIR}")
+    print(f"Backend started.")
+    print(f"  Data dir:   {_data_dir}")
+    print(f"  Agent repo: {_agent_repo}")
     uvicorn.run(app, host="0.0.0.0", port=8889)
