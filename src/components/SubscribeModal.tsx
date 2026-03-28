@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8889";
+import { apiFetch } from "../lib/api";
 
 interface Props {
   open: boolean;
@@ -22,7 +22,7 @@ export function SubscribeModal({ open, onClose, onSuccess }: Props) {
     setLoading(true);
     setMsg(null);
     try {
-      const resp = await fetch(`${API_BASE}/accounts/subscribe`, {
+      const resp = await apiFetch(`/accounts/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),

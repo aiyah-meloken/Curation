@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 
-const API_BASE = "http://127.0.0.1:8889";
+import { apiFetch } from "../lib/api";
 
 interface Props {
   runId: number;
@@ -39,7 +39,7 @@ export function FileViewer({ runId }: Props) {
     setFiles([]);
     setSelected(null);
     setContent("");
-    fetch(`${API_BASE}/runs/${runId}/files`)
+    apiFetch(`/runs/${runId}/files`)
       .then(r => r.json())
       .then(resp => {
         const list: string[] = resp.data ?? [];
@@ -53,7 +53,7 @@ export function FileViewer({ runId }: Props) {
   useEffect(() => {
     if (!selected) return;
     setLoading(true);
-    fetch(`${API_BASE}/runs/${runId}/files/${selected}`)
+    apiFetch(`/runs/${runId}/files/${selected}`)
       .then(r => r.json())
       .then(resp => setContent(resp.content ?? ""))
       .finally(() => setLoading(false));

@@ -22,7 +22,6 @@ AUTHING_APP_ID = os.environ.get("AUTHING_APP_ID", "")
 AUTHING_ISSUER = os.environ.get("AUTHING_ISSUER", "")
 AUTHING_JWKS_URI = os.environ.get("AUTHING_JWKS_URI", "")
 INVITE_SECRET = os.environ.get("INVITE_SECRET", "changeme-set-INVITE_SECRET-in-env")
-BOOTSTRAP_SECRET = os.environ.get("BOOTSTRAP_SECRET", "")
 
 # ---------------------------------------------------------------------------
 # JWKS cache

@@ -19,6 +19,7 @@ def _generate_code() -> str:
 class CreateInvitesRequest(BaseModel):
     count: int = 1
     expires_in_days: Optional[int] = None
+    max_uses: Optional[int] = None  # None = unlimited
 
 
 @router.get("")
@@ -30,13 +31,16 @@ async def list_invites(admin: dict = Depends(require_admin)):
 async def create_invites(req: CreateInvitesRequest, admin: dict = Depends(require_admin)):
     if req.count < 1 or req.count > 50:
         raise HTTPException(status_code=400, detail="count must be between 1 and 50")
+    if req.max_uses is not None and req.max_uses < 1:
+        raise HTTPException(status_code=400, detail="max_uses must be at least 1")
     expires_at = None
     if req.expires_in_days:
         expires_at = (datetime.utcnow() + timedelta(days=req.expires_in_days)).isoformat()
     codes = []
     for _ in range(req.count):
         code = _generate_code()
-        db.create_invite_code(code=code, created_by=admin["id"], expires_at=expires_at)
+        db.create_invite_code(code=code, created_by=admin["id"],
+                              expires_at=expires_at, max_uses=req.max_uses)
         codes.append(code)
     return {"codes": codes}
 

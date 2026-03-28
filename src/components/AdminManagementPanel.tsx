@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Trash2, RefreshCw, Loader2, Plus, CheckCircle } from "lucide-react";
 import { SubscribeModal } from "./SubscribeModal";
 
-const API_BASE = "http://127.0.0.1:8889";
+import { apiFetch } from "../lib/api";
 
 interface Account {
   id: number;
@@ -35,6 +35,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
   const [syncMsgs, setSyncMsgs] = useState<Record<number, string>>({});
   const [deletingAccId, setDeletingAccId] = useState<number | null>(null);
   const [deletingArtId, setDeletingArtId] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
 
@@ -44,7 +45,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
   const handleSyncAccount = async (acc: Account) => {
     setSyncingId(acc.id);
     try {
-      const resp = await fetch(`${API_BASE}/accounts/${acc.id}/sync`, { method: "POST" }).then(r => r.json());
+      const resp = await apiFetch(`/accounts/${acc.id}/sync`, { method: "POST" }).then(r => r.json());
       setSyncMsgs(prev => ({
         ...prev,
         [acc.id]: resp.new_count > 0 ? `+${resp.new_count}篇` : "已最新",
@@ -60,9 +61,17 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
   const handleDeleteAccount = async (acc: Account) => {
     if (!confirm(`删除公众号「${acc.name}」？文章将保留但不再关联。`)) return;
     setDeletingAccId(acc.id);
+    setErrorMsg(null);
     try {
-      await fetch(`${API_BASE}/accounts/${acc.id}`, { method: "DELETE" });
+      const resp = await apiFetch(`/accounts/${acc.id}`, { method: "DELETE" });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        setErrorMsg(data.detail || `删除失败 (${resp.status})`);
+        return;
+      }
       onRefresh();
+    } catch {
+      setErrorMsg("网络错误，删除失败");
     } finally {
       setDeletingAccId(null);
     }
@@ -72,9 +81,17 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
     e.stopPropagation();
     if (!confirm("删除这篇文章？")) return;
     setDeletingArtId(id);
+    setErrorMsg(null);
     try {
-      await fetch(`${API_BASE}/articles/${id}`, { method: "DELETE" });
+      const resp = await apiFetch(`/articles/${id}`, { method: "DELETE" });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        setErrorMsg(data.detail || `删除失败 (${resp.status})`);
+        return;
+      }
       onRefresh();
+    } catch {
+      setErrorMsg("网络错误，删除失败");
     } finally {
       setDeletingArtId(null);
     }
@@ -138,6 +155,12 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
 
   return (
     <div style={{ height: "100%", overflowY: "auto", padding: "0 0 24px" }}>
+      {errorMsg && (
+        <div style={{ margin: "10px 20px 0", padding: "8px 12px", background: "#3d1a1a", border: "1px solid #6e3535", borderRadius: 6, fontSize: "0.8rem", color: "#f85149", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {errorMsg}
+          <button onClick={() => setErrorMsg(null)} style={{ background: "none", border: "none", color: "#f85149", cursor: "pointer", padding: 0, marginLeft: 8 }}>✕</button>
+        </div>
+      )}
       {/* Accounts section */}
       <div style={{ padding: "16px 20px 8px", borderBottom: "1px solid #21262d" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8889";
+import { apiFetch } from "../lib/api";
 
 interface Props {
   open: boolean;
@@ -24,7 +24,7 @@ export function AddArticleModal({ open, onClose, onRefresh }: Props) {
     setLoading(true);
     setMsg(null);
     try {
-      const resp = await fetch(`${API_BASE}/articles/add`, {
+      const resp = await apiFetch(`/articles/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: trimmed, subscribe }),
@@ -32,6 +32,7 @@ export function AddArticleModal({ open, onClose, onRefresh }: Props) {
       if (resp.status === "ok") {
         setMsg({ type: "ok", text: resp.new ? "✅ 文章已添加" : "✅ 文章已在库中" });
         onRefresh();
+        setTimeout(() => { onClose(); setUrl(""); setMsg(null); }, 1200);
       } else {
         setMsg({ type: "err", text: `⚠️ ${resp.detail || "添加失败"}` });
       }

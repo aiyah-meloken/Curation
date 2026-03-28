@@ -116,3 +116,10 @@ AI 总结同样以 DB 为中间层，**懒加载**——用户打开文章时才
 | `analysis_queue` | `run_id` | 关联 `analysis_runs.id`，启动后写入 |
 | `settings` | `auto_launch` | `"true"` \| `"false"` |
 | `settings` | `max_concurrency` | 默认 `"2"` |
+
+---
+
+## 用户与认证
+
+认证相关的表（`app_users`、`invite_codes`、`app_config`）不属于内容数据模型，独立维护。
+详见 [`auth-system.md`](./auth-system.md)。

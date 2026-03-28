@@ -5,7 +5,7 @@ import { FileViewer } from "./FileViewer";
 import type { Article, AnalysisRun, AgentVersion, Stage } from "../types";
 import { STAGES } from "../types";
 
-const API_BASE = "http://127.0.0.1:8889";
+import { apiFetch } from "../lib/api";
 const BACKENDS = ["claude", "minimax", "sonnet"] as const;
 
 interface Props {
@@ -105,7 +105,7 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
 
   // Load agent versions
   useEffect(() => {
-    fetch(`${API_BASE}/agent/versions?n=20`)
+    apiFetch(`/agent/versions?n=20`)
       .then(r => r.json())
       .then(resp => {
         const vs: AgentVersion[] = resp.data ?? [];
@@ -116,7 +116,7 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
   }, []);
 
   const loadRuns = () =>
-    fetch(`${API_BASE}/articles/${article.id}/runs`)
+    apiFetch(`/articles/${article.id}/runs`)
       .then(r => r.json())
       .then(resp => setRuns(resp.data ?? []));
 
@@ -128,7 +128,7 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
     if (!selectedHash) return;
     setTriggering(true);
     try {
-      const resp = await fetch(`${API_BASE}/articles/${article.id}/analyze`, {
+      const resp = await apiFetch(`/articles/${article.id}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agent_commit_hash: selectedHash, backend }),
@@ -144,14 +144,14 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
   };
 
   const retriggerStage = async (runId: number, stage: Stage) => {
-    await fetch(`${API_BASE}/runs/${runId}/stage/${stage}`, { method: "POST" });
+    await apiFetch(`/runs/${runId}/stage/${stage}`, { method: "POST" });
     loadRuns();
   };
 
   // ── Serving control ────────────────────────────────────────────────────────
 
   const setServingRun = async (runId: number | null) => {
-    await fetch(`${API_BASE}/articles/${article.id}/serving-run`, {
+    await apiFetch(`/articles/${article.id}/serving-run`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ run_id: runId }),

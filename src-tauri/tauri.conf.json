@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' tauri: https:; connect-src 'self' http://127.0.0.1:8889 https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {
@@ -34,8 +34,9 @@
   },
   "plugins": {
     "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERFN0E3Mzg5RjhENDI0MTAKUldRUUpOVDRpWE42M3NKSm5YS0VpNGdPcmlZOGp4dzc4dE1xa21tOHRzcndWMHJLUmZRVmhqU3cK",
       "endpoints": [
-        "https://github.com/zhuhuifeng/curation-app/releases/latest/download/latest.json"
+        "https://github.com/aiyah-meloken/Curation/releases/latest/download/latest.json"
       ]
     }
   }

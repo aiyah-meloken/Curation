@@ -1,12 +1,18 @@
 import os
 import sqlite3
+import logging
 from datetime import date
 from pathlib import Path
 from typing import Optional, Dict, List
+from dotenv import load_dotenv
+
+# Load environment variables (critical for finding CURATION_DATA_DIR)
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 # DB is in CURATION_DATA_DIR (env var) or falls back to server/ for dev
 _data_dir = os.environ.get("CURATION_DATA_DIR", str(Path(__file__).parent))
-DB_PATH = Path(_data_dir) / "articles.db"
+DB_PATH = Path(_data_dir) / "curation.db"
 
 
 class ArticleDB:
@@ -27,19 +33,75 @@ class ArticleDB:
         c.execute("""
             CREATE TABLE IF NOT EXISTS accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                biz TEXT UNIQUE NOT NULL,
+                user_id INTEGER REFERENCES app_users(id),
+                biz TEXT NOT NULL,
                 name TEXT,
                 wxid TEXT,
                 avatar_url TEXT,
                 description TEXT,
                 account_type TEXT,
+                gh_id TEXT,
+                signature TEXT,
+                publish_count INTEGER,
+                masssend_count INTEGER,
+                remain_money REAL,
+                cost_money REAL,
+                total_num INTEGER,
                 subscription_type TEXT DEFAULT 'subscribed',
                 subscribed_at TEXT,
                 deleted_at TIMESTAMP,
                 last_monitored_at TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(biz, user_id)
             )
         """)
+        # Migrate old schema: if user_id column is missing, rebuild the table
+        existing_cols = {row[1] for row in c.execute("PRAGMA table_info(accounts)")}
+        if "user_id" not in existing_cols:
+            c.execute("""
+                CREATE TABLE accounts_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER REFERENCES app_users(id),
+                    biz TEXT NOT NULL,
+                    name TEXT,
+                    wxid TEXT,
+                    avatar_url TEXT,
+                    description TEXT,
+                    account_type TEXT,
+                    subscription_type TEXT DEFAULT 'subscribed',
+                    subscribed_at TEXT,
+                    deleted_at TIMESTAMP,
+                    last_monitored_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(biz, user_id)
+                )
+            """)
+            c.execute("""
+                INSERT INTO accounts_new
+                    (id, user_id, biz, name, wxid, avatar_url, description,
+                     account_type, subscription_type, subscribed_at,
+                     deleted_at, last_monitored_at, created_at)
+                SELECT id, NULL, biz, name, wxid, avatar_url, description,
+                       account_type, subscription_type, subscribed_at,
+                       deleted_at, last_monitored_at, created_at
+                FROM accounts
+            """)
+            c.execute("DROP TABLE accounts")
+            c.execute("ALTER TABLE accounts_new RENAME TO accounts")
+
+        # Additional column migrations for accounts
+        existing_cols = {row[1] for row in c.execute("PRAGMA table_info(accounts)")}
+        for col, ddl in [
+            ("gh_id",     "ALTER TABLE accounts ADD COLUMN gh_id TEXT"),
+            ("signature", "ALTER TABLE accounts ADD COLUMN signature TEXT"),
+            ("publish_count", "ALTER TABLE accounts ADD COLUMN publish_count INTEGER"),
+            ("masssend_count", "ALTER TABLE accounts ADD COLUMN masssend_count INTEGER"),
+            ("remain_money", "ALTER TABLE accounts ADD COLUMN remain_money REAL"),
+            ("cost_money", "ALTER TABLE accounts ADD COLUMN cost_money REAL"),
+            ("total_num", "ALTER TABLE accounts ADD COLUMN total_num INTEGER"),
+        ]:
+            if col not in existing_cols:
+                c.execute(ddl)
 
         c.execute("""
             CREATE TABLE IF NOT EXISTS articles (
@@ -58,6 +120,30 @@ class ArticleDB:
                 serving_run_id INTEGER,
                 read_status INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                -- New fields for full preservation
+                hashid TEXT,
+                idx TEXT,
+                source_url TEXT,
+                ip_wording TEXT,
+                item_show_type INTEGER,
+                real_item_show_type INTEGER,
+                msg_status INTEGER,
+                msg_fail_reason TEXT,
+                send_to_fans_num INTEGER,
+                is_deleted INTEGER,
+                types INTEGER,
+                position INTEGER,
+                pre_post_time TIMESTAMP,
+                video_page_infos TEXT,
+                picture_page_info_list TEXT,
+                copyright_stat INTEGER,
+                publish_timestamp INTEGER,
+                user_name TEXT,
+                alias TEXT,
+                signature TEXT,
+                create_time TEXT,
+
                 FOREIGN KEY (account_id) REFERENCES accounts(id)
             )
         """)
@@ -130,13 +216,25 @@ class ArticleDB:
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 code         TEXT UNIQUE NOT NULL,
                 created_by   INTEGER REFERENCES app_users(id),
-                used_by      INTEGER REFERENCES app_users(id),
-                used_at      TIMESTAMP,
+                last_used_by INTEGER REFERENCES app_users(id),
+                last_used_at TIMESTAMP,
                 expires_at   TIMESTAMP,
+                max_uses     INTEGER,
+                use_count    INTEGER NOT NULL DEFAULT 0,
                 is_active    BOOLEAN NOT NULL DEFAULT 1,
                 created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Migrate existing table: add new columns if they don't exist
+        existing_cols = {row[1] for row in c.execute("PRAGMA table_info(invite_codes)")}
+        for col, ddl in [
+            ("max_uses",     "ALTER TABLE invite_codes ADD COLUMN max_uses INTEGER"),
+            ("use_count",    "ALTER TABLE invite_codes ADD COLUMN use_count INTEGER NOT NULL DEFAULT 0"),
+            ("last_used_by", "ALTER TABLE invite_codes ADD COLUMN last_used_by INTEGER REFERENCES app_users(id)"),
+            ("last_used_at", "ALTER TABLE invite_codes ADD COLUMN last_used_at TIMESTAMP"),
+        ]:
+            if col not in existing_cols:
+                c.execute(ddl)
 
         c.execute("""
             CREATE TABLE IF NOT EXISTS app_config (
@@ -144,42 +242,86 @@ class ArticleDB:
                 value TEXT NOT NULL
             )
         """)
-        c.execute("INSERT OR IGNORE INTO app_config (key, value) VALUES ('bootstrap_done', 'false')")
+        self._seed_admin_from_env()
 
         self.conn.commit()
+
+    def _seed_admin_from_env(self):
+        """Bootstrap/repair admin user (sub hardcoded, env vars optional for metadata)."""
+        admin_sub = (os.environ.get("ADMIN_AUTHING_SUB") or "69c6267c2e8369d9bd4d037d").strip()
+
+        admin_email = (os.environ.get("ADMIN_EMAIL") or "").strip() or None
+        admin_username = (os.environ.get("ADMIN_USERNAME") or "").strip() or None
+        c = self.conn.cursor()
+        c.execute("SELECT id FROM app_users WHERE authing_sub = ?", (admin_sub,))
+        row = c.fetchone()
+
+        if row:
+            c.execute("""
+                UPDATE app_users
+                SET role = 'admin',
+                    is_active = 1
+                WHERE authing_sub = ?
+            """, (admin_sub,))
+            return
+
+        c.execute("""
+            INSERT INTO app_users (authing_sub, email, username, role, is_active)
+            VALUES (?, ?, ?, 'admin', 1)
+        """, (admin_sub, admin_email, admin_username))
 
     # ------------------------------------------------------------------
     # Accounts
     # ------------------------------------------------------------------
 
-    def get_accounts(self) -> List[Dict]:
+    def get_accounts(self, user_id: int) -> List[Dict]:
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM accounts WHERE user_id = ? AND deleted_at IS NULL ORDER BY name ASC",
+                  (user_id,))
+        return [dict(r) for r in c.fetchall()]
+
+    def get_all_accounts_unfiltered(self) -> List[Dict]:
+        """For internal use (scheduler, etc.) — returns all accounts regardless of owner."""
         c = self.conn.cursor()
         c.execute("SELECT * FROM accounts WHERE deleted_at IS NULL ORDER BY name ASC")
         return [dict(r) for r in c.fetchall()]
 
-    def get_account_by_biz(self, biz: str) -> Optional[Dict]:
+    def get_account_by_biz(self, biz: str, user_id: int) -> Optional[Dict]:
         c = self.conn.cursor()
-        c.execute("SELECT * FROM accounts WHERE biz = ? AND deleted_at IS NULL", (biz,))
+        c.execute("SELECT * FROM accounts WHERE biz = ? AND user_id = ? AND deleted_at IS NULL",
+                  (biz, user_id))
         row = c.fetchone()
         return dict(row) if row else None
 
-    def save_account(self, biz: str, name: str, wxid: str = None,
+    def save_account(self, biz: str, name: str, user_id: int, wxid: str = None,
                      avatar_url: str = None, description: str = None,
                      account_type: str = None,
+                     gh_id: str = None, signature: str = None,
+                     publish_count: int = None, masssend_count: int = None,
+                     remain_money: float = None, cost_money: float = None,
+                     total_num: int = None,
                      subscription_type: str = "subscribed") -> int:
         # subscribed_at is set once when first becoming subscribed, never overwritten
         subscribed_at = date.today().isoformat() if subscription_type == "subscribed" else None
         c = self.conn.cursor()
         c.execute("""
-            INSERT INTO accounts (biz, name, wxid, avatar_url, description, account_type,
-                                  subscription_type, subscribed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(biz) DO UPDATE SET
+            INSERT INTO accounts (biz, user_id, name, wxid, avatar_url, description, account_type,
+                                  gh_id, signature, publish_count, masssend_count, remain_money,
+                                  cost_money, total_num, subscription_type, subscribed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(biz, user_id) DO UPDATE SET
                 name = excluded.name,
                 wxid = COALESCE(excluded.wxid, wxid),
                 avatar_url = COALESCE(excluded.avatar_url, avatar_url),
                 description = COALESCE(excluded.description, description),
                 account_type = COALESCE(excluded.account_type, account_type),
+                gh_id = COALESCE(excluded.gh_id, gh_id),
+                signature = COALESCE(excluded.signature, signature),
+                publish_count = COALESCE(excluded.publish_count, publish_count),
+                masssend_count = COALESCE(excluded.masssend_count, masssend_count),
+                remain_money = COALESCE(excluded.remain_money, remain_money),
+                cost_money = COALESCE(excluded.cost_money, cost_money),
+                total_num = COALESCE(excluded.total_num, total_num),
                 subscription_type = excluded.subscription_type,
                 subscribed_at = CASE
                     WHEN excluded.subscription_type = 'subscribed' AND subscribed_at IS NULL
@@ -187,31 +329,47 @@ class ArticleDB:
                     ELSE subscribed_at
                 END,
                 deleted_at = NULL
-        """, (biz, name, wxid, avatar_url, description, account_type,
-              subscription_type, subscribed_at))
+        """, (biz, user_id, name, wxid, avatar_url, description, account_type,
+              gh_id, signature, publish_count, masssend_count, remain_money,
+              cost_money, total_num, subscription_type, subscribed_at))
         self.conn.commit()
-        c.execute("SELECT id FROM accounts WHERE biz = ?", (biz,))
+        c.execute("SELECT id FROM accounts WHERE biz = ? AND user_id = ?", (biz, user_id))
         return c.fetchone()[0]
 
     # ------------------------------------------------------------------
     # Articles
     # ------------------------------------------------------------------
 
-    def get_all_articles(self) -> List[Dict]:
+    def get_all_articles_unfiltered(self) -> List[Dict]:
+        """For internal use (migration, etc.) — returns all articles regardless of owner."""
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM articles ORDER BY publish_time DESC")
+        return [dict(r) for r in c.fetchall()]
+
+    def get_all_articles(self, user_id: int) -> List[Dict]:
         c = self.conn.cursor()
         c.execute("""
             SELECT a.* FROM articles a
+            JOIN accounts acc ON a.account_id = acc.id
+            WHERE acc.user_id = ?
             ORDER BY a.publish_time DESC
-        """)
+        """, (user_id,))
         return [dict(r) for r in c.fetchall()]
 
-    def get_articles_by_account(self, account_id: int) -> List[Dict]:
+    def get_articles_by_account(self, account_id: int, user_id: int = None) -> List[Dict]:
         c = self.conn.cursor()
-        c.execute("""
-            SELECT * FROM articles
-            WHERE account_id = ?
-            ORDER BY publish_time DESC
-        """, (account_id,))
+        if user_id is not None:
+            c.execute("""
+                SELECT a.* FROM articles a
+                JOIN accounts acc ON a.account_id = acc.id
+                WHERE a.account_id = ? AND acc.user_id = ?
+                ORDER BY a.publish_time DESC
+            """, (account_id, user_id))
+        else:
+            c.execute("""
+                SELECT * FROM articles WHERE account_id = ?
+                ORDER BY publish_time DESC
+            """, (account_id,))
         return [dict(r) for r in c.fetchall()]
 
     def get_article(self, url: str) -> Optional[Dict]:
@@ -231,19 +389,72 @@ class ArticleDB:
         c.execute("UPDATE articles SET markdown_path = ? WHERE id = ?", (markdown_path, article_id))
         self.conn.commit()
 
+    def update_html_path(self, article_id: int, html_path: str):
+        c = self.conn.cursor()
+        c.execute("UPDATE articles SET html_path = ? WHERE id = ?", (html_path, article_id))
+        self.conn.commit()
+
     def save_article(self, url: str, title: str, author: str, account: str,
                      publish_time: str, markdown_path: str = None,
                      html_path: str = None, account_id: int = None,
                      digest: str = None, cover_url: str = None,
-                     is_original: bool = False):
+                     is_original: bool = False,
+                     # New fields
+                     hashid: str = None, idx: str = None, source_url: str = None,
+                     ip_wording: str = None, item_show_type: int = None,
+                     real_item_show_type: int = None, msg_status: int = None,
+                     msg_fail_reason: str = None, send_to_fans_num: int = None,
+                     is_deleted: int = None, types: int = None,
+                     position: int = None, pre_post_time: str = None,
+                     video_page_infos: str = None, picture_page_info_list: str = None,
+                     copyright_stat: int = None, publish_timestamp: int = None,
+                     user_name: str = None, alias: str = None, signature: str = None,
+                     create_time: int = None):
         c = self.conn.cursor()
+        
+        # Migration for existing table columns if needed (one-time check per save is simpler than complex init logic)
+        existing_cols = {row[1] for row in c.execute("PRAGMA table_info(articles)")}
+        for col, ddl in [
+            ("hashid", "ALTER TABLE articles ADD COLUMN hashid TEXT"),
+            ("idx", "ALTER TABLE articles ADD COLUMN idx TEXT"),
+            ("source_url", "ALTER TABLE articles ADD COLUMN source_url TEXT"),
+            ("ip_wording", "ALTER TABLE articles ADD COLUMN ip_wording TEXT"),
+            ("item_show_type", "ALTER TABLE articles ADD COLUMN item_show_type INTEGER"),
+            ("real_item_show_type", "ALTER TABLE articles ADD COLUMN real_item_show_type INTEGER"),
+            ("msg_status", "ALTER TABLE articles ADD COLUMN msg_status INTEGER"),
+            ("msg_fail_reason", "ALTER TABLE articles ADD COLUMN msg_fail_reason TEXT"),
+            ("send_to_fans_num", "ALTER TABLE articles ADD COLUMN send_to_fans_num INTEGER"),
+            ("is_deleted", "ALTER TABLE articles ADD COLUMN is_deleted INTEGER"),
+            ("types", "ALTER TABLE articles ADD COLUMN types INTEGER"),
+            ("position", "ALTER TABLE articles ADD COLUMN position INTEGER"),
+            ("pre_post_time", "ALTER TABLE articles ADD COLUMN pre_post_time TIMESTAMP"),
+            ("video_page_infos", "ALTER TABLE articles ADD COLUMN video_page_infos TEXT"),
+            ("picture_page_info_list", "ALTER TABLE articles ADD COLUMN picture_page_info_list TEXT"),
+            ("copyright_stat", "ALTER TABLE articles ADD COLUMN copyright_stat INTEGER"),
+            ("publish_timestamp", "ALTER TABLE articles ADD COLUMN publish_timestamp INTEGER"),
+            ("user_name", "ALTER TABLE articles ADD COLUMN user_name TEXT"),
+            ("alias", "ALTER TABLE articles ADD COLUMN alias TEXT"),
+            ("signature", "ALTER TABLE articles ADD COLUMN signature TEXT"),
+            ("create_time", "ALTER TABLE articles ADD COLUMN create_time TEXT"),
+        ]:
+            if col not in existing_cols:
+                c.execute(ddl)
+
         c.execute("""
             INSERT OR REPLACE INTO articles
               (url, title, author, account, publish_time, html_path, markdown_path,
-               account_id, digest, cover_url, is_original)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               account_id, digest, cover_url, is_original,
+               hashid, idx, source_url, ip_wording, item_show_type, real_item_show_type,
+               msg_status, msg_fail_reason, send_to_fans_num, is_deleted, types,
+               position, pre_post_time, video_page_infos, picture_page_info_list,
+               copyright_stat, publish_timestamp, user_name, alias, signature, create_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (url, title, author, account, publish_time, html_path, markdown_path,
-              account_id, digest, cover_url, is_original))
+              account_id, digest, cover_url, is_original,
+              hashid, idx, source_url, ip_wording, item_show_type, real_item_show_type,
+              msg_status, msg_fail_reason, send_to_fans_num, is_deleted, types,
+              position, pre_post_time, video_page_infos, picture_page_info_list,
+              copyright_stat, publish_timestamp, user_name, alias, signature, create_time))
         self.conn.commit()
 
     def delete_article(self, article_id: int):
@@ -474,19 +685,26 @@ class ArticleDB:
         return dict(row) if row else None
 
     def create_invite_code(self, code: str, created_by: int,
-                           expires_at: str = None):
+                           expires_at: str = None, max_uses: int = None):
         c = self.conn.cursor()
         c.execute("""
-            INSERT INTO invite_codes (code, created_by, expires_at)
-            VALUES (?, ?, ?)
-        """, (code, created_by, expires_at))
+            INSERT INTO invite_codes (code, created_by, expires_at, max_uses)
+            VALUES (?, ?, ?, ?)
+        """, (code, created_by, expires_at, max_uses))
         self.conn.commit()
 
     def use_invite_code(self, code: str, used_by: int):
+        """Increment use_count; deactivate automatically if max_uses reached."""
         c = self.conn.cursor()
         c.execute("""
             UPDATE invite_codes
-            SET used_by = ?, used_at = CURRENT_TIMESTAMP, is_active = 0
+            SET use_count    = use_count + 1,
+                last_used_by = ?,
+                last_used_at = CURRENT_TIMESTAMP,
+                is_active    = CASE
+                    WHEN max_uses IS NOT NULL AND use_count + 1 >= max_uses THEN 0
+                    ELSE is_active
+                END
             WHERE code = ?
         """, (used_by, code))
         self.conn.commit()
@@ -501,10 +719,10 @@ class ArticleDB:
         c.execute("""
             SELECT ic.*,
                    creator.email as creator_email,
-                   user.email as used_by_email
+                   last_user.email as last_used_by_email
             FROM invite_codes ic
-            LEFT JOIN app_users creator ON ic.created_by = creator.id
-            LEFT JOIN app_users user ON ic.used_by = user.id
+            LEFT JOIN app_users creator  ON ic.created_by   = creator.id
+            LEFT JOIN app_users last_user ON ic.last_used_by = last_user.id
             ORDER BY ic.created_at DESC
         """)
         return [dict(r) for r in c.fetchall()]

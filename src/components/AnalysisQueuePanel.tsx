@@ -31,7 +31,7 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "#f85149",
 };
 
-const API_BASE = "http://127.0.0.1:8889";
+import { apiFetch } from "../lib/api";
 
 export function AnalysisQueuePanel() {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
@@ -42,8 +42,8 @@ export function AnalysisQueuePanel() {
     setLoading(true);
     try {
       const [qResp, sResp] = await Promise.all([
-        fetch(`${API_BASE}/queue`).then(r => r.json()),
-        fetch(`${API_BASE}/strategy`).then(r => r.json()),
+        apiFetch(`/queue`).then(r => r.json()),
+        apiFetch(`/strategy`).then(r => r.json()),
       ]);
       if (qResp.status === "ok") setQueue(qResp.data);
       if (sResp.status === "ok") setStrategy(sResp.data);
@@ -61,7 +61,7 @@ export function AnalysisQueuePanel() {
   const patchStrategy = async (patch: Partial<Strategy>) => {
     const updated = { ...strategy, ...patch };
     setStrategy(updated);
-    await fetch(`${API_BASE}/strategy`, {
+    await apiFetch(`/strategy`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),

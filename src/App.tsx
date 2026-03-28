@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { BookOpen, ExternalLink, Rss, ChevronLeft, Menu, Layers, X, ShieldCheck, FileText, Sparkles, LogOut } from 'lucide-react';
+import { check, type Update } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { ArticleAdminPanel } from './components/ArticleAdminPanel';
 import { AddMenu } from './components/AddMenu';
 import { SubscribeModal } from './components/SubscribeModal';
@@ -14,6 +16,7 @@ import { InviteManagementPanel } from './components/InviteManagementPanel';
 import { UserManagementPanel } from './components/UserManagementPanel';
 import { useAuth } from './lib/authStore';
 import { apiFetch } from './lib/api';
+import { authingClient } from './lib/authing';
 import "./App.css";
 
 interface Account {
@@ -43,14 +46,23 @@ interface Article {
   account_id?: number;
   serving_run_id?: number | null;
   content_source?: "analysis" | "raw" | "empty";
+  rawHtml?: string;
+  contentFormat?: "html" | "markdown";
+
+  // Full-fidelity API fields
+  hashid?: string;
+  idx?: string;
+  ip_wording?: string;
+  is_original?: boolean;
+  send_to_fans_num?: number;
+  user_name?: string;
+  alias?: string;
+  signature?: string;
+  create_time?: string;
 }
 
 function App() {
   const { state: authState, logout } = useAuth();
-
-  // Handle Authing OIDC callback (URL contains ?code=)
-  const isCallback = window.location.search.includes("code=") ||
-    window.location.hash.includes("access_token=");
 
   if (authState.status === "loading") {
     return (
@@ -61,6 +73,8 @@ function App() {
     );
   }
 
+  // Authing uses fragment mode by default: code comes back in window.location.hash
+  const isCallback = authingClient.isRedirectCallback();
   if (isCallback) {
     return <AuthCallback onDone={() => window.location.replace("/")} />;
   }
@@ -71,7 +85,14 @@ function App() {
 
   const currentUser = authState.user;
 
-  return <AppMain currentUser={currentUser} onLogout={logout} />;
+  function handleLogout() {
+    logout();  // clear local session
+    authingClient.logoutWithRedirect({
+      redirectUri: import.meta.env.VITE_AUTHING_REDIRECT_URI?.replace("/auth/callback", "") || window.location.origin,
+    });
+  }
+
+  return <AppMain key={currentUser.id} currentUser={currentUser} onLogout={handleLogout} />;
 }
 
 function AppMain({ currentUser, onLogout }: {
@@ -99,11 +120,20 @@ function AppMain({ currentUser, onLogout }: {
   const [viewRaw, setViewRaw] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<"none" | "pending" | "running" | "done" | "failed">("none");
   const [notification, setNotification] = useState<string | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null);
 
   // Initial Load: Fetch Accounts and All Articles
   useEffect(() => {
     fetchAccounts();
     fetchArticles(-1);
+  }, []);
+
+  // Check for updates every 10 minutes
+  useEffect(() => {
+    const doCheck = () => check().then(u => u && setPendingUpdate(u)).catch(() => {});
+    doCheck();
+    const timer = setInterval(doCheck, 10 * 60 * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   // Load Articles when Account changes
@@ -129,10 +159,14 @@ function AppMain({ currentUser, onLogout }: {
         ...art,
         markdown: resp.content,
         rawMarkdown: rawResp.content,
+        rawHtml: rawResp.format === "html" ? rawResp.content : undefined,
+        contentFormat: rawResp.format,
         serving_run_id: resp.serving_run_id,
         content_source: resp.source,
       });
       setAnalysisStatus(analysisResp.analysis_status ?? "none");
+      // Refresh article list so admin panel reflects updated html_path/markdown_path
+      fetchArticles(selectedAccountId ?? -1);
     });
   }, [selectedArticleId]);
 
@@ -274,8 +308,25 @@ function AppMain({ currentUser, onLogout }: {
   const subscribedAccounts = accounts.filter(a => !a.subscription_type || a.subscription_type === 'subscribed');
   const temporaryAccounts = accounts.filter(a => a.subscription_type === 'temporary');
 
+  const handleInstallUpdate = async () => {
+    if (!pendingUpdate) return;
+    await pendingUpdate.downloadAndInstall();
+    await relaunch();
+  };
+
   return (
     <div className="app-container">
+      {pendingUpdate && (
+        <button onClick={handleInstallUpdate} style={{
+          position: 'fixed', top: 12, right: 16, zIndex: 200,
+          background: '#1f6feb', color: '#fff', border: 'none',
+          borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+          fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6,
+          boxShadow: '0 2px 8px rgba(31,111,235,0.4)',
+        }}>
+          ↑ 新版本可用，点击重启安装
+        </button>
+      )}
       {/* Pane 1: Sidebar (Accounts) */}
       <aside
         className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}
@@ -506,6 +557,30 @@ function AppMain({ currentUser, onLogout }: {
                 >
                   任务队列
                 </button>
+                {currentUser.role === "admin" && (
+                  <>
+                    <button
+                      onClick={() => setAdminView("invites")}
+                      style={{
+                        fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
+                        background: adminView === "invites" ? '#1f6feb' : '#21262d',
+                        color: adminView === "invites" ? '#fff' : '#8b949e',
+                      }}
+                    >
+                      邀请码
+                    </button>
+                    <button
+                      onClick={() => setAdminView("users")}
+                      style={{
+                        fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
+                        background: adminView === "users" ? '#1f6feb' : '#21262d',
+                        color: adminView === "users" ? '#fff' : '#8b949e',
+                      }}
+                    >
+                      用户管理
+                    </button>
+                  </>
+                )}
               </div>
               <div style={{ flex: 1 }} />
               {activeArticle && (
@@ -529,6 +604,10 @@ function AppMain({ currentUser, onLogout }: {
                 />
               ) : adminView === "queue" ? (
                 <AnalysisQueuePanel />
+              ) : adminView === "invites" ? (
+                <InviteManagementPanel />
+              ) : adminView === "users" ? (
+                <UserManagementPanel />
               ) : activeArticle ? (
                 <ArticleAdminPanel
                   article={activeArticle}
@@ -589,18 +668,43 @@ function AppMain({ currentUser, onLogout }: {
                   <span style={{ fontSize: '0.9rem' }}>正在生成 AI 总结...</span>
                 </div>
               ) : (
-                <div className="markdown-body">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      img: ({node, ...props}) => (
-                        <img {...props} referrerPolicy="no-referrer" loading="lazy" />
-                      )
-                    }}
-                  >
-                    {(viewRaw ? activeArticle.rawMarkdown : activeArticle.markdown) || ""}
-                  </ReactMarkdown>
-                </div>
+                <>
+                  <div className="markdown-body">
+                    {viewRaw && activeArticle.contentFormat === "html" ? (
+                      <div 
+                        className="rich-text-content" 
+                        dangerouslySetInnerHTML={{ __html: activeArticle.rawMarkdown || "" }} 
+                      />
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          img: ({node, ...props}) => (
+                            <img {...props} referrerPolicy="no-referrer" loading="lazy" />
+                          )
+                        }}
+                      >
+                        {(viewRaw ? activeArticle.rawMarkdown : activeArticle.markdown) || ""}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+
+                  {/* Metadata Inspector (Proof of 100% preservation) */}
+                  <div className="metadata-inspector">
+                    <h4>元数据详情</h4>
+                    <div className="meta-grid">
+                      <div className="meta-item"><label>HashID</label><span>{activeArticle.hashid || '-'}</span></div>
+                      <div className="meta-item"><label>Idx</label><span>{activeArticle.idx || '-'}</span></div>
+                      <div className="meta-item"><label>IP 归属</label><span>{activeArticle.ip_wording || '-'}</span></div>
+                      <div className="meta-item"><label>原创</label><span>{activeArticle.is_original ? '是' : '否'}</span></div>
+                      <div className="meta-item"><label>送达人数</label><span>{activeArticle.send_to_fans_num || '-'}</span></div>
+                      <div className="meta-item"><label>发布时间</label><span>{activeArticle.publish_time}</span></div>
+                      <div className="meta-item"><label>创建时间</label><span>{activeArticle.create_time || '-'}</span></div>
+                      <div className="meta-item"><label>用户码 (Alias)</label><span>{activeArticle.alias || '-'}</span></div>
+                      <div className="meta-item"><label>ID (UserName)</label><span>{activeArticle.user_name || '-'}</span></div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </>
