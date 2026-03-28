@@ -93,7 +93,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          TAR_GZ=$(find src-tauri/target/release/bundle/macos -name "*.app.tar.gz" | head -1)
+          # tauri-action repackages the .app into *_aarch64.app.tar.gz — use that, not the original
+          TAR_GZ=$(find src-tauri/target/release/bundle/macos -name "*_aarch64.app.tar.gz" | head -1)
+          if [ -z "$TAR_GZ" ]; then
+            TAR_GZ=$(find src-tauri/target/release/bundle/macos -name "*.app.tar.gz" | head -1)
+          fi
           FILENAME=$(basename "$TAR_GZ")
 
           # Sign the tar.gz that tauri-action repackaged
