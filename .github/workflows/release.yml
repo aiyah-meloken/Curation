@@ -84,43 +84,89 @@ jobs:
           prerelease: false
           includeUpdaterJson: false
 
-      # macOS only: sign the repackaged tar.gz and upload latest.json
-      - name: Upload updater artifacts (macOS)
-        if: matrix.platform == 'macos-latest'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+  # Runs after all platform builds complete.
+  # Downloads each platform's actual uploaded artifact, signs it, and generates latest.json.
+  update-manifest:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Generate and upload updater manifest
         run: |
           VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          # tauri-action repackages the .app into *_aarch64.app.tar.gz — use that, not the original
-          TAR_GZ=$(find src-tauri/target/release/bundle/macos -name "*_aarch64.app.tar.gz" | head -1)
-          if [ -z "$TAR_GZ" ]; then
-            TAR_GZ=$(find src-tauri/target/release/bundle/macos -name "*.app.tar.gz" | head -1)
+          TAG="v${VERSION}"
+          BASE_URL="https://github.com/aiyah-meloken/Curation/releases/download/${TAG}"
+
+          # List all assets in the release
+          ASSETS=$(gh release view "$TAG" --repo ${{ github.repository }} --json assets -q '[.assets[].name]')
+          echo "Release assets: $ASSETS"
+
+          PLATFORMS="{}"
+
+          # --- macOS Apple Silicon ---
+          MAC_FILE=$(echo "$ASSETS" | jq -r '.[] | select(test("_aarch64\\.app\\.tar\\.gz$"))' | head -1)
+          if [ -n "$MAC_FILE" ]; then
+            echo "Signing macOS artifact: $MAC_FILE"
+            mkdir -p /tmp/mac
+            gh release download "$TAG" --repo ${{ github.repository }} --pattern "$MAC_FILE" --dir /tmp/mac
+            npx @tauri-apps/cli signer sign "/tmp/mac/$MAC_FILE" \
+              --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+              --password "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+            MAC_SIG=$(cat "/tmp/mac/${MAC_FILE}.sig")
+            gh release upload "$TAG" "/tmp/mac/${MAC_FILE}.sig" --clobber
+            PLATFORMS=$(echo "$PLATFORMS" | jq \
+              --arg sig "$MAC_SIG" \
+              --arg url "${BASE_URL}/${MAC_FILE}" \
+              '. + {"darwin-aarch64": {"signature": $sig, "url": $url}}')
+          else
+            echo "No macOS aarch64 artifact found, skipping."
           fi
-          FILENAME=$(basename "$TAR_GZ")
 
-          # Sign the tar.gz that tauri-action repackaged
-          npx @tauri-apps/cli signer sign "$TAR_GZ" \
-            --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
-            --password "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
-          SIG=$(cat "${TAR_GZ}.sig")
+          # --- Windows x64 (NSIS installer) ---
+          WIN_FILE=$(echo "$ASSETS" | jq -r '.[] | select(test("_x64-setup\\.exe$"))' | head -1)
+          if [ -n "$WIN_FILE" ]; then
+            echo "Signing Windows artifact: $WIN_FILE"
+            mkdir -p /tmp/win
+            gh release download "$TAG" --repo ${{ github.repository }} --pattern "$WIN_FILE" --dir /tmp/win
+            npx @tauri-apps/cli signer sign "/tmp/win/$WIN_FILE" \
+              --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+              --password "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+            WIN_SIG=$(cat "/tmp/win/${WIN_FILE}.sig")
+            gh release upload "$TAG" "/tmp/win/${WIN_FILE}.sig" --clobber
+            PLATFORMS=$(echo "$PLATFORMS" | jq \
+              --arg sig "$WIN_SIG" \
+              --arg url "${BASE_URL}/${WIN_FILE}" \
+              '. + {"windows-x86_64": {"signature": $sig, "url": $url}}')
+          else
+            echo "No Windows x64 artifact found, skipping."
+          fi
 
-          # Upload the .sig file
-          gh release upload "v${VERSION}" "${TAR_GZ}.sig" --clobber
+          if [ "$PLATFORMS" = "{}" ]; then
+            echo "ERROR: No updater artifacts found, aborting."
+            exit 1
+          fi
 
           # Generate and upload latest.json
-          cat > latest.json << EOF
-          {
-            "version": "${VERSION}",
-            "notes": "",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "darwin-aarch64": {
-                "signature": "${SIG}",
-                "url": "https://github.com/aiyah-meloken/Curation/releases/download/v${VERSION}/${FILENAME}"
-              }
-            }
-          }
-          EOF
-          gh release upload "v${VERSION}" latest.json --clobber
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --argjson platforms "$PLATFORMS" \
+            '{"version": $version, "notes": "", "pub_date": $pub_date, "platforms": $platforms}' \
+            > latest.json
+
+          echo "Generated latest.json:"
+          cat latest.json
+
+          gh release upload "$TAG" latest.json --clobber
