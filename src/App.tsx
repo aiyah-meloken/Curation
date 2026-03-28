@@ -132,7 +132,7 @@ function AppMain({ currentUser, onLogout }: {
   useEffect(() => {
     const doCheck = () => check().then(u => u && setPendingUpdate(u)).catch(() => {});
     doCheck();
-    const timer = setInterval(doCheck, 10 * 60 * 1000);
+    const timer = setInterval(doCheck, 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 

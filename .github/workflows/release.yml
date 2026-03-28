@@ -19,12 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
-
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
 
@@ -52,7 +46,7 @@ jobs:
           VITE_AUTHING_DOMAIN: ${{ vars.VITE_AUTHING_DOMAIN }}
           VITE_AUTHING_REDIRECT_URI: ${{ vars.VITE_AUTHING_REDIRECT_URI }}
         with:
-          tagName: v__VERSION__ # The version will be extracted from tauri.conf.json
+          tagName: v__VERSION__
           releaseName: 'Curation v__VERSION__'
           releaseBody: |
             ## Downloads
@@ -88,3 +82,41 @@ jobs:
             This app requires **Curation Server** to be running locally. Contact the admin for setup instructions if you haven't received them.
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: false
+
+      # macOS only: sign the repackaged tar.gz and upload latest.json
+      - name: Upload updater artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          TAR_GZ=$(find src-tauri/target/release/bundle/macos -name "*.app.tar.gz" | head -1)
+          FILENAME=$(basename "$TAR_GZ")
+
+          # Sign the tar.gz that tauri-action repackaged
+          npx @tauri-apps/cli signer sign "$TAR_GZ" \
+            --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+            --password "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+          SIG=$(cat "${TAR_GZ}.sig")
+
+          # Upload the .sig file
+          gh release upload "v${VERSION}" "${TAR_GZ}.sig" --clobber
+
+          # Generate and upload latest.json
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${SIG}",
+                "url": "https://github.com/aiyah-meloken/Curation/releases/download/v${VERSION}/${FILENAME}"
+              }
+            }
+          }
+          EOF
+          gh release upload "v${VERSION}" latest.json --clobber
