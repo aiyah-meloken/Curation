@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { BookOpen, ExternalLink, Rss, ChevronLeft, Menu, Layers, X, ShieldCheck, FileText, Sparkles, LogOut } from 'lucide-react';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { getVersion } from '@tauri-apps/api/app';
 import { ArticleAdminPanel } from './components/ArticleAdminPanel';
 import { AddMenu } from './components/AddMenu';
 import { SubscribeModal } from './components/SubscribeModal';
@@ -121,6 +122,9 @@ function AppMain({ currentUser, onLogout }: {
   const [analysisStatus, setAnalysisStatus] = useState<"none" | "pending" | "running" | "done" | "failed">("none");
   const [notification, setNotification] = useState<string | null>(null);
   const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('');
+
+  useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
   // Initial Load: Fetch Accounts and All Articles
   useEffect(() => {
@@ -448,6 +452,7 @@ function AppMain({ currentUser, onLogout }: {
               <span style={{ fontSize: '0.72rem', color: '#8b949e', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {currentUser.email || currentUser.username}
               </span>
+              {appVersion && <span style={{ fontSize: '0.68rem', color: '#484f58', flexShrink: 0 }}>v{appVersion}</span>}
               <button
                 className="btn-icon"
                 title="退出登录"
