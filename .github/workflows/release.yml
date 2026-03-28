@@ -55,36 +55,36 @@ jobs:
           tagName: v__VERSION__ # The version will be extracted from tauri.conf.json
           releaseName: 'Curation v__VERSION__'
           releaseBody: |
-            ## 下载指引
+            ## Downloads
 
-            | 文件 | 适用系统 |
+            | File | Platform |
             |------|----------|
-            | `Curation_x.x.x_aarch64.dmg` | **macOS Apple Silicon**（M1 / M2 / M3） |
-            | `Curation_x.x.x_x86_64.dmg` | **macOS Intel** |
-            | `Curation_x.x.x_x64-setup.exe` | **Windows 64 位** |
-            | `*.sig` `latest.json` | 自动更新用，无需手动下载 |
+            | `Curation_x.x.x_aarch64.dmg` | **macOS** — Apple Silicon (M1 / M2 / M3 / M4) |
+            | `Curation_x.x.x_x64-setup.exe` | **Windows** — recommended installer |
+            | `Curation_x.x.x_x64_en-US.msi` | **Windows** — MSI alternative |
+            | `Curation_aarch64.app.tar.gz` `*.sig` `latest.json` | Auto-updater files — no need to download manually |
 
-            不知道自己是哪种 Mac？左上角苹果菜单 → 关于本机 → 芯片一栏，有 Apple M 字样选 aarch64，有 Intel 选 x86_64。
+            > **Intel Mac not supported yet.** If you need Intel Mac support, please open an issue.
 
             ---
 
-            ## macOS 安装步骤
+            ## macOS Installation
 
-            macOS 会拦截未经 Apple 认证的应用，安装完成后需要执行一次以下命令解除限制：
+            macOS blocks apps without an Apple Developer certificate. After installing, run this once in Terminal to remove the restriction:
 
-            1. 打开 dmg，把 **Curation.app 拖入 Applications 文件夹**
-            2. 打开**终端**（Terminal），粘贴以下命令并回车：
+            1. Open the `.dmg` and drag **Curation.app** to the Applications folder
+            2. Open **Terminal** and run:
 
             ```bash
             xattr -cr /Applications/Curation.app
             ```
 
-            3. 之后正常双击打开即可，后续更新无需重复此操作。
+            3. Open the app normally. You will not need to repeat this for future updates.
 
             ---
 
-            ## 使用前提
+            ## Requirements
 
-            本应用需要配合 **Curation Server** 在本地运行。如未配置，请联系管理员获取安装指引。
+            This app requires **Curation Server** to be running locally. Contact the admin for setup instructions if you haven't received them.
           releaseDraft: true
           prerelease: false
