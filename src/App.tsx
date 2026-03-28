@@ -128,9 +128,14 @@ function AppMain({ currentUser, onLogout }: {
     fetchArticles(-1);
   }, []);
 
-  // Check for updates every 10 minutes
+  // Check for updates every minute
   useEffect(() => {
-    const doCheck = () => check().then(u => u && setPendingUpdate(u)).catch(() => {});
+    const doCheck = () => check()
+      .then(u => {
+        console.log('[updater] check result:', u ? `update available: ${u.version}` : 'up to date');
+        if (u) setPendingUpdate(u);
+      })
+      .catch(e => console.error('[updater] check failed:', e));
     doCheck();
     const timer = setInterval(doCheck, 60 * 1000);
     return () => clearInterval(timer);
