@@ -489,9 +489,14 @@ function AppMain({ currentUser, onLogout }: {
             >
               <div className="article-card-left">
                 <div className="article-card-title">{art.title}</div>
-                <div className="article-card-digest">{art.digest || "暂无摘要"}</div>
+                {art.digest && <div className="article-card-digest">{art.digest}</div>}
                 <div className="article-card-meta">
-                  {art.publish_time} · {art.account}
+                  {art.publish_time}{art.account && <> · <span
+                    onClick={e => { e.stopPropagation(); if (art.account_id) setSelectedAccountId(art.account_id); }}
+                    style={{ cursor: 'pointer', color: 'var(--primary-color)', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                    onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                  >{art.account}</span></>}
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
