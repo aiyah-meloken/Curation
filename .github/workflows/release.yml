@@ -53,6 +53,37 @@ jobs:
         with:
           tagName: v__VERSION__ # The version will be extracted from tauri.conf.json
           releaseName: 'Curation v__VERSION__'
-          releaseBody: 'See the assets below to download the latest version.'
+          releaseBody: |
+            ## 下载指引
+
+            | 文件 | 适用系统 |
+            |------|----------|
+            | `Curation_x.x.x_aarch64.dmg` | **macOS Apple Silicon**（M1 / M2 / M3） |
+            | `Curation_x.x.x_x86_64.dmg` | **macOS Intel** |
+            | `Curation_x.x.x_x64-setup.exe` | **Windows 64 位** |
+            | `*.sig` `latest.json` | 自动更新用，无需手动下载 |
+
+            不知道自己是哪种 Mac？左上角苹果菜单 → 关于本机 → 芯片一栏，有 Apple M 字样选 aarch64，有 Intel 选 x86_64。
+
+            ---
+
+            ## macOS 安装步骤
+
+            macOS 会拦截未经 Apple 认证的应用，安装完成后需要执行一次以下命令解除限制：
+
+            1. 打开 dmg，把 **Curation.app 拖入 Applications 文件夹**
+            2. 打开**终端**（Terminal），粘贴以下命令并回车：
+
+            ```bash
+            xattr -cr /Applications/Curation.app
+            ```
+
+            3. 之后正常双击打开即可，后续更新无需重复此操作。
+
+            ---
+
+            ## 使用前提
+
+            本应用需要配合 **Curation Server** 在本地运行。如未配置，请联系管理员获取安装指引。
           releaseDraft: true
           prerelease: false
