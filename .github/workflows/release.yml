@@ -12,7 +12,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, windows-latest]
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust_targets: 'aarch64-apple-darwin'
+          - platform: windows-latest
+            args: '--target x86_64-pc-windows-msvc'
+            rust_targets: 'x86_64-pc-windows-msvc'
+          - platform: windows-latest
+            args: '--target aarch64-pc-windows-msvc'
+            rust_targets: 'aarch64-pc-windows-msvc'
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -21,6 +30,8 @@ jobs:
 
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -47,6 +58,7 @@ jobs:
           VITE_AUTHING_DOMAIN: ${{ vars.VITE_AUTHING_DOMAIN }}
           VITE_AUTHING_REDIRECT_URI: ${{ vars.VITE_AUTHING_REDIRECT_URI }}
         with:
+          args: ${{ matrix.args }}
           tagName: v__VERSION__
           releaseName: 'Curation v__VERSION__'
           releaseBody: |
@@ -55,8 +67,9 @@ jobs:
             | File | Platform |
             |------|----------|
             | `Curation_x.x.x_aarch64.dmg` | **macOS** — Apple Silicon (M1 / M2 / M3 / M4) |
-            | `Curation_x.x.x_x64-setup.exe` | **Windows** — recommended installer |
-            | `Curation_x.x.x_x64_en-US.msi` | **Windows** — MSI alternative |
+            | `Curation_x.x.x_x64-setup.exe` | **Windows x64** — recommended installer |
+            | `Curation_x.x.x_x64_en-US.msi` | **Windows x64** — MSI alternative |
+            | `Curation_x.x.x_arm64-setup.exe` | **Windows ARM** — for ARM devices (Surface Pro X, etc.) |
             | `Curation_aarch64.app.tar.gz` `*.sig` `latest.json` | Auto-updater files — no need to download manually |
 
             > **Intel Mac not supported yet.** If you need Intel Mac support, please open an issue.
@@ -152,6 +165,25 @@ jobs:
               '. + {"windows-x86_64": {"signature": $sig, "url": $url}}')
           else
             echo "No Windows x64 artifact found, skipping."
+          fi
+
+          # --- Windows ARM64 (NSIS installer) ---
+          WIN_ARM_FILE=$(echo "$ASSETS" | jq -r '.[] | select(test("_arm64-setup\\.exe$"))' | head -1)
+          if [ -n "$WIN_ARM_FILE" ]; then
+            echo "Signing Windows ARM64 artifact: $WIN_ARM_FILE"
+            mkdir -p /tmp/win-arm
+            gh release download "$TAG" --repo ${{ github.repository }} --pattern "$WIN_ARM_FILE" --dir /tmp/win-arm
+            npx @tauri-apps/cli signer sign "/tmp/win-arm/$WIN_ARM_FILE" \
+              --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+              --password "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+            WIN_ARM_SIG=$(cat "/tmp/win-arm/${WIN_ARM_FILE}.sig")
+            gh release upload "$TAG" "/tmp/win-arm/${WIN_ARM_FILE}.sig" --clobber
+            PLATFORMS=$(echo "$PLATFORMS" | jq \
+              --arg sig "$WIN_ARM_SIG" \
+              --arg url "${BASE_URL}/${WIN_ARM_FILE}" \
+              '. + {"windows-aarch64": {"signature": $sig, "url": $url}}')
+          else
+            echo "No Windows ARM64 artifact found, skipping."
           fi
 
           if [ "$PLATFORMS" = "{}" ]; then
