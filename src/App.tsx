@@ -16,9 +16,24 @@ import { AuthCallback } from './components/AuthCallback';
 import { InviteManagementPanel } from './components/InviteManagementPanel';
 import { UserManagementPanel } from './components/UserManagementPanel';
 import { useAuth } from './lib/authStore';
-import { apiFetch } from './lib/api';
+import { apiFetch, API_BASE, WS_BASE } from './lib/api';
 import { authingClient } from './lib/authing';
 import "./App.css";
+
+// Boot info — printed once at startup
+getVersion()
+  .then(v => {
+    console.log(
+      `%c Curation v${v} %c\n` +
+      `  API:    ${API_BASE}\n` +
+      `  WS:     ${WS_BASE}\n` +
+      `  Auth:   ${import.meta.env.VITE_AUTHING_DOMAIN ?? '(not set)'}\n` +
+      `  Env:    ${import.meta.env.MODE}`,
+      'background:#1f6feb;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px',
+      '',
+    );
+  })
+  .catch(() => {});
 
 async function apiFailureDetail(res: Response): Promise<string> {
   try {
