@@ -343,9 +343,11 @@ body {
 
 /* Markdown Typography (for AI Summary) */
 .markdown-body {
-  font-size: 1.1rem;
-  line-height: 1.8;
-  color: var(--text-primary) !important;
+  font-family: "Charter", "Bitstream Charter", "Georgia", "Noto Serif SC", serif;
+  font-size: 15px;
+  line-height: 1.95;
+  letter-spacing: 0.012em;
+  color: #bfc7d5 !important;
   background-color: transparent !important;
 }
 
@@ -355,25 +357,107 @@ body {
   display: block;
 }
 
-.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
-  color: var(--text-primary) !important;
-  border-bottom: 1px solid var(--border-color) !important;
+.markdown-body h1 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.7em;
+  font-weight: 800;
+  color: #e8edf4 !important;
+  border-bottom: none !important;
+  margin: 0 0 8px;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+.markdown-body h1::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  margin-top: 14px;
+  border-radius: 2px;
+}
+
+.markdown-body h2 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #f59e0b !important;
+  border-bottom: none !important;
+  margin: 36px 0 12px;
+}
+
+.markdown-body h3, .markdown-body h4 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e6edf3 !important;
+  border-bottom: none !important;
   margin-top: 1.5em;
-  margin-bottom: 1em;
+  margin-bottom: 0.8em;
 }
 
 .markdown-body p {
-  margin-bottom: 1.2em;
+  margin: 16px 0;
+  text-align: justify;
+}
+
+.markdown-body strong {
+  color: #fcd34d;
+  font-weight: 700;
+}
+
+.markdown-body em {
+  color: #fdba74;
+  font-style: italic;
+}
+
+.markdown-body a {
+  color: #fbbf24;
+  text-decoration: none;
+  border-bottom: 1px solid #fbbf2440;
+}
+.markdown-body a:hover {
+  border-bottom-color: #fbbf24;
 }
 
 .markdown-body blockquote {
-  border-left: 4px solid var(--primary-color) !important;
-  background: var(--sidebar-hover) !important;
-  padding: 1rem 1.5rem;
-  margin: 1.5rem 0;
-  color: var(--text-muted) !important;
-  font-style: italic;
-  border-radius: 0 8px 8px 0;
+  margin: 22px 0;
+  padding: 20px 24px 20px 28px;
+  border-left: none !important;
+  border: 1px solid #92400e33 !important;
+  background: linear-gradient(135deg, #1a1308 0%, #0f0e0a 100%) !important;
+  border-radius: 12px;
+  color: #c4975a !important;
+  font-size: 1em;
+  line-height: 1.95;
+  font-style: normal;
+  position: relative;
+}
+.markdown-body blockquote::before {
+  content: "\201C";
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-size: 2.2em;
+  color: #f59e0b22;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+.markdown-body blockquote p {
+  margin: 8px 0;
+  padding-left: 14px;
+}
+
+.markdown-body ul, .markdown-body ol {
+  margin: 14px 0;
+  padding-left: 22px;
+}
+.markdown-body li {
+  margin: 8px 0;
+}
+.markdown-body li::marker {
+  color: #f59e0b;
+}
+.markdown-body li strong {
+  color: #fcd34d;
 }
 
 /* Rich Text (HTML) Template for Original Articles */
@@ -530,9 +614,9 @@ body {
 /* Reader Specific Typography Overrides */
 .markdown-body hr {
   height: 1px;
-  background-color: var(--border-color) !important;
+  background: linear-gradient(90deg, transparent, #475569, transparent) !important;
   border: none !important;
-  margin: 24px 0;
+  margin: 36px 0;
 }
 
 /* Settings Overlay & Modal */
