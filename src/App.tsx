@@ -439,6 +439,20 @@ function AppMain({ currentUser, onLogout }: {
     }
   };
 
+  const handleEnqueueAll = async () => {
+    const toEnqueue = articles.filter(a =>
+      a.serving_run_id == null && (!a.queue_status || a.queue_status === "failed")
+    );
+    if (toEnqueue.length === 0) return;
+    if (!confirm(`将 ${toEnqueue.length} 篇未分析文章加入队列？`)) return;
+    for (const art of toEnqueue) {
+      try {
+        await apiFetch(`/articles/${art.id}/request-analysis`, { method: 'POST' });
+      } catch {}
+    }
+    setTimeout(() => fetchArticles(selectedAccountId || -1), 1000);
+  };
+
   const handleEnqueueArticle = async (e: React.MouseEvent, art: Article) => {
     e.stopPropagation();
     try {
@@ -699,14 +713,31 @@ function AppMain({ currentUser, onLogout }: {
       {/* Pane 2: Article List */}
       <section className="article-list-pane" style={{ width: listWidth }}>
         <header className="list-header">
-          <div className="search-input-wrapper">
-            <input 
-              type="text" 
-              className="search-input" 
-              placeholder="搜索文章标题..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div className="search-input-wrapper" style={{ flex: 1 }}>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="搜索文章标题..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {articles.some(a => a.serving_run_id == null && (!a.queue_status || a.queue_status === "failed")) && (
+              <button
+                onClick={handleEnqueueAll}
+                title="将所有未分析的文章加入队列"
+                style={{
+                  background: '#238636', border: 'none', borderRadius: 6,
+                  color: '#fff', padding: '5px 10px', cursor: 'pointer',
+                  fontSize: '0.75rem', whiteSpace: 'nowrap', display: 'flex',
+                  alignItems: 'center', gap: 4, shrinkFlex: 0,
+                }}
+              >
+                <Sparkles size={12} />
+                全部生成
+              </button>
+            )}
           </div>
         </header>
         <div className="list-content">
