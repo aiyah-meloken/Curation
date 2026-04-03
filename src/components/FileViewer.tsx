@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-
 import { apiFetch } from "../lib/api";
+import { StreamReplay } from "./StreamReplay";
 
 interface Props {
   runId: number;
@@ -34,30 +34,37 @@ export function FileViewer({ runId }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [hasStream, setHasStream] = useState(false);
+  const [showReplay, setShowReplay] = useState(false);
 
   useEffect(() => {
     setFiles([]);
     setSelected(null);
     setContent("");
+    setShowReplay(false);
     apiFetch(`/runs/${runId}/files`)
       .then(r => r.json())
       .then(resp => {
         const list: string[] = resp.data ?? [];
         setFiles(list);
-        // Auto-select final_output.md if available
         const preferred = list.find(f => f === "final_output.md") ?? list[0];
         if (preferred) setSelected(preferred);
       });
+    // Check if stream.jsonl exists
+    apiFetch(`/runs/${runId}/stream/summary`)
+      .then(r => r.json())
+      .then(resp => setHasStream(resp.data != null && resp.data.total_lines > 0))
+      .catch(() => setHasStream(false));
   }, [runId]);
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || showReplay) return;
     setLoading(true);
     apiFetch(`/runs/${runId}/files/${selected}`)
       .then(r => r.json())
       .then(resp => setContent(resp.content ?? ""))
       .finally(() => setLoading(false));
-  }, [runId, selected]);
+  }, [runId, selected, showReplay]);
 
   if (files.length === 0) {
     return (
@@ -79,9 +86,9 @@ export function FileViewer({ runId }: Props) {
           grouped[g].map(f => (
             <button
               key={f}
-              onClick={() => setSelected(f)}
+              onClick={() => { setSelected(f); setShowReplay(false); }}
               className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                selected === f
+                selected === f && !showReplay
                   ? "bg-blue-600 text-white"
                   : "bg-gray-700 text-gray-300 hover:bg-gray-600"
               }`}
@@ -90,18 +97,36 @@ export function FileViewer({ runId }: Props) {
             </button>
           ))
         )}
+        {hasStream && (
+          <button
+            onClick={() => setShowReplay(true)}
+            className={`px-2.5 py-1 text-xs rounded transition-colors ${
+              showReplay
+                ? "bg-purple-600 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            Agent 回放
+          </button>
+        )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto mt-3 prose prose-invert prose-sm max-w-none">
-        {loading ? (
-          <div className="text-gray-500 text-sm">加载中…</div>
-        ) : (
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {content}
-          </ReactMarkdown>
-        )}
-      </div>
+      {showReplay ? (
+        <div className="flex-1 overflow-hidden mt-2">
+          <StreamReplay runId={runId} />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto mt-3 prose prose-invert prose-sm max-w-none">
+          {loading ? (
+            <div className="text-gray-500 text-sm">加载中…</div>
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
+          )}
+        </div>
+      )}
     </div>
   );
 }
