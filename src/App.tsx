@@ -65,6 +65,10 @@ interface Account {
   last_monitored_at?: string;
   article_count?: number;
   subscription_type?: "subscribed" | "temporary";
+  avg_daily_freq?: number;
+  estimated_daily_cost?: number;
+  total_cost?: number;
+  sync_count?: number;
 }
 
 interface Article {
@@ -82,7 +86,7 @@ interface Article {
   markdown_path?: string;
   account_id?: number;
   serving_run_id?: number | null;
-  content_source?: "analysis" | "raw" | "empty";
+  content_source?: "analysis" | "raw" | "empty" | "not_loaded";
   rawHtml?: string;
   contentFormat?: "html" | "markdown";
 
@@ -265,7 +269,22 @@ function AppMain({ currentUser, onLogout }: {
       apiFetch(`/articles/${art.id}/content`).then(r => r.json()),
       apiFetch(`/articles/${art.id}/raw`).then(r => r.json()),
       apiFetch(`/articles/${art.id}/request-analysis`, { method: "POST" }).then(r => r.json()),
-    ]).then(([resp, rawResp, analysisResp]) => {
+    ]).then(async ([resp, rawResp, analysisResp]) => {
+      // If content not loaded yet, trigger background load
+      if (resp.source === "not_loaded") {
+        await apiFetch(`/articles/${art.id}/load`, { method: "POST" });
+        setActiveArticle({
+          ...art,
+          markdown: undefined,
+          rawMarkdown: undefined,
+          rawHtml: undefined,
+          contentFormat: undefined,
+          serving_run_id: undefined,
+          content_source: "not_loaded",
+        });
+        setAnalysisStatus("pending");
+        return;
+      }
       setViewRaw(resp.source !== "analysis");
       setSummaryWordCount(resp.word_count ?? 0);
       setRawWordCount(resp.raw_word_count ?? 0);
@@ -897,7 +916,12 @@ function AppMain({ currentUser, onLogout }: {
               </div>
             )}
             <div className="reader-content animate-in">
-              {!viewRaw && (analysisStatus === "pending" || analysisStatus === "running") ? (
+              {activeArticle.content_source === "not_loaded" ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, color: '#8b949e' }}>
+                  <Sparkles size={32} style={{ opacity: 0.4 }} className="animate-spin" />
+                  <span style={{ fontSize: '0.9rem' }}>正在加载文章内容...</span>
+                </div>
+              ) : !viewRaw && (analysisStatus === "pending" || analysisStatus === "running") ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, color: '#8b949e' }}>
                   <Sparkles size={32} style={{ opacity: 0.4 }} className="animate-spin" />
                   <span style={{ fontSize: '0.9rem' }}>正在生成 AI 总结...</span>

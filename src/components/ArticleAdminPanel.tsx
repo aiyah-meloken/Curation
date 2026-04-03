@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Play, RefreshCw, ChevronDown, ChevronRight, Eye, Columns2, List, Radio } from "lucide-react";
 import { RunProgress } from "./RunProgress";
 import { FileViewer } from "./FileViewer";
-import type { Article, AnalysisRun, AgentVersion, AgentManifest, Stage } from "../types";
+import type { Article, AnalysisRun, AgentBackends } from "../types";
 
 import { apiFetch } from "../lib/api";
 
@@ -25,16 +25,6 @@ function overallBadge(status: string) {
       {status}
     </span>
   );
-}
-
-function stageDot(status: string) {
-  const cls: Record<string, string> = {
-    done:    "text-green-400",
-    failed:  "text-red-400",
-    running: "text-blue-400 animate-pulse",
-    pending: "text-gray-600",
-  };
-  return <span className={cls[status] ?? "text-gray-600"}>●</span>;
 }
 
 function fmtElapsed(s: number | null) {
@@ -71,7 +61,7 @@ function ComparePane({
           <option value="">— 选择 run —</option>
           {doneRuns.map(r => (
             <option key={r.id} value={r.id}>
-              #{r.id} {r.agent_commit_hash.slice(0, 7)} · {r.backend}
+              #{r.id} · {r.backend}
             </option>
           ))}
         </select>
@@ -90,9 +80,7 @@ function ComparePane({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
-  const [versions, setVersions] = useState<AgentVersion[]>([]);
-  const [selectedHash, setSelectedHash] = useState<string>("");
-  const [manifest, setManifest] = useState<AgentManifest | null>(null);
+  const [backendsInfo, setBackendsInfo] = useState<AgentBackends | null>(null);
   const [backend, setBackend] = useState<string>("claude");
   const [triggering, setTriggering] = useState(false);
 
@@ -102,41 +90,19 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
 
   const [compareMode, setCompareMode] = useState(false);
 
-  // Load agent versions (HEAD version includes manifest)
+  // Load available backends from agent
   useEffect(() => {
-    apiFetch(`/agent/versions?n=20`)
+    apiFetch(`/agent/backends`)
       .then(r => r.json())
       .then(resp => {
-        const vs: AgentVersion[] = resp.data ?? [];
-        setVersions(vs);
-        if (vs.length > 0) {
-          setSelectedHash(vs[0].hash);
-          if (vs[0].manifest) {
-            setManifest(vs[0].manifest);
-            if (vs[0].manifest.default_backend) setBackend(vs[0].manifest.default_backend);
-          }
+        const data: AgentBackends = resp.data;
+        if (data) {
+          setBackendsInfo(data);
+          if (data.default) setBackend(data.default);
         }
       })
       .catch(() => {});
   }, []);
-
-  // Fetch manifest when user selects a different agent version
-  useEffect(() => {
-    if (!selectedHash) return;
-    const v = versions.find(v => v.hash === selectedHash);
-    if (v?.manifest) { setManifest(v.manifest); return; }
-    apiFetch(`/agent/versions/${selectedHash}/manifest`)
-      .then(r => r.json())
-      .then(resp => {
-        const m = resp.data as AgentManifest;
-        setManifest(m);
-        // Cache it on the version object
-        setVersions(prev => prev.map(v =>
-          v.hash === selectedHash ? { ...v, manifest: m } : v
-        ));
-      })
-      .catch(() => {});
-  }, [selectedHash]);
 
   const loadRuns = () =>
     apiFetch(`/articles/${article.id}/runs`)
@@ -148,13 +114,12 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
   // ── Trigger ────────────────────────────────────────────────────────────────
 
   const triggerAnalysis = async () => {
-    if (!selectedHash) return;
     setTriggering(true);
     try {
       const resp = await apiFetch(`/articles/${article.id}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_commit_hash: selectedHash, backend }),
+        body: JSON.stringify({ backend }),
       }).then(r => r.json());
       if (resp.run_id) {
         await loadRuns();
@@ -164,11 +129,6 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
     } finally {
       setTriggering(false);
     }
-  };
-
-  const retriggerStage = async (runId: number, stage: Stage) => {
-    await apiFetch(`/runs/${runId}/stage/${stage}`, { method: "POST" });
-    loadRuns();
   };
 
   // ── Serving control ────────────────────────────────────────────────────────
@@ -184,6 +144,8 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
 
   const handleRunUpdate = (updated: AnalysisRun) =>
     setRuns(prev => prev.map(r => r.id === updated.id ? updated : r));
+
+  const backendNames = backendsInfo ? Object.keys(backendsInfo.backends) : ["claude"];
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -207,23 +169,11 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
             {compareMode ? "历史列表" : "对比模式"}
           </button>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <select
-            value={selectedHash}
-            onChange={e => setSelectedHash(e.target.value)}
-            className="flex-1 min-w-0 bg-gray-800 border border-gray-600 text-gray-200 text-xs rounded px-2 py-1.5"
-          >
-            {versions.length === 0 && <option value="">（未连接 agent repo）</option>}
-            {versions.map(v => (
-              <option key={v.hash} value={v.hash}>
-                {v.short_hash} — {v.message.slice(0, 45)}
-              </option>
-            ))}
-          </select>
+        <div className="flex gap-2 flex-wrap items-center">
           <div className="flex gap-1">
-            {(manifest ? Object.keys(manifest.backends) : ["claude"]).map(b => (
+            {backendNames.map(b => (
               <button key={b} onClick={() => setBackend(b)}
-                title={manifest?.backends[b]?.description}
+                title={backendsInfo?.backends[b]?.description}
                 className={`px-2.5 py-1.5 text-xs rounded transition-colors ${
                   backend === b ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                 }`}>
@@ -231,23 +181,18 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
               </button>
             ))}
           </div>
-          <button onClick={triggerAnalysis} disabled={triggering || !selectedHash}
+          <button onClick={triggerAnalysis} disabled={triggering}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-600
                        disabled:opacity-50 text-white text-xs rounded transition-colors">
             {triggering ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
             一条龙运行
           </button>
         </div>
-        {/* Manifest info */}
-        {manifest && (
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <span>阶段: {manifest.stages.join(" → ")}</span>
-            <span className="text-gray-600">|</span>
-            <span>当前后端: <span className="text-blue-400">{backend}</span>
-              {manifest.backends[backend]?.description && (
-                <span className="text-gray-600 ml-1">({manifest.backends[backend].description})</span>
-              )}
-            </span>
+        {/* Backend info */}
+        {backendsInfo?.backends[backend]?.description && (
+          <div className="text-xs text-gray-500">
+            当前后端: <span className="text-blue-400">{backend}</span>
+            <span className="text-gray-600 ml-1">({backendsInfo.backends[backend].description})</span>
           </div>
         )}
       </div>
@@ -282,13 +227,11 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
                         ? <ChevronDown size={13} className="text-gray-500 shrink-0" />
                         : <ChevronRight size={13} className="text-gray-500 shrink-0" />}
                       <span className="text-gray-400 text-xs w-5 shrink-0">#{run.id}</span>
-                      <span className="text-xs font-mono text-blue-400 shrink-0">
-                        {run.agent_commit_hash.slice(0, 7)}
-                      </span>
                       <span className="text-xs text-gray-400 shrink-0">{run.backend}</span>
-                      <span className="flex-1 truncate text-xs text-gray-500">
-                        {run.agent_commit_message}
-                      </span>
+                      {run.elapsed_s != null && (
+                        <span className="text-xs text-gray-500 shrink-0">{fmtElapsed(run.elapsed_s)}</span>
+                      )}
+                      <span className="flex-1" />
                       <span className="text-xs text-gray-500 shrink-0">{fmtDate(run.created_at)}</span>
                       {isServing && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-blue-800 text-blue-200 shrink-0">
@@ -301,26 +244,7 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
                     {/* Expanded detail */}
                     {isExpanded && (
                       <div className="px-10 pb-3 space-y-3">
-                        <RunProgress run={run} stages={manifest?.stages ?? []} onUpdate={handleRunUpdate} />
-
-                        {/* Stage re-trigger */}
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {(manifest?.stages ?? []).map(stage => {
-                            const status  = run[`${stage}_status` as keyof AnalysisRun] as string;
-                            const elapsed = run[`${stage}_elapsed_s` as keyof AnalysisRun] as number | null;
-                            return (
-                              <button key={stage}
-                                onClick={() => retriggerStage(run.id, stage)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs
-                                           bg-gray-700 hover:bg-gray-600 rounded transition-colors">
-                                {stageDot(status)}
-                                <span className="capitalize">{stage}</span>
-                                {elapsed && <span className="text-gray-500">{fmtElapsed(elapsed)}</span>}
-                                <RefreshCw size={10} className="text-gray-500" />
-                              </button>
-                            );
-                          })}
-                        </div>
+                        <RunProgress run={run} onUpdate={handleRunUpdate} />
 
                         {/* Serving + view controls */}
                         <div className="flex items-center gap-3 pt-0.5">

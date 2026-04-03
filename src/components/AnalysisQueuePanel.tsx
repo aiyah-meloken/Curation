@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { RefreshCw, Play, ExternalLink } from "lucide-react";
-import type { AgentManifest } from "../types";
+import { RefreshCw, Play, ExternalLink, RotateCcw, Trash2 } from "lucide-react";
+import type { AgentBackends } from "../types";
 import { apiFetch } from "../lib/api";
 
 interface QueueEntry {
@@ -41,7 +41,7 @@ const STATUS_COLOR: Record<string, string> = {
 export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [strategy, setStrategy] = useState<Strategy>({ auto_launch: true, max_concurrency: 2, default_backend: "" });
-  const [manifest, setManifest] = useState<AgentManifest | null>(null);
+  const [backendsInfo, setBackendsInfo] = useState<AgentBackends | null>(null);
   const [loading, setLoading] = useState(false);
   const [runningArticles, setRunningArticles] = useState<Set<number>>(new Set());
 
@@ -59,15 +59,12 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
     }
   };
 
-  // Fetch manifest for backend options
+  // Fetch available backends
   useEffect(() => {
-    apiFetch(`/agent/versions?n=1`)
+    apiFetch(`/agent/backends`)
       .then(r => r.json())
       .then(resp => {
-        const vs = resp.data ?? [];
-        if (vs.length > 0 && vs[0].manifest) {
-          setManifest(vs[0].manifest);
-        }
+        if (resp.data) setBackendsInfo(resp.data);
       })
       .catch(() => {});
   }, []);
@@ -98,7 +95,17 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
     }
   };
 
-  const backends = manifest ? Object.keys(manifest.backends) : [];
+  const retryEntry = async (articleId: number) => {
+    await apiFetch(`/queue/${articleId}/retry`, { method: "POST" });
+    await fetchData();
+  };
+
+  const removeEntry = async (articleId: number) => {
+    await apiFetch(`/queue/${articleId}`, { method: "DELETE" });
+    await fetchData();
+  };
+
+  const backends = backendsInfo ? Object.keys(backendsInfo.backends) : [];
 
   return (
     <div style={{ padding: "18px 24px", overflowY: "auto", height: "100%" }}>
@@ -228,22 +235,51 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
                     </span>
                   </td>
                   <td style={{ padding: "9px 14px", textAlign: "center" }}>
-                    {(entry.status === "pending" || entry.status === "failed") && (
-                      <button
-                        onClick={() => triggerRun(entry.article_id)}
-                        disabled={runningArticles.has(entry.article_id)}
-                        title="立即运行"
-                        style={{
-                          background: "#238636", border: "none", borderRadius: 4,
-                          color: "#fff", padding: "3px 10px", cursor: "pointer",
-                          fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: 4,
-                          opacity: runningArticles.has(entry.article_id) ? 0.5 : 1,
-                        }}
-                      >
-                        <Play size={11} />
-                        运行
-                      </button>
-                    )}
+                    <div style={{ display: "inline-flex", gap: 6 }}>
+                      {entry.status === "pending" && (
+                        <button
+                          onClick={() => triggerRun(entry.article_id)}
+                          disabled={runningArticles.has(entry.article_id)}
+                          title="立即运行"
+                          style={{
+                            background: "#238636", border: "none", borderRadius: 4,
+                            color: "#fff", padding: "3px 10px", cursor: "pointer",
+                            fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: 4,
+                            opacity: runningArticles.has(entry.article_id) ? 0.5 : 1,
+                          }}
+                        >
+                          <Play size={11} />
+                          运行
+                        </button>
+                      )}
+                      {entry.status === "failed" && (
+                        <button
+                          onClick={() => retryEntry(entry.article_id)}
+                          title="重试"
+                          style={{
+                            background: "#1f6feb", border: "none", borderRadius: 4,
+                            color: "#fff", padding: "3px 10px", cursor: "pointer",
+                            fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: 4,
+                          }}
+                        >
+                          <RotateCcw size={11} />
+                          重试
+                        </button>
+                      )}
+                      {entry.status !== "running" && (
+                        <button
+                          onClick={() => removeEntry(entry.article_id)}
+                          title="移出队列"
+                          style={{
+                            background: "none", border: "1px solid #30363d", borderRadius: 4,
+                            color: "#8b949e", padding: "3px 8px", cursor: "pointer",
+                            fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: 4,
+                          }}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -13,6 +13,10 @@ interface Account {
   last_monitored_at?: string;
   article_count?: number;
   subscription_type?: "subscribed" | "temporary";
+  avg_daily_freq?: number;
+  estimated_daily_cost?: number;
+  total_cost?: number;
+  sync_count?: number;
 }
 
 interface Article {
@@ -116,6 +120,8 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
         <div style={{ color: "#8b949e", fontSize: "0.72rem" }}>
           {acc.article_count ?? 0} 篇文章
           {acc.last_monitored_at ? ` · 最后同步 ${new Date(acc.last_monitored_at).toLocaleDateString("zh-CN")}` : ""}
+          {acc.avg_daily_freq != null ? ` · ${acc.avg_daily_freq.toFixed(1)} 篇/天` : ""}
+          {acc.estimated_daily_cost != null ? ` · 约 ¥${acc.estimated_daily_cost.toFixed(3)}/天` : ""}
         </div>
       </div>
       {syncMsgs[acc.id] && (

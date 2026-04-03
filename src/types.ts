@@ -20,46 +20,36 @@ export interface Article {
   markdown_path?: string;
   account_id?: number;
   serving_run_id?: number | null;
-  content_source?: "analysis" | "raw" | "empty";
+  content_source?: "analysis" | "raw" | "empty" | "not_loaded";
 }
 
 export interface AnalysisRun {
   id: number;
   article_id: number;
-  agent_commit_hash: string;
-  agent_commit_message: string;
   backend: string;
   workspace_path: string;
-  deconstruct_status: string;
-  deconstruct_elapsed_s: number | null;
-  evaluate_status: string;
-  evaluate_elapsed_s: number | null;
-  synthesize_status: string;
-  synthesize_elapsed_s: number | null;
-  write_status: string;
-  write_elapsed_s: number | null;
   overall_status: string;
+  elapsed_s: number | null;
+  progress_log: string | null;   // JSON array of progress events
   error_msg: string | null;
   created_at: string;
 }
 
+export interface ProgressEvent {
+  type: string;      // stage_start, stage_done, stage_failed, done, failed
+  stage?: string;
+  elapsed_s?: number;
+  error?: string;
+  run_id?: number;
+}
+
 export interface BackendInfo {
-  canonical_id: string;
   description: string;
 }
 
-export interface AgentManifest {
-  stages: string[];
+export interface AgentBackends {
   backends: Record<string, BackendInfo>;
-  default_backend?: string;
-}
-
-export interface AgentVersion {
-  hash: string;
-  short_hash: string;
-  message: string;
-  date: string;
-  manifest?: AgentManifest;
+  default: string;
 }
 
 export type StageStatus = "pending" | "running" | "done" | "failed";
