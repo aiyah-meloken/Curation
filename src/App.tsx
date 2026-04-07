@@ -123,34 +123,39 @@ function initialColumnWidthsFromViewport(): { sidebar: number; list: number } {
 }
 
 function UpdateBanner() {
-  const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const doCheck = () => check()
-      .then(u => {
+    const doCheck = async () => {
+      try {
+        const u = await check();
         console.log('[updater] check result:', u ? `update available: ${u.version}` : 'up to date');
-        if (u) setPendingUpdate(u);
-      })
-      .catch(e => console.error('[updater] check failed:', e));
+        if (u) {
+          console.log('[updater] downloading in background...');
+          await u.downloadAndInstall();
+          console.log('[updater] download complete, ready to relaunch');
+          setReady(true);
+        }
+      } catch (e) {
+        console.error('[updater] check/download failed:', e);
+      }
+    };
     doCheck();
     const timer = setInterval(doCheck, 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 
-  if (!pendingUpdate) return null;
+  if (!ready) return null;
 
   return (
-    <button onClick={async () => {
-      await pendingUpdate.downloadAndInstall();
-      await relaunch();
-    }} style={{
+    <button onClick={() => relaunch()} style={{
       position: 'fixed', top: 12, right: 16, zIndex: 200,
       background: '#1f6feb', color: '#fff', border: 'none',
       borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
       fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6,
       boxShadow: '0 2px 8px rgba(31,111,235,0.4)',
     }}>
-      ↑ 新版本可用，点击重启安装
+      ↑ 重启以更新软件
     </button>
   );
 }
