@@ -36,6 +36,9 @@ interface Props {
 }
 
 export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectArticle }: Props) {
+  const [activeTab, setActiveTab] = useState<"accounts" | "articles">("accounts");
+  const [filterAccountId, setFilterAccountId] = useState<number | null>(null);
+  const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["none", "pending", "running", "failed", "done"]));
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [syncMsgs, setSyncMsgs] = useState<Record<number, string>>({});
   const [deletingAccId, setDeletingAccId] = useState<number | null>(null);
@@ -124,21 +127,18 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
     if (!confirm(`将 ${toEnqueue.length} 篇未分析文章加入队列？`)) return;
     setEnqueuingAll(true);
     try {
-      for (const art of toEnqueue) {
-        try {
-          await apiFetch(`/articles/${art.id}/request-analysis`, { method: "POST" });
-        } catch {}
-      }
+      await apiFetch("/queue/enqueue-batch", {
+        method: "POST",
+        body: JSON.stringify({ article_ids: toEnqueue.map(a => a.id) }),
+      });
       onRefresh();
+    } catch (e) {
+      console.error("Batch enqueue failed:", e);
     } finally {
       setEnqueuingAll(false);
     }
   };
 
-  const filtered = articles.filter(a =>
-    a.title?.toLowerCase().includes(search.toLowerCase()) ||
-    a.account?.toLowerCase().includes(search.toLowerCase())
-  );
 
   const renderAccountRow = (acc: Account) => (
     <div key={acc.id} style={{
@@ -149,7 +149,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
         <img src={acc.avatar_url} alt="" referrerPolicy="no-referrer"
           style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0 }} />
       )}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => handleAccountClick(acc.id)}>
         <div style={{ color: "#e6edf3", fontSize: "0.82rem", fontWeight: 500 }}>{acc.name}</div>
         <div style={{ color: "#8b949e", fontSize: "0.72rem" }}>
           {acc.article_count ?? 0} 篇文章
@@ -193,16 +193,61 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
     </div>
   );
 
+  const toggleStatus = (s: string) => {
+    setStatusFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
+
+  const articleStatus = (a: Article): string => {
+    if (a.queue_status === "running" || a.queue_status === "pending" || a.queue_status === "failed" || a.queue_status === "done") return a.queue_status;
+    return "none";
+  };
+
+  const handleAccountClick = (accId: number) => {
+    setFilterAccountId(accId);
+    setActiveTab("articles");
+  };
+
+  const filteredArticles = articles.filter(a => {
+    if (filterAccountId != null && !accounts.some(acc => acc.id === filterAccountId && acc.name === a.account)) return false;
+    if (!statusFilters.has(articleStatus(a))) return false;
+    if (search && !(a.title?.toLowerCase().includes(search.toLowerCase()) || a.account?.toLowerCase().includes(search.toLowerCase()))) return false;
+    return true;
+  });
+
+  const filterAccountName = filterAccountId != null ? accounts.find(a => a.id === filterAccountId)?.name : null;
+
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: "0 0 24px" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {errorMsg && (
         <div style={{ margin: "10px 20px 0", padding: "8px 12px", background: "#3d1a1a", border: "1px solid #6e3535", borderRadius: 6, fontSize: "0.8rem", color: "#f85149", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {errorMsg}
           <button onClick={() => setErrorMsg(null)} style={{ background: "none", border: "none", color: "#f85149", cursor: "pointer", padding: 0, marginLeft: 8 }}>✕</button>
         </div>
       )}
-      {/* Accounts section */}
-      <div style={{ padding: "16px 20px 8px", borderBottom: "1px solid #21262d" }}>
+
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: 4, padding: "12px 20px 8px" }}>
+        <button onClick={() => setActiveTab("accounts")} style={{
+          fontSize: "0.75rem", padding: "4px 12px", borderRadius: 5, border: "none", cursor: "pointer",
+          background: activeTab === "accounts" ? "#1f6feb" : "#21262d",
+          color: activeTab === "accounts" ? "#fff" : "#8b949e",
+        }}>公众号列表</button>
+        <button onClick={() => setActiveTab("articles")} style={{
+          fontSize: "0.75rem", padding: "4px 12px", borderRadius: 5, border: "none", cursor: "pointer",
+          background: activeTab === "articles" ? "#1f6feb" : "#21262d",
+          color: activeTab === "articles" ? "#fff" : "#8b949e",
+        }}>文章列表</button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 0 24px" }}>
+
+      {/* Accounts tab */}
+      {activeTab === "accounts" && (
+      <div style={{ padding: "8px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <span style={{ fontSize: "0.72rem", color: "#8b949e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             已订阅公众号
@@ -238,12 +283,31 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
           </div>
         )}
       </div>
+      )}
 
-      {/* Articles section */}
-      <div style={{ padding: "16px 20px 0" }}>
+      {/* Articles tab */}
+      {activeTab === "articles" && (
+      <div style={{ padding: "8px 20px 0" }}>
+        {/* Filter bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+          {filterAccountName && (
+            <span style={{ fontSize: "0.72rem", color: "#58a6ff", background: "#0d1d33", borderRadius: 4, padding: "2px 8px", display: "flex", alignItems: "center", gap: 4 }}>
+              {filterAccountName}
+              <button onClick={() => setFilterAccountId(null)} style={{ background: "none", border: "none", color: "#58a6ff", cursor: "pointer", padding: 0, fontSize: "0.72rem" }}>✕</button>
+            </span>
+          )}
+          {([["none", "未分析"], ["pending", "排队中"], ["running", "分析中"], ["done", "已完成"], ["failed", "失败"]] as const).map(([key, label]) => (
+            <button key={key} onClick={() => toggleStatus(key)} style={{
+              fontSize: "0.68rem", padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+              border: statusFilters.has(key) ? "1px solid #30363d" : "1px solid transparent",
+              background: statusFilters.has(key) ? "#21262d" : "transparent",
+              color: statusFilters.has(key) ? "#e6edf3" : "#6e7681",
+            }}>{label}</button>
+          ))}
+        </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
           <span style={{ fontSize: "0.72rem", color: "#8b949e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
-            文章列表（{articles.length}）
+            文章列表（{filteredArticles.length}）
           </span>
           {articles.some(a => a.serving_run_id == null && (!a.queue_status || a.queue_status === "failed")) && (
             <button
@@ -274,7 +338,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {filtered.map(art => {
+          {filteredArticles.map(art => {
             const qs = art.queue_status;
             const hasSummary = art.serving_run_id != null;
             const isActive = qs === "running" || qs === "pending";
@@ -363,6 +427,9 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
           })}
         </div>
       </div>
+      )}
+
+      </div>{/* end scroll container */}
 
       <SubscribeModal
         open={isSubscribeOpen}

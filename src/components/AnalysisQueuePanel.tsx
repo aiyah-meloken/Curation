@@ -44,6 +44,17 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
   const [backendsInfo, setBackendsInfo] = useState<AgentBackends | null>(null);
   const [loading, setLoading] = useState(false);
   const [runningArticles, setRunningArticles] = useState<Set<number>>(new Set());
+  const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["pending", "running", "done", "failed"]));
+
+  const toggleStatus = (s: string) => {
+    setStatusFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
+
+  const filteredQueue = queue.filter(e => statusFilters.has(e.status));
 
   const fetchData = async () => {
     setLoading(true);
@@ -183,10 +194,20 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
       </div>
 
       {/* Queue table */}
-      <h3 style={{ margin: "0 0 12px", fontSize: "0.9rem", color: "#e6edf3" }}>
-        任务队列 <span style={{ color: "#8b949e", fontWeight: 400, fontSize: "0.8rem" }}>({queue.length} 条)</span>
-      </h3>
-      {queue.length === 0 ? (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <h3 style={{ margin: 0, fontSize: "0.9rem", color: "#e6edf3" }}>
+          任务队列 <span style={{ color: "#8b949e", fontWeight: 400, fontSize: "0.8rem" }}>({filteredQueue.length}/{queue.length})</span>
+        </h3>
+        {(Object.entries(STATUS_LABEL) as [string, string][]).map(([key, label]) => (
+          <button key={key} onClick={() => toggleStatus(key)} style={{
+            fontSize: "0.72rem", padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+            border: statusFilters.has(key) ? "1px solid #30363d" : "1px solid transparent",
+            background: statusFilters.has(key) ? "#21262d" : "transparent",
+            color: statusFilters.has(key) ? (STATUS_COLOR[key] ?? "#e6edf3") : "#6e7681",
+          }}>{label}</button>
+        ))}
+      </div>
+      {filteredQueue.length === 0 ? (
         <div style={{ color: "#8b949e", fontSize: "0.85rem", padding: "20px 0" }}>队列为空</div>
       ) : (
         <div style={{ border: "1px solid #30363d", borderRadius: 8, overflow: "hidden" }}>
@@ -200,7 +221,7 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
               </tr>
             </thead>
             <tbody>
-              {queue.map((entry, i) => (
+              {filteredQueue.map((entry, i) => (
                 <tr
                   key={entry.id}
                   style={{
