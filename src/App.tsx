@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { BookOpen, ExternalLink, Rss, ChevronLeft, Menu, Layers, X, ShieldCheck, FileText, Sparkles, LogOut, UserMinus, UserPlus } from 'lucide-react';
-import { check, type Update } from '@tauri-apps/plugin-updater';
+import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
 import { ArticleAdminPanel } from './components/ArticleAdminPanel';
