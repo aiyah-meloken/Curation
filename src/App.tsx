@@ -92,6 +92,7 @@ interface Article {
 
   word_count?: number;
   read_status?: number;
+  dismissed?: number;
   queue_status?: "pending" | "running" | "done" | "failed" | null;
 
   // Full-fidelity API fields
@@ -215,6 +216,8 @@ function AppMain({ currentUser, onLogout }: {
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"unprocessed" | "all">("unprocessed");
+  const [hidingArticleId, setHidingArticleId] = useState<string | null>(null);
 
   // Layout States
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -304,9 +307,11 @@ function AppMain({ currentUser, onLogout }: {
         content_source: resp.source,
       });
       setAnalysisStatus(analysisResp.analysis_status ?? "none");
-      // Mark as read if analysis content was loaded
-      if (resp.source === "analysis" && resp.content) {
+      // Mark as read when content is viewed
+      if (!art.read_status) {
         apiFetch(`/articles/${art.short_id}/read?status=1`, { method: "POST" }).catch(() => {});
+        setHidingArticleId(art.short_id);
+        setArticles(prev => prev.map(a => a.short_id === art.short_id ? { ...a, read_status: 1 } : a));
       }
       // Refresh article list so admin panel reflects updated html_path/markdown_path
       fetchArticles(selectedAccountId ?? -1);
@@ -376,10 +381,7 @@ function AppMain({ currentUser, onLogout }: {
         } : null);
         setViewRaw(false);
         setNotification(`「${activeArticle?.title?.slice(0, 20) ?? ""}」AI 总结已生成`);
-        // Mark as read when analysis completes
-        apiFetch(`/articles/${selectedArticleId}/read?status=1`, { method: "POST" })
-          .then(() => fetchArticles(selectedAccountId ?? -1))
-          .catch(() => {});
+        fetchArticles(selectedAccountId ?? -1);
       }
     }, 5000);
     return () => clearInterval(id);
@@ -444,15 +446,15 @@ function AppMain({ currentUser, onLogout }: {
     }
   };
 
-  const handleDeleteArticle = async (e: React.MouseEvent, id: string) => {
+  const handleDismissArticle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("确定要删除这篇文章吗？")) return;
+    setHidingArticleId(id);
     try {
-      await apiFetch(`/articles/${id}`, { method: 'DELETE' });
-      fetchArticles(selectedAccountId || -1);
-      if (selectedArticleId === id) setActiveArticle(null);
+      await apiFetch(`/articles/${id}/dismiss`, { method: 'POST' });
+      setArticles(prev => prev.map(a => a.short_id === id ? { ...a, dismissed: 1 } : a));
     } catch (err) {
-      console.error("Delete failed", err);
+      console.error("Dismiss failed", err);
+      setHidingArticleId(null);
     }
   };
 
@@ -698,11 +700,24 @@ function AppMain({ currentUser, onLogout }: {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn ${viewMode === 'unprocessed' ? 'active' : ''}`}
+              onClick={() => setViewMode('unprocessed')}
+            >未处理</button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'all' ? 'active' : ''}`}
+              onClick={() => setViewMode('all')}
+            >全部</button>
+          </div>
         </header>
         <div className="list-content">
           {(() => {
             let lastDate = '';
-            return articles.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase())).map(art => {
+            return articles
+              .filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
+              .filter(a => viewMode === 'all' || (!a.read_status && !a.dismissed))
+              .map(art => {
               const dateStr = (art.publish_time || '').split(' ')[0] || '';
               const showSeparator = dateStr && dateStr !== lastDate;
               if (dateStr) lastDate = dateStr;
@@ -710,28 +725,37 @@ function AppMain({ currentUser, onLogout }: {
                 <div key={art.short_id}>
                   {showSeparator && <div className="date-separator">{dateStr}</div>}
                   <div
-                    className={`article-card ${selectedArticleId === art.short_id ? 'active' : ''}`}
-                    onClick={() => setSelectedArticleId(art.short_id)}
+                    className={`article-card-wrapper ${hidingArticleId === art.short_id && viewMode === 'unprocessed' ? 'hiding' : ''}`}
+                    onTransitionEnd={(e) => {
+                      if (e.propertyName === 'max-height' && hidingArticleId === art.short_id) {
+                        setHidingArticleId(null);
+                      }
+                    }}
                   >
-                    <div className="article-card-left">
-                      <div className={`article-card-title ${art.read_status ? 'read' : ''}`}>{art.title}</div>
-                      {art.digest && <div className="article-card-digest">{art.digest}</div>}
-                      <div className="article-card-meta">
-                        {art.publish_time}{art.word_count ? ` · 约${art.word_count}字 · 阅读约${Math.max(1, Math.round(art.word_count / 400))}分钟` : ''}{art.account && <> · <span
-                          onClick={e => { e.stopPropagation(); if (art.account_id) setSelectedAccountId(art.account_id); }}
-                          style={{ cursor: 'pointer', color: 'var(--primary-color)', textDecoration: 'none' }}
-                          onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-                          onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-                        >{art.account}</span></>}
+                    <div
+                      className={`article-card ${selectedArticleId === art.short_id ? 'active' : ''}`}
+                      onClick={() => setSelectedArticleId(art.short_id)}
+                    >
+                      <div className="article-card-left">
+                        <div className={`article-card-title ${art.read_status ? 'read' : ''}`}>{art.title}</div>
+                        {art.digest && <div className="article-card-digest">{art.digest}</div>}
+                        <div className="article-card-meta">
+                          {art.publish_time}{art.word_count ? ` · 约${art.word_count}字 · 阅读约${Math.max(1, Math.round(art.word_count / 400))}分钟` : ''}{art.account && <> · <span
+                            onClick={e => { e.stopPropagation(); if (art.account_id) setSelectedAccountId(art.account_id); }}
+                            style={{ cursor: 'pointer', color: 'var(--primary-color)', textDecoration: 'none' }}
+                            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                          >{art.account}</span></>}
+                        </div>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-                      {art.cover_url && (
-                        <img src={art.cover_url} alt="Cover" className="article-card-thumb" referrerPolicy="no-referrer" />
-                      )}
-                      <button className="btn-icon delete-btn" onClick={(e) => handleDeleteArticle(e, art.short_id)}>
-                        <X size={14} style={{ color: '#f85149' }} />
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                        {art.cover_url && (
+                          <img src={art.cover_url} alt="Cover" className="article-card-thumb" referrerPolicy="no-referrer" />
+                        )}
+                        <button className="btn-icon dismiss-btn" onClick={(e) => handleDismissArticle(e, art.short_id)}>
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

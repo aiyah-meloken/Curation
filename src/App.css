@@ -202,6 +202,34 @@ body {
   background: #1c2128;
 }
 
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+}
+
+.view-toggle-btn {
+  flex: 1;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.view-toggle-btn.active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}
+
+.view-toggle-btn:hover:not(.active) {
+  background: var(--hover-bg);
+}
+
 .list-content {
   flex: 1;
   overflow-y: auto;
@@ -693,8 +721,31 @@ body {
   border-radius: 6px;
 }
 
-.delete-btn:hover {
-  background-color: rgba(239, 68, 68, 0.15) !important;
+.dismiss-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.article-card:hover .dismiss-btn {
+  opacity: 1;
+}
+
+.dismiss-btn:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+.article-card-wrapper {
+  max-height: 200px;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out, max-height 0.2s ease-in-out 0.3s;
+}
+
+.article-card-wrapper.hiding {
+  transform: translateX(100%);
+  opacity: 0;
+  max-height: 0;
 }
 
 /* Metadata Inspector */
