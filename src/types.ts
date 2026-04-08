@@ -7,7 +7,7 @@ export interface Account {
 }
 
 export interface Article {
-  id: number;
+  short_id: string;
   title: string;
   url: string;
   publish_time: string;
@@ -25,7 +25,7 @@ export interface Article {
 
 export interface AnalysisRun {
   id: number;
-  article_id: number;
+  article_id: string;
   backend: string;
   workspace_path: string;
   overall_status: string;

@@ -20,7 +20,7 @@ interface Account {
 }
 
 interface Article {
-  id: number;
+  short_id: string;
   title: string;
   account?: string;
   publish_time?: string;
@@ -32,7 +32,7 @@ interface Props {
   accounts: Account[];
   articles: Article[];
   onRefresh: () => void;
-  onSelectArticle: (articleId: number) => void;
+  onSelectArticle: (articleId: string) => void;
 }
 
 export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectArticle }: Props) {
@@ -42,7 +42,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [syncMsgs, setSyncMsgs] = useState<Record<number, string>>({});
   const [deletingAccId, setDeletingAccId] = useState<number | null>(null);
-  const [deletingArtId, setDeletingArtId] = useState<number | null>(null);
+  const [deletingArtId, setDeletingArtId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
@@ -85,7 +85,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
     }
   };
 
-  const handleDeleteArticle = async (e: React.MouseEvent, id: number) => {
+  const handleDeleteArticle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!confirm("删除这篇文章？")) return;
     setDeletingArtId(id);
@@ -105,14 +105,14 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
     }
   };
 
-  const [enqueuingId, setEnqueuingId] = useState<number | null>(null);
+  const [enqueuingId, setEnqueuingId] = useState<string | null>(null);
   const [enqueuingAll, setEnqueuingAll] = useState(false);
 
   const handleEnqueue = async (e: React.MouseEvent, art: Article) => {
     e.stopPropagation();
-    setEnqueuingId(art.id);
+    setEnqueuingId(art.short_id);
     try {
-      await apiFetch(`/articles/${art.id}/request-analysis`, { method: "POST" });
+      await apiFetch(`/articles/${art.short_id}/request-analysis`, { method: "POST" });
       onRefresh();
     } catch {} finally {
       setEnqueuingId(null);
@@ -129,7 +129,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
     try {
       await apiFetch("/queue/enqueue-batch", {
         method: "POST",
-        body: JSON.stringify({ article_ids: toEnqueue.map(a => a.id) }),
+        body: JSON.stringify({ article_ids: toEnqueue.map(a => a.short_id) }),
       });
       onRefresh();
     } catch (e) {
@@ -345,8 +345,8 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
 
             return (
               <div
-                key={art.id}
-                onClick={() => onSelectArticle(art.id)}
+                key={art.short_id}
+                onClick={() => onSelectArticle(art.short_id)}
                 style={{
                   display: "flex", alignItems: "center", gap: 10,
                   padding: "8px 10px", borderRadius: 6, cursor: "pointer",
@@ -394,25 +394,25 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
                 {!isActive && (
                   <button
                     onClick={e => handleEnqueue(e, art)}
-                    disabled={enqueuingId === art.id}
+                    disabled={enqueuingId === art.short_id}
                     title={hasSummary ? "重新生成" : qs === "failed" ? "重试" : "生成AI总结"}
                     style={{
                       display: "flex", alignItems: "center", gap: 3, flexShrink: 0,
                       background: "none", border: "1px solid #30363d", borderRadius: 5,
                       color: qs === "failed" ? "#f85149" : hasSummary ? "#8b949e" : "#3fb950",
                       padding: "3px 8px", cursor: "pointer", fontSize: "0.7rem",
-                      opacity: enqueuingId === art.id ? 0.4 : 1,
+                      opacity: enqueuingId === art.short_id ? 0.4 : 1,
                     }}
                   >
-                    {enqueuingId === art.id ? <Loader2 size={11} className="animate-spin" /> :
+                    {enqueuingId === art.short_id ? <Loader2 size={11} className="animate-spin" /> :
                      qs === "failed" ? <RotateCcw size={11} /> : <Play size={11} />}
                     {hasSummary ? "重新生成" : qs === "failed" ? "重试" : "生成"}
                   </button>
                 )}
 
                 <button
-                  onClick={e => handleDeleteArticle(e, art.id)}
-                  disabled={deletingArtId === art.id}
+                  onClick={e => handleDeleteArticle(e, art.short_id)}
+                  disabled={deletingArtId === art.short_id}
                   style={{
                     background: "none", border: "none", cursor: "pointer",
                     color: "#6e7681", padding: 4, borderRadius: 4, flexShrink: 0,
@@ -420,7 +420,7 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
                   onMouseEnter={e => (e.currentTarget.style.color = "#f85149")}
                   onMouseLeave={e => (e.currentTarget.style.color = "#6e7681")}
                 >
-                  {deletingArtId === art.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  {deletingArtId === art.short_id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
               </div>
             );

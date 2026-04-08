@@ -72,7 +72,7 @@ interface Account {
 }
 
 interface Article {
-  id: number;
+  short_id: string;
   title: string;
   url: string;
   publish_time: string;
@@ -212,7 +212,7 @@ function AppMain({ currentUser, onLogout }: {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(-1); // -1 for All Articles
   const [articles, setArticles] = useState<Article[]>([]);
-  const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -266,19 +266,19 @@ function AppMain({ currentUser, onLogout }: {
   // Load full content + request analysis when Article selection changes
   useEffect(() => {
     if (selectedArticleId === null) return;
-    const art = articles.find(a => a.id === selectedArticleId);
+    const art = articles.find(a => a.short_id === selectedArticleId);
     if (!art) return;
     setAnalysisStatus("none");
     setSummaryWordCount(0);
     setRawWordCount(0);
     Promise.all([
-      apiFetch(`/articles/${art.id}/content`).then(r => r.json()),
-      apiFetch(`/articles/${art.id}/raw`).then(r => r.json()),
-      apiFetch(`/articles/${art.id}/request-analysis`, { method: "POST" }).then(r => r.json()),
+      apiFetch(`/articles/${art.short_id}/content`).then(r => r.json()),
+      apiFetch(`/articles/${art.short_id}/raw`).then(r => r.json()),
+      apiFetch(`/articles/${art.short_id}/request-analysis`, { method: "POST" }).then(r => r.json()),
     ]).then(async ([resp, rawResp, analysisResp]) => {
       // If content not loaded yet, trigger background load
       if (resp.source === "not_loaded") {
-        await apiFetch(`/articles/${art.id}/load`, { method: "POST" });
+        await apiFetch(`/articles/${art.short_id}/load`, { method: "POST" });
         setActiveArticle({
           ...art,
           markdown: undefined,
@@ -306,7 +306,7 @@ function AppMain({ currentUser, onLogout }: {
       setAnalysisStatus(analysisResp.analysis_status ?? "none");
       // Mark as read if analysis content was loaded
       if (resp.source === "analysis" && resp.content) {
-        apiFetch(`/articles/${art.id}/read?status=1`, { method: "POST" }).catch(() => {});
+        apiFetch(`/articles/${art.short_id}/read?status=1`, { method: "POST" }).catch(() => {});
       }
       // Refresh article list so admin panel reflects updated html_path/markdown_path
       fetchArticles(selectedAccountId ?? -1);
@@ -326,10 +326,10 @@ function AppMain({ currentUser, onLogout }: {
   // Version check: if serving_run_id changes in the article list, refresh content
   useEffect(() => {
     if (!activeArticle) return;
-    const updated = articles.find(a => a.id === activeArticle.id);
+    const updated = articles.find(a => a.short_id === activeArticle.short_id);
     if (!updated) return;
     if (updated.serving_run_id !== activeArticle.serving_run_id) {
-      apiFetch(`/articles/${activeArticle.id}/content`)
+      apiFetch(`/articles/${activeArticle.short_id}/content`)
         .then(r => r.json())
         .then(resp => {
           setActiveArticle(prev => prev ? {
@@ -444,7 +444,7 @@ function AppMain({ currentUser, onLogout }: {
     }
   };
 
-  const handleDeleteArticle = async (e: React.MouseEvent, id: number) => {
+  const handleDeleteArticle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!confirm("确定要删除这篇文章吗？")) return;
     try {
@@ -707,11 +707,11 @@ function AppMain({ currentUser, onLogout }: {
               const showSeparator = dateStr && dateStr !== lastDate;
               if (dateStr) lastDate = dateStr;
               return (
-                <div key={art.id}>
+                <div key={art.short_id}>
                   {showSeparator && <div className="date-separator">{dateStr}</div>}
                   <div
-                    className={`article-card ${selectedArticleId === art.id ? 'active' : ''}`}
-                    onClick={() => setSelectedArticleId(art.id)}
+                    className={`article-card ${selectedArticleId === art.short_id ? 'active' : ''}`}
+                    onClick={() => setSelectedArticleId(art.short_id)}
                   >
                     <div className="article-card-left">
                       <div className={`article-card-title ${art.read_status ? 'read' : ''}`}>{art.title}</div>
@@ -729,7 +729,7 @@ function AppMain({ currentUser, onLogout }: {
                       {art.cover_url && (
                         <img src={art.cover_url} alt="Cover" className="article-card-thumb" referrerPolicy="no-referrer" />
                       )}
-                      <button className="btn-icon delete-btn" onClick={(e) => handleDeleteArticle(e, art.id)}>
+                      <button className="btn-icon delete-btn" onClick={(e) => handleDeleteArticle(e, art.short_id)}>
                         <X size={14} style={{ color: '#f85149' }} />
                       </button>
                     </div>

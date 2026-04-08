@@ -105,18 +105,18 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
   }, []);
 
   const loadRuns = () =>
-    apiFetch(`/articles/${article.id}/runs`)
+    apiFetch(`/articles/${article.short_id}/runs`)
       .then(r => r.json())
       .then(resp => setRuns(resp.data ?? []));
 
-  useEffect(() => { loadRuns(); }, [article.id]);
+  useEffect(() => { loadRuns(); }, [article.short_id]);
 
   // ── Trigger ────────────────────────────────────────────────────────────────
 
   const triggerAnalysis = async () => {
     setTriggering(true);
     try {
-      const resp = await apiFetch(`/articles/${article.id}/analyze`, {
+      const resp = await apiFetch(`/articles/${article.short_id}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ backend }),
@@ -134,7 +134,7 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
   // ── Serving control ────────────────────────────────────────────────────────
 
   const setServingRun = async (runId: number | null) => {
-    await apiFetch(`/articles/${article.id}/serving-run`, {
+    await apiFetch(`/articles/${article.short_id}/serving-run`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ run_id: runId }),

@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/api";
 
 interface QueueEntry {
   id: number;
-  article_id: number;
+  article_id: string;
   article_title: string;
   request_count: number;
   status: "pending" | "running" | "done" | "failed";
@@ -21,7 +21,7 @@ interface Strategy {
 }
 
 interface Props {
-  onNavigateToArticle?: (articleId: number) => void;
+  onNavigateToArticle?: (articleId: string) => void;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -43,7 +43,7 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
   const [strategy, setStrategy] = useState<Strategy>({ auto_launch: true, max_concurrency: 2, default_backend: "" });
   const [backendsInfo, setBackendsInfo] = useState<AgentBackends | null>(null);
   const [loading, setLoading] = useState(false);
-  const [runningArticles, setRunningArticles] = useState<Set<number>>(new Set());
+  const [runningArticles, setRunningArticles] = useState<Set<string>>(new Set());
   const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["pending", "running", "done", "failed"]));
 
   const toggleStatus = (s: string) => {
@@ -96,7 +96,7 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
     });
   };
 
-  const triggerRun = async (articleId: number) => {
+  const triggerRun = async (articleId: string) => {
     setRunningArticles(prev => new Set(prev).add(articleId));
     try {
       await apiFetch(`/queue/${articleId}/run`, { method: "POST" });
@@ -106,12 +106,12 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
     }
   };
 
-  const retryEntry = async (articleId: number) => {
+  const retryEntry = async (articleId: string) => {
     await apiFetch(`/queue/${articleId}/retry`, { method: "POST" });
     await fetchData();
   };
 
-  const removeEntry = async (articleId: number) => {
+  const removeEntry = async (articleId: string) => {
     await apiFetch(`/queue/${articleId}`, { method: "DELETE" });
     await fetchData();
   };
