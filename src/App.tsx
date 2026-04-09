@@ -16,7 +16,7 @@ import { AuthCallback } from './components/AuthCallback';
 import { InviteManagementPanel } from './components/InviteManagementPanel';
 import { UserManagementPanel } from './components/UserManagementPanel';
 import { useAuth } from './lib/authStore';
-import { apiFetch, API_BASE, WS_BASE } from './lib/api';
+import { apiFetch, API_BASE, WS_BASE, fetchCardsByDate, fetchAggregatedCards, fetchCardContent, fetchAggregatedCardContent } from './lib/api';
 import { authingClient } from './lib/authing';
 import "./App.css";
 
@@ -260,6 +260,14 @@ function AppMain({ currentUser, onLogout }: {
   const [notification, setNotification] = useState<string | null>(null);
   const [appVersion, setAppVersion] = useState<string>('');
 
+  // Card view state
+  type AppMode = "articles" | "cards";
+  const [appMode, setAppMode] = useState<AppMode>("articles");
+  const [cardViewDate, setCardViewDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [cardViewTab, setCardViewTab] = useState<"aggregated" | "source">("aggregated");
+  const [cardList, setCardList] = useState<any[]>([]);
+  const [activeCard, setActiveCard] = useState<any>(null);
+
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
   // Initial Load: Fetch Accounts and All Articles
@@ -418,6 +426,49 @@ function AppMain({ currentUser, onLogout }: {
     return () => clearTimeout(id);
   }, [notification]);
 
+  // Card list loading
+  useEffect(() => {
+    if (appMode !== "cards") return;
+    const load = async () => {
+      try {
+        if (cardViewTab === "aggregated") {
+          const resp = await fetchAggregatedCards(cardViewDate);
+          setCardList(resp.cards || []);
+        } else {
+          const resp = await fetchCardsByDate(cardViewDate);
+          setCardList(resp.cards || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch cards", err);
+        setCardList([]);
+      }
+      setActiveCard(null);
+    };
+    load();
+  }, [appMode, cardViewDate, cardViewTab]);
+
+  async function loadCardContent(card: any) {
+    try {
+      const fetcher = cardViewTab === "aggregated" ? fetchAggregatedCardContent : fetchCardContent;
+      const resp = await fetcher(card.card_id);
+      setActiveCard({ ...card, content: resp.content });
+    } catch (err) {
+      console.error("Failed to load card content", err);
+    }
+  }
+
+  function jumpToSourceCard(id: string) {
+    setCardViewTab("source");
+    // After tab switch triggers reload, select the card
+    setTimeout(() => {
+      setCardList(prev => {
+        const found = prev.find((c: any) => c.card_id === id);
+        if (found) loadCardContent(found);
+        return prev;
+      });
+    }, 500);
+  }
+
   // Resizing logic (kept as before)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -534,7 +585,37 @@ function AppMain({ currentUser, onLogout }: {
             {isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
-        <div className="account-list">
+        {/* Mode switch: articles vs cards */}
+        {!isSidebarCollapsed && (
+          <div className="flex border-b border-gray-200 mb-2" style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
+            <button
+              style={{
+                flex: 1, padding: '8px 0', fontSize: '0.82rem', border: 'none', cursor: 'pointer',
+                background: 'transparent',
+                color: appMode === "articles" ? '#e6edf3' : '#8b949e',
+                borderBottom: appMode === "articles" ? '2px solid #3b82f6' : '2px solid transparent',
+                fontWeight: appMode === "articles" ? 600 : 400,
+              }}
+              onClick={() => setAppMode("articles")}
+            >
+              文章
+            </button>
+            <button
+              style={{
+                flex: 1, padding: '8px 0', fontSize: '0.82rem', border: 'none', cursor: 'pointer',
+                background: 'transparent',
+                color: appMode === "cards" ? '#e6edf3' : '#8b949e',
+                borderBottom: appMode === "cards" ? '2px solid #3b82f6' : '2px solid transparent',
+                fontWeight: appMode === "cards" ? 600 : 400,
+              }}
+              onClick={() => setAppMode("cards")}
+            >
+              卡片
+            </button>
+          </div>
+        )}
+
+        <div className="account-list" style={{ display: appMode === "articles" ? undefined : "none" }}>
           {/* Virtual Entry: All Articles */}
           <div
             className={`account-item ${selectedAccountId === -1 ? 'active' : ''}`}
@@ -648,7 +729,23 @@ function AppMain({ currentUser, onLogout }: {
             </>
           )}
         </div>
-        
+
+        {/* Card mode sidebar: date picker */}
+        {appMode === "cards" && !isSidebarCollapsed && (
+          <div style={{ padding: '10px 14px', flex: 1 }}>
+            <input
+              type="date"
+              value={cardViewDate}
+              onChange={(e) => setCardViewDate(e.target.value)}
+              style={{
+                width: '100%', padding: '8px', borderRadius: 6,
+                border: '1px solid #30363d', background: '#0d1117', color: '#e6edf3',
+                fontSize: '0.85rem',
+              }}
+            />
+          </div>
+        )}
+
         <div className="sidebar-footer" style={{ padding: '10px', borderTop: '1px solid #30363d' }}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', position: 'relative' }}>
             {/* + button with popup menu */}
@@ -712,8 +809,8 @@ function AppMain({ currentUser, onLogout }: {
         />
       </aside>
 
-      {/* Pane 2: Article List */}
-      <section className="article-list-pane" style={{ width: listWidth }}>
+      {/* Pane 2: Article List (articles mode) */}
+      {appMode === "articles" && <section className="article-list-pane" style={{ width: listWidth }}>
         <header className="list-header">
           <div className="search-input-wrapper">
             <input
@@ -787,16 +884,16 @@ function AppMain({ currentUser, onLogout }: {
             });
           })()}
         </div>
-      </section>
+      </section>}
 
-      {/* Resizer 2 */}
-      <div 
-        className={`resizer ${isResizingList ? 'resizing' : ''}`} 
+      {/* Resizer 2 (articles mode) */}
+      {appMode === "articles" && <div
+        className={`resizer ${isResizingList ? 'resizing' : ''}`}
         onMouseDown={() => setIsResizingList(true)}
-      />
+      />}
 
-      {/* Pane 3: Reader View / Admin Panel */}
-      <main className="reader-pane" style={isAdminMode ? { overflow: 'hidden' } : undefined}>
+      {/* Pane 3: Reader View / Admin Panel (articles mode) */}
+      {appMode === "articles" && <main className="reader-pane" style={isAdminMode ? { overflow: 'hidden' } : undefined}>
         {isAdminMode ? (
           <>
             {/* Admin toolbar with tabs */}
@@ -1045,7 +1142,136 @@ function AppMain({ currentUser, onLogout }: {
             <h3>请选择文章或通过「+」添加内容</h3>
           </div>
         )}
-      </main>
+      </main>}
+
+      {/* Card view panes (cards mode) */}
+      {appMode === "cards" && (
+        <>
+          {/* Card list pane */}
+          <section className="article-list-pane" style={{ width: listWidth }}>
+            <header className="list-header">
+              <div style={{ display: 'flex', width: '100%', borderBottom: '1px solid #30363d' }}>
+                <button
+                  style={{
+                    flex: 1, padding: '8px 0', fontSize: '0.82rem', border: 'none', cursor: 'pointer',
+                    background: 'transparent',
+                    color: cardViewTab === "aggregated" ? '#e6edf3' : '#8b949e',
+                    borderBottom: cardViewTab === "aggregated" ? '2px solid #3b82f6' : '2px solid transparent',
+                    fontWeight: cardViewTab === "aggregated" ? 600 : 400,
+                  }}
+                  onClick={() => setCardViewTab("aggregated")}
+                >
+                  聚合卡片
+                </button>
+                <button
+                  style={{
+                    flex: 1, padding: '8px 0', fontSize: '0.82rem', border: 'none', cursor: 'pointer',
+                    background: 'transparent',
+                    color: cardViewTab === "source" ? '#e6edf3' : '#8b949e',
+                    borderBottom: cardViewTab === "source" ? '2px solid #3b82f6' : '2px solid transparent',
+                    fontWeight: cardViewTab === "source" ? 600 : 400,
+                  }}
+                  onClick={() => setCardViewTab("source")}
+                >
+                  原始卡片
+                </button>
+              </div>
+            </header>
+            <div className="list-content">
+              {cardList.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#8b949e', fontSize: '0.85rem' }}>
+                  暂无卡片
+                </div>
+              ) : cardList.map((card: any) => (
+                <div
+                  key={card.card_id}
+                  style={{
+                    padding: '12px 14px', cursor: 'pointer',
+                    borderBottom: '1px solid #21262d',
+                    background: activeCard?.card_id === card.card_id ? '#1c2333' : 'transparent',
+                  }}
+                  onClick={() => loadCardContent(card)}
+                  onMouseEnter={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = '#161b22'; }}
+                  onMouseLeave={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#e6edf3' }}>{card.title}</div>
+                  {card.article_title && (
+                    <div style={{ fontSize: '0.75rem', color: '#8b949e', marginTop: 4 }}>{card.article_title}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Resizer */}
+          <div
+            className={`resizer ${isResizingList ? 'resizing' : ''}`}
+            onMouseDown={() => setIsResizingList(true)}
+          />
+
+          {/* Card reader pane */}
+          <main className="reader-pane">
+            {activeCard ? (
+              <>
+                <div className="reader-toolbar">
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e6edf3' }}>
+                    {activeCard.title}
+                  </span>
+                </div>
+                <div className="reader-content animate-in">
+                  <div className="markdown-body">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        img: ({node, ...props}) => (
+                          <img {...props} referrerPolicy="no-referrer" loading="lazy" />
+                        )
+                      }}
+                    >
+                      {stripFrontmatter(activeCard.content || "")}
+                    </ReactMarkdown>
+                  </div>
+
+                  {/* Source tracing for aggregated cards */}
+                  {activeCard.source_card_ids && (
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #30363d', fontSize: '0.82rem', color: '#8b949e' }}>
+                      <span>来源卡片：</span>
+                      {(() => {
+                        try {
+                          const ids = typeof activeCard.source_card_ids === "string"
+                            ? JSON.parse(activeCard.source_card_ids)
+                            : activeCard.source_card_ids;
+                          return (ids as string[]).map((id: string) => (
+                            <button
+                              key={id}
+                              onClick={() => jumpToSourceCard(id)}
+                              style={{
+                                marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer',
+                                color: '#58a6ff', fontSize: '0.82rem', textDecoration: 'none',
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                            >
+                              {id.slice(0, 8)}...
+                            </button>
+                          ));
+                        } catch {
+                          return null;
+                        }
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="reader-empty">
+                <div className="reader-empty-icon"><BookOpen size={64} /></div>
+                <h3>请选择一张卡片</h3>
+              </div>
+            )}
+          </main>
+        </>
+      )}
 
       {/* Toast notification */}
       {notification && (
