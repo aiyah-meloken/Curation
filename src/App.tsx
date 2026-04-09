@@ -1400,7 +1400,7 @@ function AppMain({ currentUser, onLogout }: {
                   onMouseEnter={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = '#161b22'; }}
                   onMouseLeave={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                 >
-                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#e6edf3' }}>{card.title}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: card.read_at ? 400 : 500, color: card.read_at ? '#6e7681' : '#e6edf3' }}>{card.title}</div>
                   {card.article_title && (
                     <div style={{ fontSize: '0.75rem', color: '#8b949e', marginTop: 4 }}>{card.article_title}</div>
                   )}
@@ -1419,10 +1419,28 @@ function AppMain({ currentUser, onLogout }: {
           <main className="reader-pane">
             {activeCard ? (
               <>
-                <div className="reader-toolbar">
+                <div className="reader-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e6edf3' }}>
                     {activeCard.title}
                   </span>
+                  {!activeCard.read_at && (
+                    <button
+                      onClick={async () => {
+                        const endpoint = cardViewTab === "aggregated"
+                          ? `/aggregated-cards/${activeCard.card_id}/read`
+                          : `/cards/${activeCard.card_id}/read`;
+                        await apiFetch(endpoint, { method: "POST" }).catch(() => {});
+                        setActiveCard((prev: any) => prev ? { ...prev, read_at: new Date().toISOString() } : null);
+                        setCardList((prev: any[]) => prev.map((c: any) => c.card_id === activeCard.card_id ? { ...c, read_at: new Date().toISOString() } : c));
+                      }}
+                      style={{
+                        background: 'none', border: '1px solid #30363d', borderRadius: 4,
+                        color: '#8b949e', padding: '2px 10px', cursor: 'pointer', fontSize: '0.78rem',
+                      }}
+                    >
+                      标记已读
+                    </button>
+                  )}
                 </div>
                 {activeCard.article_meta && <CardHeader meta={activeCard.article_meta} />}
                 <div className="reader-content animate-in">
