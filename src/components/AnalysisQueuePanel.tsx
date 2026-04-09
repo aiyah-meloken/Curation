@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { RefreshCw, Play, ExternalLink, RotateCcw, Trash2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { RefreshCw, Play, ExternalLink, RotateCcw, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import type { AgentBackends } from "../types";
 import { apiFetch } from "../lib/api";
 
@@ -7,6 +7,7 @@ interface QueueEntry {
   id: number;
   article_id: string;
   article_title: string;
+  article_publish_time: string | null;
   request_count: number;
   status: "pending" | "running" | "done" | "failed";
   run_id: number | null;
@@ -38,6 +39,43 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "#f85149",
 };
 
+type SortField = "created_at" | "request_count";
+type SortDir = "asc" | "desc";
+
+/** Extract unique YYYY-MM-DD dates from publish_time values */
+function extractPublishDates(entries: QueueEntry[]): string[] {
+  const dates = new Set<string>();
+  for (const e of entries) {
+    if (e.article_publish_time) {
+      const d = e.article_publish_time.slice(0, 10);
+      if (d) dates.add(d);
+    }
+  }
+  return Array.from(dates).sort().reverse();
+}
+
+function formatPublishTime(t: string | null): string {
+  if (!t) return "—";
+  // Handle ISO or "YYYY-MM-DD HH:MM:SS" formats
+  const d = new Date(t.replace(" ", "T"));
+  if (isNaN(d.getTime())) return t.slice(0, 16);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+
+function formatQueueTime(t: string): string {
+  const d = new Date(t.replace(" ", "T"));
+  if (isNaN(d.getTime())) return t.slice(0, 16);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+
 export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [strategy, setStrategy] = useState<Strategy>({ auto_launch: true, max_concurrency: 2, default_backend: "" });
@@ -45,6 +83,9 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
   const [loading, setLoading] = useState(false);
   const [runningArticles, setRunningArticles] = useState<Set<string>>(new Set());
   const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["pending", "running", "done", "failed"]));
+  const [publishDateFilter, setPublishDateFilter] = useState<string>("");
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const toggleStatus = (s: string) => {
     setStatusFilters(prev => {
@@ -54,7 +95,33 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
     });
   };
 
-  const filteredQueue = queue.filter(e => statusFilters.has(e.status));
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir(field === "request_count" ? "desc" : "desc");
+    }
+  };
+
+  const publishDates = useMemo(() => extractPublishDates(queue), [queue]);
+
+  const filteredQueue = useMemo(() => {
+    let items = queue.filter(e => statusFilters.has(e.status));
+    if (publishDateFilter) {
+      items = items.filter(e => e.article_publish_time?.startsWith(publishDateFilter));
+    }
+    items.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "request_count") {
+        cmp = a.request_count - b.request_count;
+      } else {
+        cmp = (a.created_at ?? "").localeCompare(b.created_at ?? "");
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return items;
+  }, [queue, statusFilters, publishDateFilter, sortField, sortDir]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -117,6 +184,26 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
   };
 
   const backends = backendsInfo ? Object.keys(backendsInfo.backends) : [];
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />;
+  };
+
+  const thSortable = (field: SortField, label: string, align: "left" | "center" = "center") => (
+    <th
+      onClick={() => toggleSort(field)}
+      style={{
+        padding: "8px 14px", textAlign: align, fontWeight: 500, whiteSpace: "nowrap",
+        cursor: "pointer", userSelect: "none",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+        {label}
+        <SortIcon field={field} />
+      </span>
+    </th>
+  );
 
   return (
     <div style={{ padding: "18px 24px", overflowY: "auto", height: "100%" }}>
@@ -193,7 +280,7 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
         </div>
       </div>
 
-      {/* Queue table */}
+      {/* Filters row */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <h3 style={{ margin: 0, fontSize: "0.9rem", color: "#e6edf3" }}>
           任务队列 <span style={{ color: "#8b949e", fontWeight: 400, fontSize: "0.8rem" }}>({filteredQueue.length}/{queue.length})</span>
@@ -206,7 +293,26 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
             color: statusFilters.has(key) ? (STATUS_COLOR[key] ?? "#e6edf3") : "#6e7681",
           }}>{label}</button>
         ))}
+
+        {/* Publish date filter */}
+        {publishDates.length > 0 && (
+          <select
+            value={publishDateFilter}
+            onChange={e => setPublishDateFilter(e.target.value)}
+            style={{
+              marginLeft: "auto",
+              background: "#21262d", border: "1px solid #30363d", borderRadius: 5,
+              color: "#e6edf3", padding: "2px 8px", fontSize: "0.78rem", cursor: "pointer",
+            }}
+          >
+            <option value="">全部日期</option>
+            {publishDates.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        )}
       </div>
+
       {filteredQueue.length === 0 ? (
         <div style={{ color: "#8b949e", fontSize: "0.85rem", padding: "20px 0" }}>队列为空</div>
       ) : (
@@ -215,7 +321,9 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
             <thead>
               <tr style={{ background: "#161b22", color: "#8b949e" }}>
                 <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 500 }}>文章</th>
-                <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500, whiteSpace: "nowrap" }}>请求次数</th>
+                <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500, whiteSpace: "nowrap" }}>发布时间</th>
+                {thSortable("request_count", "请求次数")}
+                {thSortable("created_at", "入队时间")}
                 <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500 }}>状态</th>
                 <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500 }}>操作</th>
               </tr>
@@ -229,22 +337,28 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
                     background: i % 2 === 0 ? "#0d1117" : "transparent",
                   }}
                 >
-                  <td style={{ padding: "9px 14px", color: "#e6edf3", maxWidth: 340 }}>
+                  <td style={{ padding: "9px 14px", color: "#e6edf3", maxWidth: 300 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
                       {entry.article_title}
                       {onNavigateToArticle && (
                         <button
                           onClick={() => onNavigateToArticle(entry.article_id)}
                           title="跳转到文章"
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#58a6ff", padding: 0, display: "flex" }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#58a6ff", padding: 0, display: "flex", flexShrink: 0 }}
                         >
                           <ExternalLink size={12} />
                         </button>
                       )}
                     </div>
                   </td>
+                  <td style={{ padding: "9px 14px", textAlign: "center", color: "#8b949e", whiteSpace: "nowrap", fontSize: "0.78rem" }}>
+                    {formatPublishTime(entry.article_publish_time)}
+                  </td>
                   <td style={{ padding: "9px 14px", textAlign: "center", color: "#e6edf3" }}>
                     {entry.request_count}
+                  </td>
+                  <td style={{ padding: "9px 14px", textAlign: "center", color: "#8b949e", whiteSpace: "nowrap", fontSize: "0.78rem" }}>
+                    {formatQueueTime(entry.created_at)}
                   </td>
                   <td style={{ padding: "9px 14px", textAlign: "center" }}>
                     <span style={{

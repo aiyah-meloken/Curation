@@ -378,7 +378,7 @@ function AppMain({ currentUser, onLogout }: {
     prevSelectedRef.current = selectedArticleId;
   }, [selectedArticleId]);
 
-  // Load full content + request analysis when Article selection changes
+  // Load full content when article selection changes (no enqueue trigger)
   useEffect(() => {
     if (selectedArticleId === null) return;
     const art = articles.find(a => a.short_id === selectedArticleId);
@@ -389,8 +389,8 @@ function AppMain({ currentUser, onLogout }: {
     Promise.all([
       apiFetch(`/articles/${art.short_id}/content`).then(r => r.json()),
       apiFetch(`/articles/${art.short_id}/raw`).then(r => r.json()),
-      apiFetch(`/articles/${art.short_id}/request-analysis`, { method: "POST" }).then(r => r.json()),
-    ]).then(async ([resp, rawResp, analysisResp]) => {
+      apiFetch(`/articles/${art.short_id}/analysis-status`).then(r => r.json()),
+    ]).then(async ([resp, rawResp, statusResp]) => {
       // If content not loaded yet, trigger background load
       if (resp.source === "not_loaded") {
         await apiFetch(`/articles/${art.short_id}/load`, { method: "POST" });
@@ -403,7 +403,7 @@ function AppMain({ currentUser, onLogout }: {
           serving_run_id: undefined,
           content_source: "not_loaded",
         });
-        setAnalysisStatus("pending");
+        setAnalysisStatus(statusResp.analysis_status ?? "none");
         return;
       }
       setViewRaw(resp.source !== "analysis");
@@ -420,7 +420,7 @@ function AppMain({ currentUser, onLogout }: {
         serving_run_id: resp.serving_run_id,
         content_source: resp.source,
       });
-      setAnalysisStatus(analysisResp.analysis_status ?? "none");
+      setAnalysisStatus(statusResp.analysis_status ?? "none");
       // Mark as read when content is viewed (animation deferred to next selection change)
       if (!art.read_status) {
         apiFetch(`/articles/${art.short_id}/read?status=1`, { method: "POST" }).catch(() => {});
