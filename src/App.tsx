@@ -89,7 +89,8 @@ interface Article {
   account_id?: number;
   serving_run_id?: number | null;
   content_source?: "analysis" | "raw" | "empty" | "not_loaded";
-  cards?: { card_id: string; title: string; content: string }[];
+  cards?: { card_id: string; title: string; content: string; unpushed?: string | any[] }[];
+  article_meta?: { title: string; url: string; publish_time: string; author: string; article_id?: string };
   rawHtml?: string;
   contentFormat?: "html" | "markdown";
 
@@ -218,6 +219,34 @@ function UpdateBanner() {
     }}>
       ↑ 重启以更新软件
     </button>
+  );
+}
+
+function CardHeader({ meta }: { meta: { title: string; url: string; publish_time: string; author: string; article_id?: string } }) {
+  return (
+    <div style={{
+      padding: '14px 20px',
+      background: '#161b22',
+      borderBottom: '1px solid #30363d',
+      fontSize: '0.82rem',
+      lineHeight: 1.9,
+      color: '#8b949e',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }}>
+      <div>
+        <a href="#" onClick={(e) => { e.preventDefault(); /* TODO: navigate to article */ }}
+          style={{ color: '#e6edf3', textDecoration: 'none', fontWeight: 500, fontSize: '0.88rem', borderBottom: '1px dashed #58a6ff60', cursor: 'pointer' }}>
+          {meta.title}
+        </a>
+      </div>
+      <div>{meta.publish_time} — {meta.author}</div>
+      <div>
+        <a href={meta.url} target="_blank" rel="noopener noreferrer"
+          style={{ color: '#58a6ff', textDecoration: 'none', fontSize: '0.8rem' }}>
+          微信原文 ↗
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -384,6 +413,7 @@ function AppMain({ currentUser, onLogout }: {
         ...art,
         markdown: resp.content,
         cards: resp.source === "analysis" && resp.cards ? resp.cards : undefined,
+        article_meta: resp.article_meta,
         rawMarkdown: rawResp.content,
         rawHtml: rawResp.format === "html" ? rawResp.content : undefined,
         contentFormat: rawResp.format,
@@ -424,6 +454,7 @@ function AppMain({ currentUser, onLogout }: {
             ...prev,
             markdown: resp.content,
             cards: resp.source === "analysis" && resp.cards ? resp.cards : undefined,
+            article_meta: resp.article_meta,
             serving_run_id: resp.serving_run_id,
             content_source: resp.source,
           } : null);
@@ -460,6 +491,7 @@ function AppMain({ currentUser, onLogout }: {
           ...prev,
           markdown: contentResp.content,
           cards: contentResp.source === "analysis" && contentResp.cards ? contentResp.cards : undefined,
+          article_meta: contentResp.article_meta,
           rawMarkdown: rawResp.content,
           serving_run_id: contentResp.serving_run_id,
           content_source: contentResp.source,
@@ -1201,6 +1233,10 @@ function AppMain({ currentUser, onLogout }: {
                       />
                     ) : !viewRaw && activeArticle.cards && activeArticle.cards.length > 0 ? (
                       <>
+                        {/* Article meta header - once */}
+                        {activeArticle.article_meta && <CardHeader meta={activeArticle.article_meta} />}
+
+                        {/* Card list */}
                         {activeArticle.cards.map((card) => (
                           <div key={card.card_id} className="mb-6 border border-gray-200 rounded-lg p-4" style={{ marginBottom: 24, border: '1px solid #30363d', borderRadius: 8, padding: 16 }}>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 12 }}>{card.title}</h3>
@@ -1213,6 +1249,32 @@ function AppMain({ currentUser, onLogout }: {
                             </ReactMarkdown>
                           </div>
                         ))}
+
+                        {/* Unpushed content at bottom */}
+                        {(() => {
+                          const unpushedItems: { topic: string; reason: string }[] = [];
+                          for (const card of activeArticle.cards) {
+                            if (!card.unpushed) continue;
+                            try {
+                              const parsed = typeof card.unpushed === "string"
+                                ? JSON.parse(card.unpushed)
+                                : card.unpushed;
+                              if (Array.isArray(parsed)) unpushedItems.push(...parsed);
+                            } catch { /* ignore */ }
+                          }
+                          if (unpushedItems.length === 0) return null;
+                          return (
+                            <div style={{ padding: '20px', borderTop: '2px solid #21262d' }}>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>未推送内容</div>
+                              {unpushedItems.map((item, i) => (
+                                <div key={i} style={{ marginBottom: 14, paddingLeft: 12, borderLeft: '2px solid #30363d' }}>
+                                  <div style={{ color: '#c9d1d9', fontWeight: 500, marginBottom: 4, fontSize: '0.82rem' }}>{item.topic}</div>
+                                  <div style={{ color: '#6b7280', lineHeight: 1.6, fontSize: '0.82rem' }}>{item.reason}</div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </>
                     ) : (
                       <ReactMarkdown
@@ -1326,6 +1388,7 @@ function AppMain({ currentUser, onLogout }: {
                     {activeCard.title}
                   </span>
                 </div>
+                {activeCard.article_meta && <CardHeader meta={activeCard.article_meta} />}
                 <div className="reader-content animate-in">
                   <div className="markdown-body">
                     <ReactMarkdown
