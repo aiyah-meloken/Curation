@@ -971,7 +971,7 @@ function AppMain({ currentUser, onLogout }: {
             <button
               className={`view-toggle-btn ${viewMode === 'unprocessed' ? 'active' : ''}`}
               onClick={() => setViewMode('unprocessed')}
-            >未处理</button>
+            >未读</button>
             <button
               className={`view-toggle-btn ${viewMode === 'all' ? 'active' : ''}`}
               onClick={() => setViewMode('all')}
