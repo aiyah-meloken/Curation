@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Play, RefreshCw, ChevronDown, ChevronRight, Eye, Columns2, List, Radio } from "lucide-react";
+import { Play, RefreshCw, ChevronDown, ChevronRight, Eye, Columns2, List, Radio, Trash2 } from "lucide-react";
 import { RunProgress } from "./RunProgress";
 import { FileViewer } from "./FileViewer";
 import type { Article, AnalysisRun, AgentBackends } from "../types";
@@ -142,6 +142,13 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
     onArticleUpdate?.();
   };
 
+  const deleteRun = async (runId: number) => {
+    if (!confirm("确定删除此分析记录？关联的卡片也会被删除。")) return;
+    await apiFetch(`/runs/${runId}`, { method: "DELETE" });
+    await loadRuns();
+    onArticleUpdate?.();
+  };
+
   const handleRunUpdate = (updated: AnalysisRun) =>
     setRuns(prev => prev.map(r => r.id === updated.id ? updated : r));
 
@@ -246,7 +253,7 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
                       <div className="px-10 pb-3 space-y-3">
                         <RunProgress run={run} onUpdate={handleRunUpdate} />
 
-                        {/* Serving + view controls */}
+                        {/* Serving + view + delete controls */}
                         <div className="flex items-center gap-3 pt-0.5">
                           {run.overall_status === "done" && (
                             <>
@@ -268,6 +275,12 @@ export function ArticleAdminPanel({ article, onArticleUpdate }: Props) {
                               </button>
                             </>
                           )}
+                          <button
+                            onClick={() => deleteRun(run.id)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors bg-gray-700 text-gray-300 hover:bg-red-900 hover:text-red-300">
+                            <Trash2 size={11} />
+                            删除
+                          </button>
                         </div>
 
                         {isViewing && viewingRunId === run.id && (
