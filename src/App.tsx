@@ -560,13 +560,11 @@ function AppMain({ currentUser, onLogout }: {
             setCardList(resp.cards || []);
           }
         } else {
-          // "全部": load today's cards as default
-          const today = new Date().toISOString().split("T")[0];
+          // "全部": load all cards (no date filter)
           if (cardViewTab === "aggregated") {
-            const resp = await fetchAggregatedCards(today);
-            setCardList(resp.cards || []);
+            setCardList([]);  // aggregated cards require a date
           } else {
-            const resp = await fetchCardsByDate(today);
+            const resp = await apiFetch(`/cards`).then(r => r.json());
             setCardList(resp.cards || []);
           }
         }
