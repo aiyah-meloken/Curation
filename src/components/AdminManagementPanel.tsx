@@ -42,7 +42,6 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [syncMsgs, setSyncMsgs] = useState<Record<number, string>>({});
   const [deletingAccId, setDeletingAccId] = useState<number | null>(null);
-  const [deletingArtId, setDeletingArtId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
@@ -82,26 +81,6 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
       setErrorMsg("网络错误，删除失败");
     } finally {
       setDeletingAccId(null);
-    }
-  };
-
-  const handleDeleteArticle = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!confirm("删除这篇文章？")) return;
-    setDeletingArtId(id);
-    setErrorMsg(null);
-    try {
-      const resp = await apiFetch(`/articles/${id}`, { method: "DELETE" });
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        setErrorMsg(data.detail || `删除失败 (${resp.status})`);
-        return;
-      }
-      onRefresh();
-    } catch {
-      setErrorMsg("网络错误，删除失败");
-    } finally {
-      setDeletingArtId(null);
     }
   };
 
@@ -410,18 +389,6 @@ export function AdminManagementPanel({ accounts, articles, onRefresh, onSelectAr
                   </button>
                 )}
 
-                <button
-                  onClick={e => handleDeleteArticle(e, art.short_id)}
-                  disabled={deletingArtId === art.short_id}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "#6e7681", padding: 4, borderRadius: 4, flexShrink: 0,
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#f85149")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#6e7681")}
-                >
-                  {deletingArtId === art.short_id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                </button>
               </div>
             );
           })}

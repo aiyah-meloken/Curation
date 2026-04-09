@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
-import { BookOpen, ExternalLink, Rss, ChevronLeft, Menu, Layers, X, ShieldCheck, FileText, Sparkles, LogOut, UserMinus, UserPlus } from 'lucide-react';
+import { BookOpen, ExternalLink, Rss, ChevronLeft, Menu, Layers, X, ShieldCheck, FileText, Sparkles, LogOut, UserMinus, UserPlus, Check } from 'lucide-react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
@@ -88,7 +88,7 @@ interface Article {
   markdown_path?: string;
   account_id?: number;
   serving_run_id?: number | null;
-  content_source?: "analysis" | "raw" | "empty" | "not_loaded";
+  content_source?: "analysis" | "raw" | "empty" | "not_loaded" | "enqueued" | "error";
   cards?: { card_id: string; title: string; content: string; unpushed?: string | any[] }[];
   article_meta?: { title: string; url: string; publish_time: string; author: string; article_id?: string };
   rawHtml?: string;
@@ -391,21 +391,38 @@ function AppMain({ currentUser, onLogout }: {
       apiFetch(`/articles/${art.short_id}/raw`).then(r => r.json()),
       apiFetch(`/articles/${art.short_id}/analysis-status`).then(r => r.json()),
     ]).then(async ([resp, rawResp, statusResp]) => {
-      // If content not loaded yet, trigger background load
-      if (resp.source === "not_loaded") {
-        await apiFetch(`/articles/${art.short_id}/load`, { method: "POST" });
+      // Auto-enqueued (no runs yet) → enter polling
+      if (resp.source === "enqueued") {
         setActiveArticle({
           ...art,
           markdown: undefined,
-          rawMarkdown: undefined,
-          rawHtml: undefined,
-          contentFormat: undefined,
+          rawMarkdown: rawResp.content,
+          rawHtml: rawResp.format === "html" ? rawResp.content : undefined,
+          contentFormat: rawResp.format,
           serving_run_id: undefined,
-          content_source: "not_loaded",
+          content_source: "enqueued",
         });
+        setViewRaw(true);
+        setAnalysisStatus("pending");
+        return;
+      }
+      // Error from /content (no_serving_run, no_cards, card_files_missing)
+      if (resp.source === "error") {
+        console.error(`[content] Article ${art.short_id}: ${resp.error}`, resp.missing ?? "");
+        setActiveArticle({
+          ...art,
+          markdown: undefined,
+          rawMarkdown: rawResp.content,
+          rawHtml: rawResp.format === "html" ? rawResp.content : undefined,
+          contentFormat: rawResp.format,
+          serving_run_id: resp.serving_run_id,
+          content_source: "error",
+        });
+        setViewRaw(true);
         setAnalysisStatus(statusResp.analysis_status ?? "none");
         return;
       }
+      // Normal analysis content
       setViewRaw(resp.source !== "analysis");
       setSummaryWordCount(resp.word_count ?? 0);
       setRawWordCount(resp.raw_word_count ?? 0);
@@ -421,13 +438,10 @@ function AppMain({ currentUser, onLogout }: {
         content_source: resp.source,
       });
       setAnalysisStatus(statusResp.analysis_status ?? "none");
-      // Mark as read when content is viewed (animation deferred to next selection change)
-      if (!art.read_status) {
-        apiFetch(`/articles/${art.short_id}/read?status=1`, { method: "POST" }).catch(() => {});
-        setArticles(prev => prev.map(a => a.short_id === art.short_id ? { ...a, read_status: 1 } : a));
-      }
       // Refresh article list so admin panel reflects updated html_path/markdown_path
       fetchArticles(selectedAccountId ?? -1);
+    }).catch(err => {
+      console.error(`[content] Failed to load article ${art.short_id}:`, err);
     });
   }, [selectedArticleId]);
 
@@ -477,28 +491,36 @@ function AppMain({ currentUser, onLogout }: {
   useEffect(() => {
     if (!selectedArticleId || (analysisStatus !== "pending" && analysisStatus !== "running")) return;
     const id = setInterval(async () => {
-      const resp = await apiFetch(`/articles/${selectedArticleId}/analysis-status`).then(r => r.json());
-      const newStatus = resp.analysis_status;
-      setAnalysisStatus(newStatus);
-      if (newStatus === "done") {
-        const [contentResp, rawResp] = await Promise.all([
-          apiFetch(`/articles/${selectedArticleId}/content`).then(r => r.json()),
-          apiFetch(`/articles/${selectedArticleId}/raw`).then(r => r.json()),
-        ]);
-        setSummaryWordCount(contentResp.word_count ?? 0);
-        setRawWordCount(contentResp.raw_word_count ?? 0);
-        setActiveArticle(prev => prev ? {
-          ...prev,
-          markdown: contentResp.content,
-          cards: contentResp.source === "analysis" && contentResp.cards ? contentResp.cards : undefined,
-          article_meta: contentResp.article_meta,
-          rawMarkdown: rawResp.content,
-          serving_run_id: contentResp.serving_run_id,
-          content_source: contentResp.source,
-        } : null);
-        setViewRaw(false);
-        setNotification(`「${activeArticle?.title?.slice(0, 20) ?? ""}」AI 总结已生成`);
-        fetchArticles(selectedAccountId ?? -1);
+      try {
+        const resp = await apiFetch(`/articles/${selectedArticleId}/analysis-status`).then(r => r.json());
+        const newStatus = resp.analysis_status;
+        setAnalysisStatus(newStatus);
+        if (newStatus === "done") {
+          const [contentResp, rawResp] = await Promise.all([
+            apiFetch(`/articles/${selectedArticleId}/content`).then(r => r.json()),
+            apiFetch(`/articles/${selectedArticleId}/raw`).then(r => r.json()),
+          ]);
+          if (contentResp.source === "error") {
+            console.error(`[polling] Article ${selectedArticleId}: ${contentResp.error}`, contentResp.missing ?? "");
+            return;
+          }
+          setSummaryWordCount(contentResp.word_count ?? 0);
+          setRawWordCount(contentResp.raw_word_count ?? 0);
+          setActiveArticle(prev => prev ? {
+            ...prev,
+            markdown: contentResp.content,
+            cards: contentResp.source === "analysis" && contentResp.cards ? contentResp.cards : undefined,
+            article_meta: contentResp.article_meta,
+            rawMarkdown: rawResp.content,
+            serving_run_id: contentResp.serving_run_id,
+            content_source: contentResp.source,
+          } : null);
+          setViewRaw(false);
+          setNotification(`「${activeArticle?.title?.slice(0, 20) ?? ""}」AI 总结已生成`);
+          fetchArticles(selectedAccountId ?? -1);
+        }
+      } catch (err) {
+        console.error(`[polling] Failed for article ${selectedArticleId}:`, err);
       }
     }, 5000);
     return () => clearInterval(id);
@@ -561,7 +583,7 @@ function AppMain({ currentUser, onLogout }: {
     try {
       const fetcher = cardViewTab === "aggregated" ? fetchAggregatedCardContent : fetchCardContent;
       const resp = await fetcher(card.card_id);
-      setActiveCard({ ...card, content: resp.content });
+      setActiveCard({ ...card, content: resp.content, title: resp.title ?? card.title, article_meta: resp.article_meta });
     } catch (err) {
       console.error("Failed to load card content", err);
     }
@@ -632,6 +654,12 @@ function AppMain({ currentUser, onLogout }: {
     } catch (err) {
       console.error("Failed to fetch articles", err);
     }
+  };
+
+  const handleMarkRead = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await apiFetch(`/articles/${id}/read?status=1`, { method: "POST" }).catch(() => {});
+    setArticles(prev => prev.map(a => a.short_id === id ? { ...a, read_status: 1 } : a));
   };
 
   const handleDismissArticle = async (e: React.MouseEvent, id: string) => {
@@ -1018,6 +1046,14 @@ function AppMain({ currentUser, onLogout }: {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
                         {art.cover_url && (
                           <img src={art.cover_url} alt="Cover" className="article-card-thumb" referrerPolicy="no-referrer" />
+                        )}
+                        {!art.read_status && (
+                          <button className="btn-icon" title="标记已读" onClick={(e) => handleMarkRead(e, art.short_id)}
+                            style={{ color: '#8b949e' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#3fb950')}
+                            onMouseLeave={e => (e.currentTarget.style.color = '#8b949e')}>
+                            <Check size={14} />
+                          </button>
                         )}
                         <button className="btn-icon dismiss-btn" onClick={(e) => handleDismissArticle(e, art.short_id)}>
                           <X size={14} />
