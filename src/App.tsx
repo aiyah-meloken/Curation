@@ -267,6 +267,7 @@ function AppMain({ currentUser, onLogout }: {
   const [cardViewTab, setCardViewTab] = useState<"aggregated" | "source">("aggregated");
   const [cardList, setCardList] = useState<any[]>([]);
   const [activeCard, setActiveCard] = useState<any>(null);
+  const [pendingJumpCardId, setPendingJumpCardId] = useState<string | null>(null);
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
@@ -458,16 +459,19 @@ function AppMain({ currentUser, onLogout }: {
   }
 
   function jumpToSourceCard(id: string) {
+    setPendingJumpCardId(id);
     setCardViewTab("source");
-    // After tab switch triggers reload, select the card
-    setTimeout(() => {
-      setCardList(prev => {
-        const found = prev.find((c: any) => c.card_id === id);
-        if (found) loadCardContent(found);
-        return prev;
-      });
-    }, 500);
   }
+
+  // Resolve pending jump once the card list has loaded
+  useEffect(() => {
+    if (!pendingJumpCardId || cardList.length === 0) return;
+    const found = cardList.find((c: any) => c.card_id === pendingJumpCardId);
+    if (found) {
+      loadCardContent(found);
+      setPendingJumpCardId(null);
+    }
+  }, [cardList, pendingJumpCardId]);
 
   // Resizing logic (kept as before)
   useEffect(() => {
