@@ -3,6 +3,7 @@ import { useLayout } from "./hooks/useLayout";
 import { useAccounts } from "./hooks/useAccounts";
 import type { Article } from "./types";
 import { useArticles, useArticleContent, useAnalysisStatus, useMarkRead, useDismissArticle } from "./hooks/useArticles";
+import { useCardList, useCardContent, useMarkCardRead } from "./hooks/useCards";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -24,7 +25,7 @@ import { InviteManagementPanel } from './components/InviteManagementPanel';
 import { UserManagementPanel } from './components/UserManagementPanel';
 import AggregationQueuePanel from "./components/AggregationQueuePanel";
 import { useAuth } from './lib/authStore';
-import { apiFetch, API_BASE, WS_BASE, fetchCardsByDate, fetchAggregatedCards, fetchCardContent, fetchAggregatedCardContent } from './lib/api';
+import { apiFetch, API_BASE, WS_BASE } from './lib/api';
 import { authingClient } from './lib/authing';
 import "./App.css";
 
@@ -295,9 +296,17 @@ function AppMain({ currentUser, onLogout }: {
   const [cardViewDate, setCardViewDate] = useState<string | null>(null); // null = 全部
   const [cardDates, setCardDates] = useState<string[]>([]);
   const [cardViewTab, setCardViewTab] = useState<"aggregated" | "source">("aggregated");
-  const [cardList, setCardList] = useState<any[]>([]);
-  const [activeCard, setActiveCard] = useState<any>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pendingJumpCardId, setPendingJumpCardId] = useState<string | null>(null);
+
+  // Card data via React Query
+  const { data: cardList = [] } = useCardList(cardViewDate, cardViewTab, appMode === "cards");
+  const { data: cardContentData } = useCardContent(selectedCardId, cardViewTab);
+  const baseCard = cardList.find(c => c.card_id === selectedCardId) ?? null;
+  const activeCard = baseCard && cardContentData
+    ? { ...baseCard, content: cardContentData.content, title: cardContentData.title ?? baseCard.title, article_meta: cardContentData.article_meta }
+    : null;
+  const markCardRead = useMarkCardRead(cardViewDate, cardViewTab);
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
@@ -362,47 +371,6 @@ function AppMain({ currentUser, onLogout }: {
     setCardDates(dates);
   }, [appMode]);
 
-  // Card list loading
-  useEffect(() => {
-    if (appMode !== "cards") return;
-    const load = async () => {
-      try {
-        if (cardViewDate) {
-          if (cardViewTab === "aggregated") {
-            const resp = await fetchAggregatedCards(cardViewDate);
-            setCardList(resp.cards || []);
-          } else {
-            const resp = await fetchCardsByDate(cardViewDate);
-            setCardList(resp.cards || []);
-          }
-        } else {
-          // "全部": load all cards (no date filter)
-          if (cardViewTab === "aggregated") {
-            setCardList([]);  // aggregated cards require a date
-          } else {
-            const resp = await apiFetch(`/cards`).then(r => r.json());
-            setCardList(resp.cards || []);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch cards", err);
-        setCardList([]);
-      }
-      setActiveCard(null);
-    };
-    load();
-  }, [appMode, cardViewDate, cardViewTab]);
-
-  async function loadCardContent(card: any) {
-    try {
-      const fetcher = cardViewTab === "aggregated" ? fetchAggregatedCardContent : fetchCardContent;
-      const resp = await fetcher(card.card_id);
-      setActiveCard({ ...card, content: resp.content, title: resp.title ?? card.title, article_meta: resp.article_meta });
-    } catch (err) {
-      console.error("Failed to load card content", err);
-    }
-  }
-
   function jumpToSourceCard(id: string) {
     setPendingJumpCardId(id);
     setCardViewTab("source");
@@ -413,7 +381,7 @@ function AppMain({ currentUser, onLogout }: {
     if (!pendingJumpCardId || cardList.length === 0) return;
     const found = cardList.find((c: any) => c.card_id === pendingJumpCardId);
     if (found) {
-      loadCardContent(found);
+      setSelectedCardId(found.card_id);
       setPendingJumpCardId(null);
     }
   }, [cardList, pendingJumpCardId]);
@@ -1163,7 +1131,7 @@ function AppMain({ currentUser, onLogout }: {
                     borderBottom: '1px solid #21262d',
                     background: activeCard?.card_id === card.card_id ? '#1c2333' : 'transparent',
                   }}
-                  onClick={() => loadCardContent(card)}
+                  onClick={() => setSelectedCardId(card.card_id)}
                   onMouseEnter={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = '#161b22'; }}
                   onMouseLeave={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                 >
@@ -1192,14 +1160,7 @@ function AppMain({ currentUser, onLogout }: {
                   </span>
                   {!activeCard.read_at && (
                     <button
-                      onClick={async () => {
-                        const endpoint = cardViewTab === "aggregated"
-                          ? `/aggregated-cards/${activeCard.card_id}/read`
-                          : `/cards/${activeCard.card_id}/read`;
-                        await apiFetch(endpoint, { method: "POST" }).catch(() => {});
-                        setActiveCard((prev: any) => prev ? { ...prev, read_at: new Date().toISOString() } : null);
-                        setCardList((prev: any[]) => prev.map((c: any) => c.card_id === activeCard.card_id ? { ...c, read_at: new Date().toISOString() } : c));
-                      }}
+                      onClick={() => markCardRead.mutate(activeCard.card_id)}
                       style={{
                         background: 'none', border: '1px solid #30363d', borderRadius: 4,
                         color: '#8b949e', padding: '2px 10px', cursor: 'pointer', fontSize: '0.78rem',
