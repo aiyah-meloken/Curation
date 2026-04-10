@@ -35,7 +35,7 @@ export function usePrefetchOnVisible<T>(
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [queryKey.toString()]);
+  }, [JSON.stringify(queryKey)]); // queryFn must be referentially stable
 
   return ref;
 }

@@ -59,9 +59,16 @@ export function useMarkCardRead(date: string | null, tab: "aggregated" | "source
     onMutate: async (cardId) => {
       const key = ["cards", date, tab];
       await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Card[]>(key);
       queryClient.setQueryData<Card[]>(key, (old) =>
         old?.map(c => c.card_id === cardId ? { ...c, read_at: new Date().toISOString() } : c)
       );
+      return { previous };
+    },
+    onError: (_err, _cardId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["cards", date, tab], context.previous);
+      }
     },
   });
 }

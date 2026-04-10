@@ -73,7 +73,6 @@ export function useArticles(accountId: number | null) {
   return useQuery({
     queryKey: ["articles", accountId ?? -1],
     queryFn: () => fetchArticleList(accountId ?? -1),
-    staleTime: 5 * 60 * 1000,
     enabled: accountId !== null,
   });
 }
@@ -114,9 +113,16 @@ export function useMarkRead(accountId: number | null) {
     onMutate: async (articleId) => {
       const key = ["articles", accountId ?? -1];
       await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Article[]>(key);
       queryClient.setQueryData<Article[]>(key, (old) =>
         old?.map(a => a.short_id === articleId ? { ...a, read_status: 1 } : a)
       );
+      return { previous };
+    },
+    onError: (_err, _articleId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["articles", accountId ?? -1], context.previous);
+      }
     },
   });
 }

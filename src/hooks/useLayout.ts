@@ -68,7 +68,6 @@ export function useLayout() {
     };
   }, [isResizingSidebar, isResizingList, sidebarWidth, isSidebarCollapsed]);
 
-  const startResizeSidebar = useCallback(() => setIsResizingSidebar(true), []);
   const startResizeList = useCallback(() => setIsResizingList(true), []);
   const toggleSidebar = useCallback(() => setIsSidebarCollapsed(v => !v), []);
 
@@ -77,7 +76,6 @@ export function useLayout() {
     sidebarWidth,
     listWidth,
     isResizingList,
-    startResizeSidebar,
     startResizeList,
     toggleSidebar,
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLayout } from "./hooks/useLayout";
 import type { Article } from "./types";
 import { useArticles, useArticleContent, useAnalysisStatus } from "./hooks/useArticles";
@@ -164,7 +164,6 @@ function AppMain({ currentUser, onLogout }: {
   type AppMode = "articles" | "cards";
   const [appMode, setAppMode] = useState<AppMode>("articles");
   const [cardViewDate, setCardViewDate] = useState<string | null>(null); // null = 全部
-  const [cardDates, setCardDates] = useState<string[]>([]);
   const [cardViewTab, setCardViewTab] = useState<"aggregated" | "source">("aggregated");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pendingJumpCardId, setPendingJumpCardId] = useState<string | null>(null);
@@ -215,8 +214,8 @@ function AppMain({ currentUser, onLogout }: {
   }, [notification]);
 
   // Generate recent 14 days for card date list
-  useEffect(() => {
-    if (appMode !== "cards") return;
+  const cardDates = useMemo(() => {
+    if (appMode !== "cards") return [];
     const dates: string[] = [];
     const today = new Date();
     for (let i = 0; i < 14; i++) {
@@ -224,7 +223,7 @@ function AppMain({ currentUser, onLogout }: {
       d.setDate(d.getDate() - i);
       dates.push(d.toISOString().split("T")[0]);
     }
-    setCardDates(dates);
+    return dates;
   }, [appMode]);
 
   function jumpToSourceCard(id: string) {
