@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
-import { useMarkRead, useDismissArticle } from "../hooks/useArticles";
+import { useMarkRead, useDismissArticle, fetchArticleContent } from "../hooks/useArticles";
+import { usePrefetchOnVisible, usePrefetchAdjacent } from "../hooks/usePrefetchOnVisible";
 import type { Article } from "../types";
+
+function ArticleListItem({ article, children }: { article: Article; children: React.ReactNode }) {
+  const ref = usePrefetchOnVisible(
+    ["articleContent", article.short_id],
+    () => fetchArticleContent(article.short_id),
+  );
+  return <div ref={ref}>{children}</div>;
+}
 
 interface ArticleListProps {
   articles: Article[];
@@ -33,6 +42,20 @@ export function ArticleList({
     dismissArticle.mutate(id);
   };
 
+  const filteredArticles = articles
+    .filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(a => viewMode === 'all' || (!a.read_status && !a.dismissed));
+
+  // Prefetch adjacent articles when selection changes
+  usePrefetchAdjacent(
+    filteredArticles.map(a => ({ id: a.short_id })),
+    selectedArticleId,
+    (id) => ({
+      queryKey: ["articleContent", id],
+      queryFn: () => fetchArticleContent(id),
+    }),
+  );
+
   return (
     <section className="article-list-pane" style={{ width: listWidth }}>
       <header className="list-header">
@@ -59,15 +82,12 @@ export function ArticleList({
       <div className="list-content">
         {(() => {
           let lastDate = '';
-          return articles
-            .filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
-            .filter(a => viewMode === 'all' || (!a.read_status && !a.dismissed))
-            .map(art => {
+          return filteredArticles.map(art => {
             const dateStr = (art.publish_time || '').split(' ')[0] || '';
             const showSeparator = dateStr && dateStr !== lastDate;
             if (dateStr) lastDate = dateStr;
             return (
-              <div key={art.short_id}>
+              <ArticleListItem key={art.short_id} article={art}>
                 {showSeparator && <div className="date-separator">{dateStr}</div>}
                 <div
                   className={`article-card-wrapper ${hidingArticleId === art.short_id && viewMode === 'unprocessed' ? 'hiding' : ''}`}
@@ -111,7 +131,7 @@ export function ArticleList({
                     </div>
                   </div>
                 </div>
-              </div>
+              </ArticleListItem>
             );
           });
         })()}
