@@ -19,7 +19,7 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "#f85149",
 };
 
-type SortField = "created_at" | "date";
+type SortField = "created_at" | "date" | "status" | "request_count";
 type SortDir = "asc" | "desc";
 
 export default function AggregationQueuePanel() {
@@ -105,7 +105,10 @@ export default function AggregationQueuePanel() {
     items.sort((a, b) => {
       const av = a[sortField] ?? "";
       const bv = b[sortField] ?? "";
-      return sortDir === "asc" ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1);
+      const cmp = sortField === "request_count"
+        ? (Number(av) - Number(bv))
+        : String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
     });
     return items;
   }, [queue, statusFilters, sortField, sortDir]);
@@ -195,13 +198,17 @@ export default function AggregationQueuePanel() {
             <tr style={{ position: "sticky", top: 0, background: "#161b22", zIndex: 1 }}>
               <th style={{ width: 30 }} />
               <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500 }}>用户</th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500, cursor: "pointer" }} onClick={() => handleSort("date")}>
+              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("date")}>
                 日期 <SortIcon field="date" />
               </th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500 }}>状态</th>
+              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("status")}>
+                状态 <SortIcon field="status" />
+              </th>
               <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500 }}>等待至</th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500 }}>请求次数</th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500, cursor: "pointer" }} onClick={() => handleSort("created_at")}>
+              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("request_count")}>
+                请求次数 <SortIcon field="request_count" />
+              </th>
+              <th style={{ textAlign: "left", padding: "6px 8px", color: "#8b949e", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("created_at")}>
                 入队时间 <SortIcon field="created_at" />
               </th>
               <th style={{ textAlign: "right", padding: "6px 8px", color: "#8b949e", fontWeight: 500 }}>操作</th>

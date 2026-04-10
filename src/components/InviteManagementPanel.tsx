@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Copy, Trash2 } from "lucide-react";
 import { apiFetch } from "../lib/api";
 
@@ -15,9 +15,14 @@ interface InviteCode {
   expires_at: string | null;
 }
 
+type SortKey = "code" | "is_active" | "use_count" | "expires_at" | "last_used_at" | "created_at";
+type SortDir = "asc" | "desc";
+
 export function InviteManagementPanel() {
   const [codes, setCodes] = useState<InviteCode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [count, setCount] = useState(1);
   const [maxUses, setMaxUses] = useState<string>("");       // "" = unlimited
   const [expiresInDays, setExpiresInDays] = useState<string>("");  // "" = never
@@ -32,6 +37,39 @@ export function InviteManagementPanel() {
   }
 
   useEffect(() => { fetchCodes(); }, []);
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sorted = useMemo(() => {
+    return [...codes].sort((a, b) => {
+      const va = a[sortKey] ?? "";
+      const vb = b[sortKey] ?? "";
+      const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [codes, sortKey, sortDir]);
+
+  function SortTh({ label, col }: { label: string; col: SortKey }) {
+    const active = sortKey === col;
+    return (
+      <th
+        style={{ ...th, cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+        onClick={() => handleSort(col)}
+      >
+        {label}
+        <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3 }}>
+          {active && sortDir === "desc" ? "↓" : "↑"}
+        </span>
+      </th>
+    );
+  }
 
   async function handleGenerate() {
     setGenerating(true);
@@ -122,16 +160,16 @@ export function InviteManagementPanel() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ color: "#8b949e", borderBottom: "1px solid #30363d" }}>
-              <th style={th}>邀请码</th>
-              <th style={th}>状态</th>
-              <th style={th}>已用/上限</th>
-              <th style={th}>到期时间</th>
-              <th style={th}>最近使用者</th>
+              <SortTh label="邀请码" col="code" />
+              <SortTh label="状态" col="is_active" />
+              <SortTh label="已用/上限" col="use_count" />
+              <SortTh label="到期时间" col="expires_at" />
+              <SortTh label="最近使用" col="last_used_at" />
               <th style={th}>操作</th>
             </tr>
           </thead>
           <tbody>
-            {codes.map((c) => {
+            {sorted.map((c) => {
               const status = statusLabel(c);
               return (
                 <tr key={c.id} style={{ borderBottom: "1px solid #21262d" }}>

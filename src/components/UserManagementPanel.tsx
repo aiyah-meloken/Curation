@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 interface AppUser {
@@ -13,9 +13,14 @@ interface AppUser {
   last_login: string | null;
 }
 
+type SortKey = "username" | "phone" | "email" | "role" | "is_active" | "created_at" | "last_login";
+type SortDir = "asc" | "desc";
+
 export function UserManagementPanel() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   async function fetchUsers() {
     setLoading(true);
@@ -26,6 +31,24 @@ export function UserManagementPanel() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sorted = useMemo(() => {
+    return [...users].sort((a, b) => {
+      const va = a[sortKey] ?? "";
+      const vb = b[sortKey] ?? "";
+      const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [users, sortKey, sortDir]);
+
   async function handleUpdate(userId: number, patch: { role?: string; is_active?: boolean }) {
     await apiFetch(`/users/${userId}`, {
       method: "PATCH",
@@ -33,6 +56,21 @@ export function UserManagementPanel() {
       body: JSON.stringify(patch),
     });
     await fetchUsers();
+  }
+
+  function SortTh({ label, col }: { label: string; col: SortKey }) {
+    const active = sortKey === col;
+    return (
+      <th
+        style={{ ...th, cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+        onClick={() => handleSort(col)}
+      >
+        {label}
+        <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3 }}>
+          {active && sortDir === "desc" ? "↓" : "↑"}
+        </span>
+      </th>
+    );
   }
 
   return (
@@ -47,17 +85,17 @@ export function UserManagementPanel() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ color: "#8b949e", borderBottom: "1px solid #30363d" }}>
-              <th style={th}>用户</th>
-              <th style={th}>手机号</th>
-              <th style={th}>邮箱</th>
-              <th style={th}>角色</th>
-              <th style={th}>状态</th>
-              <th style={th}>注册时间</th>
-              <th style={th}>最后登录</th>
+              <SortTh label="用户" col="username" />
+              <SortTh label="手机号" col="phone" />
+              <SortTh label="邮箱" col="email" />
+              <SortTh label="角色" col="role" />
+              <SortTh label="状态" col="is_active" />
+              <SortTh label="注册时间" col="created_at" />
+              <SortTh label="最后登录" col="last_login" />
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {sorted.map((u) => (
               <tr key={u.id} style={{ borderBottom: "1px solid #21262d" }}>
                 <td style={{ ...td, display: "flex", alignItems: "center", gap: 8 }}>
                   {u.picture ? (

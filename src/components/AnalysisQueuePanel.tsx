@@ -50,7 +50,7 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "#f85149",
 };
 
-type SortField = "created_at" | "request_count";
+type SortField = "created_at" | "request_count" | "status" | "article_publish_time";
 type SortDir = "asc" | "desc";
 
 /** Extract unique YYYY-MM-DD dates from publish_time values */
@@ -130,7 +130,9 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
       if (sortField === "request_count") {
         cmp = a.request_count - b.request_count;
       } else {
-        cmp = (a.created_at ?? "").localeCompare(b.created_at ?? "");
+        const av = String(a[sortField] ?? "");
+        const bv = String(b[sortField] ?? "");
+        cmp = av.localeCompare(bv, undefined, { numeric: true });
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -355,8 +357,8 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
               <tr style={{ background: "#161b22", color: "#8b949e" }}>
                 <th style={{ padding: "8px 4px", width: 28 }} />
                 <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 500 }}>文章</th>
-                <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500, whiteSpace: "nowrap" }}>发布时间</th>
-                <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500 }}>分析状态</th>
+                {thSortable("article_publish_time", "发布时间")}
+                {thSortable("status", "分析状态")}
                 <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500 }}>推送状态</th>
                 {thSortable("request_count", "请求次数")}
                 {thSortable("created_at", "入队时间")}
