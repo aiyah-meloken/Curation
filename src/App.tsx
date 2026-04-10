@@ -3,11 +3,8 @@ import { useLayout } from "./hooks/useLayout";
 import { useAccounts } from "./hooks/useAccounts";
 import type { Article } from "./types";
 import { useArticles, useArticleContent, useAnalysisStatus } from "./hooks/useArticles";
-import { useCardList, useCardContent, useMarkCardRead } from "./hooks/useCards";
+import { useCardList, useCardContent } from "./hooks/useCards";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
 import { BookOpen, ExternalLink, X, ShieldCheck, Sparkles } from 'lucide-react';
 import { check } from '@tauri-apps/plugin-updater';
@@ -17,6 +14,8 @@ import { ArticleAdminPanel } from './components/ArticleAdminPanel';
 import { Sidebar } from './components/Sidebar';
 import { ArticleList } from './components/ArticleList';
 import { ArticleReader } from './components/ArticleReader';
+import { CardList } from './components/CardList';
+import { CardReader } from './components/CardReader';
 import { AdminManagementPanel } from './components/AdminManagementPanel';
 import { AnalysisQueuePanel } from './components/AnalysisQueuePanel';
 import { LoginScreen } from './components/LoginScreen';
@@ -26,7 +25,6 @@ import { UserManagementPanel } from './components/UserManagementPanel';
 import AggregationQueuePanel from "./components/AggregationQueuePanel";
 import { useAuth } from './lib/authStore';
 import { API_BASE, WS_BASE } from './lib/api';
-import { stripFrontmatter, mdComponents, CardHeader } from './lib/markdown';
 import { authingClient } from './lib/authing';
 import "./App.css";
 
@@ -188,7 +186,6 @@ function AppMain({ currentUser, onLogout }: {
   const activeCard = baseCard && cardContentData
     ? { ...baseCard, content: cardContentData.content, title: cardContentData.title ?? baseCard.title, article_meta: cardContentData.article_meta }
     : null;
-  const markCardRead = useMarkCardRead(cardViewDate, cardViewTab);
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
@@ -434,138 +431,24 @@ function AppMain({ currentUser, onLogout }: {
       {/* Card view panes (cards mode) */}
       {appMode === "cards" && (
         <>
-          {/* Card list pane */}
-          <section className="article-list-pane" style={{ width: listWidth }}>
-            <header className="list-header">
-              <div style={{ display: 'flex', width: '100%', borderBottom: '1px solid #30363d' }}>
-                <button
-                  style={{
-                    flex: 1, padding: '8px 0', fontSize: '0.82rem', border: 'none', cursor: 'pointer',
-                    background: 'transparent',
-                    color: cardViewTab === "aggregated" ? '#e6edf3' : '#8b949e',
-                    borderBottom: cardViewTab === "aggregated" ? '2px solid #3b82f6' : '2px solid transparent',
-                    fontWeight: cardViewTab === "aggregated" ? 600 : 400,
-                  }}
-                  onClick={() => setCardViewTab("aggregated")}
-                >
-                  聚合卡片
-                </button>
-                <button
-                  style={{
-                    flex: 1, padding: '8px 0', fontSize: '0.82rem', border: 'none', cursor: 'pointer',
-                    background: 'transparent',
-                    color: cardViewTab === "source" ? '#e6edf3' : '#8b949e',
-                    borderBottom: cardViewTab === "source" ? '2px solid #3b82f6' : '2px solid transparent',
-                    fontWeight: cardViewTab === "source" ? 600 : 400,
-                  }}
-                  onClick={() => setCardViewTab("source")}
-                >
-                  原始卡片
-                </button>
-              </div>
-            </header>
-            <div className="list-content">
-              {cardList.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#8b949e', fontSize: '0.85rem' }}>
-                  暂无卡片
-                </div>
-              ) : cardList.map((card: any) => (
-                <div
-                  key={card.card_id}
-                  style={{
-                    padding: '12px 14px', cursor: 'pointer',
-                    borderBottom: '1px solid #21262d',
-                    background: activeCard?.card_id === card.card_id ? '#1c2333' : 'transparent',
-                  }}
-                  onClick={() => setSelectedCardId(card.card_id)}
-                  onMouseEnter={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = '#161b22'; }}
-                  onMouseLeave={(e) => { if (activeCard?.card_id !== card.card_id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                >
-                  <div style={{ fontSize: '0.85rem', fontWeight: card.read_at ? 400 : 500, color: card.read_at ? '#6e7681' : '#e6edf3' }}>{card.title}</div>
-                  {card.article_title && (
-                    <div style={{ fontSize: '0.75rem', color: '#8b949e', marginTop: 4 }}>{card.article_title}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Resizer */}
+          <CardList
+            cardViewDate={cardViewDate}
+            listWidth={listWidth}
+            selectedCardId={selectedCardId}
+            onSelectCard={setSelectedCardId}
+            cardViewTab={cardViewTab}
+            onTabChange={setCardViewTab}
+          />
           <div
             className={`resizer ${isResizingList ? 'resizing' : ''}`}
             onMouseDown={startResizeList}
           />
-
-          {/* Card reader pane */}
-          <main className="reader-pane">
-            {activeCard ? (
-              <>
-                <div className="reader-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e6edf3' }}>
-                    {activeCard.title}
-                  </span>
-                  {!activeCard.read_at && (
-                    <button
-                      onClick={() => markCardRead.mutate(activeCard.card_id)}
-                      style={{
-                        background: 'none', border: '1px solid #30363d', borderRadius: 4,
-                        color: '#8b949e', padding: '2px 10px', cursor: 'pointer', fontSize: '0.78rem',
-                      }}
-                    >
-                      标记已读
-                    </button>
-                  )}
-                </div>
-                {activeCard.article_meta && <CardHeader meta={activeCard.article_meta} />}
-                <div className="reader-content animate-in">
-                  <div className="markdown-body">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeHighlight]}
-                      components={mdComponents}
-                    >
-                      {stripFrontmatter(activeCard.content || "")}
-                    </ReactMarkdown>
-                  </div>
-
-                  {/* Source tracing for aggregated cards */}
-                  {activeCard.source_card_ids && (
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #30363d', fontSize: '0.82rem', color: '#8b949e' }}>
-                      <span>来源卡片：</span>
-                      {(() => {
-                        try {
-                          const ids = typeof activeCard.source_card_ids === "string"
-                            ? JSON.parse(activeCard.source_card_ids)
-                            : activeCard.source_card_ids;
-                          return (ids as string[]).map((id: string) => (
-                            <button
-                              key={id}
-                              onClick={() => jumpToSourceCard(id)}
-                              style={{
-                                marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer',
-                                color: '#58a6ff', fontSize: '0.82rem', textDecoration: 'none',
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-                            >
-                              {id.slice(0, 8)}...
-                            </button>
-                          ));
-                        } catch {
-                          return null;
-                        }
-                      })()}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="reader-empty">
-                <div className="reader-empty-icon"><BookOpen size={64} /></div>
-                <h3>请选择一张卡片</h3>
-              </div>
-            )}
-          </main>
+          <CardReader
+            card={activeCard}
+            onJumpToSource={jumpToSourceCard}
+            cardViewTab={cardViewTab}
+            cardViewDate={cardViewDate}
+          />
         </>
       )}
 
