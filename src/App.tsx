@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -185,6 +186,17 @@ function initialColumnWidthsFromViewport(): { sidebar: number; list: number } {
   return { sidebar, list };
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: true,
+      retry: 1,
+    },
+  },
+});
+
 function UpdateBanner() {
   const [ready, setReady] = useState(false);
 
@@ -289,10 +301,10 @@ function App() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <UpdateBanner />
       <AppMain key={currentUser.id} currentUser={currentUser} onLogout={handleLogout} />
-    </>
+    </QueryClientProvider>
   );
 }
 
