@@ -6,6 +6,7 @@ interface AppUser {
   phone: string | null;
   email: string;
   username: string;
+  picture: string | null;
   role: "admin" | "user";
   is_active: boolean;
   created_at: string;
@@ -46,6 +47,7 @@ export function UserManagementPanel() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ color: "#8b949e", borderBottom: "1px solid #30363d" }}>
+              <th style={th}>用户</th>
               <th style={th}>手机号</th>
               <th style={th}>邮箱</th>
               <th style={th}>角色</th>
@@ -57,6 +59,24 @@ export function UserManagementPanel() {
           <tbody>
             {users.map((u) => (
               <tr key={u.id} style={{ borderBottom: "1px solid #21262d" }}>
+                <td style={{ ...td, display: "flex", alignItems: "center", gap: 8 }}>
+                  {u.picture ? (
+                    <img
+                      src={u.picture}
+                      alt=""
+                      style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                    />
+                  ) : (
+                    <span style={{
+                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                      background: "#30363d", display: "flex", alignItems: "center",
+                      justifyContent: "center", fontSize: 12, color: "#8b949e",
+                    }}>
+                      {(u.username || "?")[0]}
+                    </span>
+                  )}
+                  <span>{u.username || "—"}</span>
+                </td>
                 <td style={td}>{u.phone || "—"}</td>
                 <td style={{ ...td, color: "#8b949e" }}>{u.email || "—"}</td>
                 <td style={{ ...td, color: u.role === "admin" ? "#f0883e" : "#8b949e", fontSize: 12 }}>
