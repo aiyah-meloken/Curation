@@ -73,3 +73,35 @@ export interface AgentBackends {
 export type StageStatus = "pending" | "running" | "done" | "failed";
 
 export type Stage = string;
+
+export interface AggregationQueueEntry {
+  id: number;
+  user_id: number;
+  username: string | null;
+  email: string | null;
+  date: string;
+  status: "prereq" | "pending" | "running" | "done" | "failed";
+  run_id: number | null;
+  request_count: number;
+  wait_until: string | null;
+  error_msg: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AggregationRunEntry {
+  id: number;
+  user_id: number;
+  date: string;
+  backend: string;
+  overall_status: string;
+  elapsed_s: number | null;
+  error_msg: string | null;
+  created_at: string;
+}
+
+export interface AggregationStrategy {
+  auto_launch: boolean;
+  max_concurrency: number;
+  default_backend: string;
+}
