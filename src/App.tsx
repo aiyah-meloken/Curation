@@ -1,28 +1,22 @@
 import { useState, useEffect } from "react";
 import { useLayout } from "./hooks/useLayout";
-import { useAccounts } from "./hooks/useAccounts";
 import type { Article } from "./types";
 import { useArticles, useArticleContent, useAnalysisStatus } from "./hooks/useArticles";
 import { useCardList, useCardContent } from "./hooks/useCards";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import 'highlight.js/styles/github-dark.css';
-import { BookOpen, ExternalLink, X, ShieldCheck, Sparkles } from 'lucide-react';
+import { BookOpen, X, Sparkles } from 'lucide-react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
-import { ArticleAdminPanel } from './components/ArticleAdminPanel';
 import { Sidebar } from './components/Sidebar';
+import { AdminPane } from './components/AdminPane';
 import { ArticleList } from './components/ArticleList';
 import { ArticleReader } from './components/ArticleReader';
 import { CardList } from './components/CardList';
 import { CardReader } from './components/CardReader';
-import { AdminManagementPanel } from './components/AdminManagementPanel';
-import { AnalysisQueuePanel } from './components/AnalysisQueuePanel';
 import { LoginScreen } from './components/LoginScreen';
 import { AuthCallback } from './components/AuthCallback';
-import { InviteManagementPanel } from './components/InviteManagementPanel';
-import { UserManagementPanel } from './components/UserManagementPanel';
-import AggregationQueuePanel from "./components/AggregationQueuePanel";
 import { useAuth } from './lib/authStore';
 import { API_BASE, WS_BASE } from './lib/api';
 import { authingClient } from './lib/authing';
@@ -143,8 +137,6 @@ function AppMain({ currentUser, onLogout }: {
   currentUser: { id: number; email: string; username: string; role: string };
   onLogout: () => void;
 }) {
-  const { data: accounts = [] } = useAccounts();
-  const queryClient = useQueryClient();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(-1); // -1 for All Articles
   const { data: articles = [] } = useArticles(selectedAccountId);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
@@ -293,127 +285,16 @@ function AppMain({ currentUser, onLogout }: {
       {/* Pane 3: Reader View / Admin Panel (articles mode) */}
       {appMode === "articles" && <main className="reader-pane" style={isAdminMode ? { overflow: 'hidden' } : undefined}>
         {isAdminMode ? (
-          <>
-            {/* Admin toolbar with tabs */}
-            <div className="reader-toolbar" style={{ borderBottom: '1px solid #30363d', paddingBottom: 8, justifyContent: 'flex-start', gap: 8 }}>
-              <ShieldCheck size={15} style={{ color: '#60a5fa', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 600, flexShrink: 0 }}>管理</span>
-              {/* Tabs */}
-              <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-                <button
-                  onClick={() => setAdminView("management")}
-                  style={{
-                    fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                    background: adminView === "management" ? '#1f6feb' : '#21262d',
-                    color: adminView === "management" ? '#fff' : '#8b949e',
-                  }}
-                >
-                  内容管理
-                </button>
-                <button
-                  onClick={() => activeArticle && setAdminView("analysis")}
-                  disabled={!activeArticle}
-                  style={{
-                    fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none',
-                    cursor: activeArticle ? 'pointer' : 'default',
-                    background: adminView === "analysis" ? '#1f6feb' : '#21262d',
-                    color: adminView === "analysis" ? '#fff' : (activeArticle ? '#8b949e' : '#4b5563'),
-                    maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}
-                  title={activeArticle?.title}
-                >
-                  {activeArticle ? `分析: ${activeArticle.title.slice(0, 20)}…` : "分析（请选择文章）"}
-                </button>
-                <button
-                  onClick={() => setAdminView("queue")}
-                  style={{
-                    fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                    background: adminView === "queue" ? '#1f6feb' : '#21262d',
-                    color: adminView === "queue" ? '#fff' : '#8b949e',
-                  }}
-                >
-                  任务队列
-                </button>
-                <button
-                  onClick={() => setAdminView("aggregation")}
-                  style={{
-                    fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                    background: adminView === "aggregation" ? '#1f6feb' : '#21262d',
-                    color: adminView === "aggregation" ? '#fff' : '#8b949e',
-                  }}
-                >
-                  聚合队列
-                </button>
-                {currentUser.role === "admin" && (
-                  <>
-                    <button
-                      onClick={() => setAdminView("invites")}
-                      style={{
-                        fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                        background: adminView === "invites" ? '#1f6feb' : '#21262d',
-                        color: adminView === "invites" ? '#fff' : '#8b949e',
-                      }}
-                    >
-                      邀请码
-                    </button>
-                    <button
-                      onClick={() => setAdminView("users")}
-                      style={{
-                        fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                        background: adminView === "users" ? '#1f6feb' : '#21262d',
-                        color: adminView === "users" ? '#fff' : '#8b949e',
-                      }}
-                    >
-                      用户管理
-                    </button>
-                  </>
-                )}
-              </div>
-              <div style={{ flex: 1 }} />
-              {activeArticle && (
-                <button className="btn-icon" title="打开原文" onClick={() => window.open(activeArticle.url)}>
-                  <ExternalLink size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* Tab content */}
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              {adminView === "management" ? (
-                <AdminManagementPanel
-                  accounts={accounts}
-                  articles={articles}
-                  onRefresh={() => { queryClient.invalidateQueries({ queryKey: ["accounts"] }); queryClient.invalidateQueries({ queryKey: ["articles"] }); }}
-                  onSelectArticle={(id) => {
-                    setSelectedArticleId(id);
-                    setAdminView("analysis");
-                  }}
-                />
-              ) : adminView === "queue" ? (
-                <AnalysisQueuePanel onNavigateToArticle={(id) => {
-                  setSelectedArticleId(id);
-                  setIsAdminMode(false);
-                }} />
-              ) : adminView === "aggregation" ? (
-                <AggregationQueuePanel />
-              ) : adminView === "invites" ? (
-                <InviteManagementPanel />
-              ) : adminView === "users" ? (
-                <UserManagementPanel />
-              ) : activeArticle ? (
-                <ArticleAdminPanel
-                  article={activeArticle}
-                  onArticleUpdate={() => queryClient.invalidateQueries({ queryKey: ["articles"] })}
-                />
-              ) : (
-                <div className="reader-empty">
-                  <div className="reader-empty-icon"><BookOpen size={48} /></div>
-                  <h3>请先在内容管理中选择一篇文章</h3>
-                </div>
-              )}
-            </div>
-          </>
-        ) : !isAdminMode && activeArticle ? (
+          <AdminPane
+            adminView={adminView}
+            onAdminViewChange={setAdminView}
+            activeArticle={activeArticle}
+            articles={articles}
+            currentUser={currentUser}
+            onSelectArticle={setSelectedArticleId}
+            onExitAdmin={() => setIsAdminMode(false)}
+          />
+        ) : activeArticle ? (
           <ArticleReader
             article={activeArticle}
             analysisStatus={analysisStatus}
