@@ -87,7 +87,7 @@ export interface AggregationQueueEntry {
   username: string | null;
   email: string | null;
   date: string;
-  status: "prereq" | "pending" | "running" | "done" | "failed";
+  status: "prereq" | "pending" | "running" | "done" | "failed" | "skipped";
   run_id: number | null;
   request_count: number;
   wait_until: string | null;
