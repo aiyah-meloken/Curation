@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCardList, loadCardContentData } from "../hooks/useCards";
 import type { Card } from "../hooks/useCards";
-import { usePrefetchAdjacent } from "../hooks/usePrefetchOnVisible";
+import { usePrefetchAdjacent, usePrefetchOnVisible } from "../hooks/usePrefetchOnVisible";
 
 interface CardListProps {
   cardViewDate: string | null;
@@ -12,13 +12,53 @@ interface CardListProps {
   onTabChange: (tab: "aggregated" | "source") => void;
 }
 
+// Each list item prefetches its own content via IntersectionObserver (large-range).
+function CardItem({ card, cardViewTab, isSelected, onSelect }: {
+  card: Card;
+  cardViewTab: "aggregated" | "source";
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const ref = usePrefetchOnVisible(
+    ["cardContent", card.card_id, cardViewTab],
+    () => loadCardContentData(card.card_id, cardViewTab),
+  );
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        padding: '12px 14px', cursor: 'pointer',
+        borderBottom: '1px solid #21262d',
+        background: isSelected ? '#1c2333' : 'transparent',
+      }}
+      onClick={onSelect}
+      onMouseEnter={(e) => {
+        if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#161b22';
+        // Eager content prefetch on hover as fast-path (noop if already cached).
+        queryClient.prefetchQuery({
+          queryKey: ["cardContent", card.card_id, cardViewTab],
+          queryFn: () => loadCardContentData(card.card_id, cardViewTab),
+          staleTime: Infinity,
+        });
+      }}
+      onMouseLeave={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+    >
+      <div style={{ fontSize: '0.85rem', fontWeight: card.read_at ? 400 : 500, color: card.read_at ? '#6e7681' : '#e6edf3' }}>{card.title}</div>
+      {card.article_title && (
+        <div style={{ fontSize: '0.75rem', color: '#8b949e', marginTop: 4 }}>{card.article_title}</div>
+      )}
+    </div>
+  );
+}
+
 export function CardList({
   cardViewDate, listWidth, selectedCardId, onSelectCard, cardViewTab, onTabChange,
 }: CardListProps) {
   const { data: cardList = [] } = useCardList(cardViewDate, cardViewTab, true);
-  const queryClient = useQueryClient();
 
-  // Prefetch adjacent cards when selection changes
+  // Prefetch adjacent card content (small range) when selection changes.
   usePrefetchAdjacent(
     cardList.map(c => ({ id: c.card_id })),
     selectedCardId,
@@ -64,29 +104,13 @@ export function CardList({
             暂无卡片
           </div>
         ) : cardList.map((card: Card) => (
-          <div
+          <CardItem
             key={card.card_id}
-            style={{
-              padding: '12px 14px', cursor: 'pointer',
-              borderBottom: '1px solid #21262d',
-              background: selectedCardId === card.card_id ? '#1c2333' : 'transparent',
-            }}
-            onClick={() => onSelectCard(card.card_id)}
-            onMouseEnter={(e) => {
-              if (selectedCardId !== card.card_id) (e.currentTarget as HTMLElement).style.background = '#161b22';
-              queryClient.prefetchQuery({
-                queryKey: ["cardContent", card.card_id, cardViewTab],
-                queryFn: () => loadCardContentData(card.card_id, cardViewTab),
-                staleTime: Infinity,
-              });
-            }}
-            onMouseLeave={(e) => { if (selectedCardId !== card.card_id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-          >
-            <div style={{ fontSize: '0.85rem', fontWeight: card.read_at ? 400 : 500, color: card.read_at ? '#6e7681' : '#e6edf3' }}>{card.title}</div>
-            {card.article_title && (
-              <div style={{ fontSize: '0.75rem', color: '#8b949e', marginTop: 4 }}>{card.article_title}</div>
-            )}
-          </div>
+            card={card}
+            cardViewTab={cardViewTab}
+            isSelected={selectedCardId === card.card_id}
+            onSelect={() => onSelectCard(card.card_id)}
+          />
         ))}
       </div>
     </section>

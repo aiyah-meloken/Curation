@@ -55,7 +55,11 @@ export const mdComponents: any = {
   },
 };
 
-export function CardHeader({ meta }: { meta: { title: string; url: string; publish_time: string; author: string; article_id?: string } }) {
+export function CardHeader({ meta, onJumpToArticle }: {
+  meta: { title: string; url: string; publish_time: string; author: string; article_id?: string };
+  onJumpToArticle?: (articleId: string) => void;
+}) {
+  const canJump = !!meta.article_id && !!onJumpToArticle;
   return (
     <div style={{
       padding: '14px 20px',
@@ -67,8 +71,15 @@ export function CardHeader({ meta }: { meta: { title: string; url: string; publi
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     }}>
       <div>
-        <a href="#" onClick={(e) => { e.preventDefault(); }}
-          style={{ color: '#e6edf3', textDecoration: 'none', fontWeight: 500, fontSize: '0.88rem', borderBottom: '1px dashed #58a6ff60', cursor: 'pointer' }}>
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); if (canJump) onJumpToArticle!(meta.article_id!); }}
+          style={{
+            color: '#e6edf3', textDecoration: 'none', fontWeight: 500, fontSize: '0.88rem',
+            borderBottom: canJump ? '1px dashed #58a6ff60' : 'none',
+            cursor: canJump ? 'pointer' : 'default',
+          }}
+        >
           {meta.title}
         </a>
       </div>

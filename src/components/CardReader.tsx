@@ -9,11 +9,12 @@ import type { Card } from "../hooks/useCards";
 interface CardReaderProps {
   card: (Card & { content?: string }) | null;
   onJumpToSource: (id: string) => void;
+  onJumpToArticle: (articleId: string) => void;
   cardViewTab: "aggregated" | "source";
   cardViewDate: string | null;
 }
 
-export function CardReader({ card, onJumpToSource, cardViewTab, cardViewDate }: CardReaderProps) {
+export function CardReader({ card, onJumpToSource, onJumpToArticle, cardViewTab, cardViewDate }: CardReaderProps) {
   const markCardRead = useMarkCardRead(cardViewDate, cardViewTab);
 
   if (!card) {
@@ -45,7 +46,7 @@ export function CardReader({ card, onJumpToSource, cardViewTab, cardViewDate }: 
           </button>
         )}
       </div>
-      {card.article_meta && <CardHeader meta={card.article_meta} />}
+      {card.article_meta && <CardHeader meta={card.article_meta} onJumpToArticle={onJumpToArticle} />}
       <div className="reader-content animate-in">
         <div className="markdown-body">
           <ReactMarkdown

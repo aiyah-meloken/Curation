@@ -231,6 +231,11 @@ function AppMain({ currentUser, onLogout }: {
     setCardViewTab("source");
   }
 
+  function jumpToArticle(articleId: string) {
+    setAppMode("articles");
+    setSelectedArticleId(articleId);
+  }
+
   // Resolve pending jump once the card list has loaded
   useEffect(() => {
     if (!pendingJumpCardId || cardList.length === 0) return;
@@ -324,12 +329,28 @@ function AppMain({ currentUser, onLogout }: {
             className={`resizer ${isResizingList ? 'resizing' : ''}`}
             onMouseDown={startResizeList}
           />
-          <CardReader
-            card={activeCard}
-            onJumpToSource={jumpToSourceCard}
-            cardViewTab={cardViewTab}
-            cardViewDate={cardViewDate}
-          />
+          {isAdminMode ? (
+            <main className="reader-pane" style={{ overflow: 'hidden' }}>
+              <AdminPane
+                adminView={adminView}
+                onAdminViewChange={setAdminView}
+                activeArticle={activeArticle}
+                articles={articles}
+                currentUser={currentUser}
+                onSelectArticle={setSelectedArticleId}
+                onExitAdmin={() => setIsAdminMode(false)}
+                isLoadingArticles={isLoadingArticles}
+              />
+            </main>
+          ) : (
+            <CardReader
+              card={activeCard}
+              onJumpToSource={jumpToSourceCard}
+              onJumpToArticle={jumpToArticle}
+              cardViewTab={cardViewTab}
+              cardViewDate={cardViewDate}
+            />
+          )}
         </>
       )}
 
