@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { useMarkRead, useDismissArticle, fetchArticleContent } from "../hooks/useArticles";
-import { usePrefetchOnVisible, usePrefetchAdjacent } from "../hooks/usePrefetchOnVisible";
+import { usePrefetchAdjacent } from "../hooks/usePrefetchOnVisible";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Article } from "../types";
-
-function ArticleListItem({ article, children }: { article: Article; children: React.ReactNode }) {
-  const ref = usePrefetchOnVisible(
-    ["articleContent", article.short_id],
-    () => fetchArticleContent(article.short_id),
-  );
-  return <div ref={ref}>{children}</div>;
-}
 
 interface ArticleListProps {
   articles: Article[];
@@ -31,6 +24,7 @@ export function ArticleList({
 
   const markRead = useMarkRead();
   const dismissArticle = useDismissArticle();
+  const queryClient = useQueryClient();
 
   const handleMarkRead = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -94,7 +88,7 @@ export function ArticleList({
             const showSeparator = dateStr && dateStr !== lastDate;
             if (dateStr) lastDate = dateStr;
             return (
-              <ArticleListItem key={art.short_id} article={art}>
+              <div key={art.short_id}>
                 {showSeparator && <div className="date-separator">{dateStr}</div>}
                 <div
                   className={`article-card-wrapper ${hidingArticleId === art.short_id && viewMode === 'unprocessed' ? 'hiding' : ''}`}
@@ -107,6 +101,11 @@ export function ArticleList({
                   <div
                     className={`article-card ${selectedArticleId === art.short_id ? 'active' : ''}`}
                     onClick={() => onSelectArticle(art.short_id)}
+                    onMouseEnter={() => queryClient.prefetchQuery({
+                      queryKey: ["articleContent", art.short_id],
+                      queryFn: () => fetchArticleContent(art.short_id),
+                      staleTime: Infinity,
+                    })}
                   >
                     <div className="article-card-left">
                       <div className={`article-card-title ${art.read_status ? 'read' : ''}`}>{art.title}</div>
@@ -138,7 +137,7 @@ export function ArticleList({
                     </div>
                   </div>
                 </div>
-              </ArticleListItem>
+              </div>
             );
           });
         })()}

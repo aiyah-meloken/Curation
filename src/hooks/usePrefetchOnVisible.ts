@@ -41,7 +41,11 @@ export function usePrefetchOnVisible<T>(
 }
 
 /**
- * Prefetch adjacent items (N+1, N+2) when an item is opened.
+ * Prefetch adjacent items (N-1, N+1, N+2) when an item is opened.
+ *
+ * Uses a ref for `items` so the effect doesn't need `items` in its dep array —
+ * avoids re-running on every render while still reading the latest list when
+ * `currentId` changes (e.g. after a filter change).
  */
 export function usePrefetchAdjacent<T>(
   items: { id: string }[],
@@ -49,16 +53,19 @@ export function usePrefetchAdjacent<T>(
   buildQuery: (id: string) => { queryKey: QueryKey; queryFn: () => Promise<T> },
 ) {
   const queryClient = useQueryClient();
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   useEffect(() => {
-    if (!currentId || items.length === 0) return;
-    const idx = items.findIndex(item => item.id === currentId);
+    if (!currentId || itemsRef.current.length === 0) return;
+    const idx = itemsRef.current.findIndex(item => item.id === currentId);
     if (idx === -1) return;
 
-    for (let i = 1; i <= 2; i++) {
-      const next = items[idx + i];
-      if (next) {
-        const { queryKey, queryFn } = buildQuery(next.id);
+    // Prefetch 1 behind and 2 ahead
+    for (const offset of [-1, 1, 2]) {
+      const neighbor = itemsRef.current[idx + offset];
+      if (neighbor) {
+        const { queryKey, queryFn } = buildQuery(neighbor.id);
         queryClient.prefetchQuery({ queryKey, queryFn, staleTime: Infinity });
       }
     }
