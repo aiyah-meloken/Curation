@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavHistory } from './hooks/useNavHistory';
+import type { NavLocation } from './hooks/useNavHistory';
 import { useLayout } from "./hooks/useLayout";
 import type { Article } from "./types";
 import { useArticles, useArticleContent, useAnalysisStatus } from "./hooks/useArticles";
@@ -168,6 +170,40 @@ function AppMain({ currentUser, onLogout }: {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pendingJumpCardId, setPendingJumpCardId] = useState<string | null>(null);
 
+  // Navigation history
+  const { push: navPush, back: navBack, forward: navForward, canBack, canForward } = useNavHistory({
+    appMode: "articles", selectedArticleId: null, selectedAccountId: -1,
+    selectedCardId: null, cardViewDate: null, cardViewTab: "aggregated",
+  });
+
+  function applyLocation(loc: NavLocation) {
+    setAppMode(loc.appMode);
+    setSelectedArticleId(loc.selectedArticleId);
+    setSelectedAccountId(loc.selectedAccountId);
+    setSelectedCardId(loc.selectedCardId);
+    setCardViewDate(loc.cardViewDate);
+    setCardViewTab(loc.cardViewTab);
+  }
+
+  function currentLoc(): NavLocation {
+    return { appMode, selectedArticleId, selectedAccountId, selectedCardId, cardViewDate, cardViewTab };
+  }
+
+  function navigate(loc: NavLocation) {
+    applyLocation(loc);
+    navPush(loc);
+  }
+
+  function handleBack() {
+    const loc = navBack();
+    if (loc) applyLocation(loc);
+  }
+
+  function handleForward() {
+    const loc = navForward();
+    if (loc) applyLocation(loc);
+  }
+
   // Card data via React Query
   const { data: cardList = [] } = useCardList(cardViewDate, cardViewTab, appMode === "cards");
   const { data: cardContentData } = useCardContent(selectedCardId, cardViewTab);
@@ -222,25 +258,57 @@ function AppMain({ currentUser, onLogout }: {
   }, [cardDatesData]);
 
   function jumpToSourceCard(id: string) {
+    navPush(currentLoc());
     setPendingJumpCardId(id);
     setCardViewTab("source");
   }
 
   function jumpToArticle(articleId: string) {
-    setAppMode("articles");
-    setSelectedArticleId(articleId);
+    navigate({ ...currentLoc(), appMode: "articles", selectedArticleId: articleId, selectedCardId: null });
   }
 
   function jumpToAccount(accountId: number) {
-    setAppMode("articles");
-    setSelectedAccountId(accountId);
+    navigate({ ...currentLoc(), appMode: "articles", selectedAccountId: accountId, selectedArticleId: null, selectedCardId: null });
   }
+
+  function navSelectArticle(articleId: string) {
+    navPush({ ...currentLoc(), selectedArticleId: articleId });
+    setSelectedArticleId(articleId);
+  }
+
+  function navSelectCard(cardId: string) {
+    navPush({ ...currentLoc(), appMode: "cards", selectedCardId: cardId });
+    setSelectedCardId(cardId);
+  }
+
+  function navSetAppMode(mode: AppMode) {
+    navigate({ ...currentLoc(), appMode: mode });
+  }
+
+  function navSetAccount(id: number | null) {
+    navigate({ ...currentLoc(), appMode: "articles", selectedAccountId: id });
+  }
+
+  function navSetCardViewDate(date: string | null) {
+    navigate({ ...currentLoc(), appMode: "cards", cardViewDate: date });
+  }
+
+  // Keyboard back/forward: Alt+← / Alt+→
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); handleBack(); }
+      if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); handleForward(); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canBack, canForward, navBack, navForward]);
 
   // Resolve pending jump once the card list has loaded
   useEffect(() => {
     if (!pendingJumpCardId || cardList.length === 0) return;
     const found = cardList.find((c: any) => c.card_id === pendingJumpCardId);
     if (found) {
+      navPush({ appMode: "cards", selectedCardId: found.card_id, selectedArticleId: null, selectedAccountId, cardViewDate, cardViewTab: "source" });
       setSelectedCardId(found.card_id);
       setPendingJumpCardId(null);
     }
@@ -250,11 +318,11 @@ function AppMain({ currentUser, onLogout }: {
     <div className="app-container">
       <Sidebar
         appMode={appMode}
-        onAppModeChange={setAppMode}
+        onAppModeChange={navSetAppMode}
         selectedAccountId={selectedAccountId}
-        onSelectAccount={setSelectedAccountId}
+        onSelectAccount={navSetAccount}
         cardViewDate={cardViewDate}
-        onCardViewDateChange={setCardViewDate}
+        onCardViewDateChange={navSetCardViewDate}
         cardDates={cardDates}
         isSidebarCollapsed={isSidebarCollapsed}
         sidebarWidth={sidebarWidth}
@@ -264,6 +332,10 @@ function AppMain({ currentUser, onLogout }: {
         currentUser={currentUser}
         onLogout={onLogout}
         appVersion={appVersion}
+        canBack={canBack}
+        canForward={canForward}
+        onBack={handleBack}
+        onForward={handleForward}
       />
 
       {/* Pane 2: Article List (articles mode) */}
@@ -271,8 +343,8 @@ function AppMain({ currentUser, onLogout }: {
         <ArticleList
           articles={articles}
           selectedArticleId={selectedArticleId}
-          onSelectArticle={setSelectedArticleId}
-          onSelectAccount={setSelectedAccountId}
+          onSelectArticle={navSelectArticle}
+          onSelectAccount={navSetAccount}
           accountId={selectedAccountId}
           listWidth={listWidth}
           isLoading={isLoadingArticles}
@@ -322,7 +394,7 @@ function AppMain({ currentUser, onLogout }: {
             cardViewDate={cardViewDate}
             listWidth={listWidth}
             selectedCardId={selectedCardId}
-            onSelectCard={setSelectedCardId}
+            onSelectCard={navSelectCard}
             cardViewTab={cardViewTab}
             onTabChange={setCardViewTab}
           />

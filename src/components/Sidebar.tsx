@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Rss, ChevronLeft, Menu, Layers, ShieldCheck, LogOut, UserMinus, UserPlus } from "lucide-react";
+import { Rss, ChevronLeft, ChevronRight, Menu, Layers, ShieldCheck, LogOut, UserMinus, UserPlus } from "lucide-react";
 import { useAccounts, useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AddMenu } from "./AddMenu";
@@ -23,6 +23,10 @@ interface SidebarProps {
   currentUser: { id: number; email: string; username: string; role: string };
   onLogout: () => void;
   appVersion: string;
+  canBack: boolean;
+  canForward: boolean;
+  onBack: () => void;
+  onForward: () => void;
 }
 
 export function Sidebar({
@@ -31,6 +35,7 @@ export function Sidebar({
   isSidebarCollapsed, sidebarWidth, onToggleSidebar,
   isAdminMode, onToggleAdminMode,
   currentUser, onLogout, appVersion,
+  canBack, canForward, onBack, onForward,
 }: SidebarProps) {
   const { data: accounts = [] } = useAccounts();
   const queryClient = useQueryClient();
@@ -65,9 +70,29 @@ export function Sidebar({
           <Rss size={20} />
           <span>公众号订阅</span>
         </h2>
-        <button className="btn-icon" onClick={onToggleSidebar}>
-          {isSidebarCollapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <button
+            className="btn-icon"
+            onClick={onBack}
+            disabled={!canBack}
+            title="后退 (Alt+←)"
+            style={{ opacity: canBack ? 1 : 0.3, cursor: canBack ? 'pointer' : 'default' }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            className="btn-icon"
+            onClick={onForward}
+            disabled={!canForward}
+            title="前进 (Alt+→)"
+            style={{ opacity: canForward ? 1 : 0.3, cursor: canForward ? 'pointer' : 'default' }}
+          >
+            <ChevronRight size={18} />
+          </button>
+          <button className="btn-icon" onClick={onToggleSidebar} title={isSidebarCollapsed ? '展开侧栏' : '收起侧栏'}>
+            <Menu size={18} />
+          </button>
+        </div>
       </div>
       {/* Mode switch: articles vs cards */}
       {!isSidebarCollapsed && (
