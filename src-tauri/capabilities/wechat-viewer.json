@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "wechat-viewer",
+  "description": "Capability for the wechat article viewer window",
+  "windows": ["wechat-viewer"],
+  "permissions": [
+    "core:default"
+  ]
+}

@@ -12,9 +12,10 @@ interface ArticleReaderProps {
   viewRaw: boolean;
   onViewRawChange: (v: boolean) => void;
   isContentLoading?: boolean;
+  onSelectAccount?: (accountId: number) => void;
 }
 
-export function ArticleReader({ article, analysisStatus, viewRaw, onViewRawChange, isContentLoading }: ArticleReaderProps) {
+export function ArticleReader({ article, analysisStatus, viewRaw, onViewRawChange, isContentLoading, onSelectAccount }: ArticleReaderProps) {
   const summaryWordCount = article.summaryWordCount ?? 0;
   const rawWordCount = article.rawWordCount ?? 0;
 
@@ -107,7 +108,7 @@ export function ArticleReader({ article, analysisStatus, viewRaw, onViewRawChang
               ) : !viewRaw && article.cards && article.cards.length > 0 ? (
                 <>
                   {/* Article meta header - once */}
-                  {article.article_meta && <CardHeader meta={article.article_meta} />}
+                  {article.article_meta && <CardHeader meta={article.article_meta} onSelectAccount={onSelectAccount} />}
 
                   {/* Card list */}
                   {article.cards.map((card) => (

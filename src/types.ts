@@ -30,7 +30,7 @@ export interface Article {
   serving_run_id?: number | null;
   content_source?: "analysis" | "raw" | "empty" | "not_loaded" | "enqueued" | "error";
   cards?: { card_id: string; title: string; content: string; unpushed?: string | any[] }[];
-  article_meta?: { title: string; url: string; publish_time: string; author: string; article_id?: string };
+  article_meta?: { title: string; url: string; publish_time: string; author: string; account?: string; account_id?: number; article_id?: string };
   rawHtml?: string;
   contentFormat?: "html" | "markdown";
   word_count?: number;

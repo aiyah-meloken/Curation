@@ -231,6 +231,11 @@ function AppMain({ currentUser, onLogout }: {
     setSelectedArticleId(articleId);
   }
 
+  function jumpToAccount(accountId: number) {
+    setAppMode("articles");
+    setSelectedAccountId(accountId);
+  }
+
   // Resolve pending jump once the card list has loaded
   useEffect(() => {
     if (!pendingJumpCardId || cardList.length === 0) return;
@@ -300,6 +305,7 @@ function AppMain({ currentUser, onLogout }: {
             viewRaw={viewRaw}
             onViewRawChange={setViewRaw}
             isContentLoading={isContentLoading}
+            onSelectAccount={jumpToAccount}
           />
         ) : (
           <div className="reader-empty">
@@ -342,6 +348,7 @@ function AppMain({ currentUser, onLogout }: {
               card={activeCard}
               onJumpToSource={jumpToSourceCard}
               onJumpToArticle={jumpToArticle}
+              onSelectAccount={jumpToAccount}
               cardViewTab={cardViewTab}
               cardViewDate={cardViewDate}
             />

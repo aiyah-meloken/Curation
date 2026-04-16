@@ -1,3 +1,5 @@
+import type React from 'react';
+
 /** Strip YAML frontmatter (---...---) from markdown content. */
 export function stripFrontmatter(md: string): string {
   if (!md.startsWith("---")) return md;
@@ -55,11 +57,20 @@ export const mdComponents: any = {
   },
 };
 
-export function CardHeader({ meta, onJumpToArticle }: {
-  meta: { title: string; url: string; publish_time: string; author: string; article_id?: string };
+async function openInAppWindow(url: string) {
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('open_url_window', { url });
+}
+
+export function CardHeader({ meta, onJumpToArticle, onSelectAccount }: {
+  meta: { title: string; url: string; publish_time: string; author: string; account?: string; account_id?: number; article_id?: string };
   onJumpToArticle?: (articleId: string) => void;
+  onSelectAccount?: (accountId: number) => void;
 }) {
   const canJump = !!meta.article_id && !!onJumpToArticle;
+  const canSelectAccount = !!meta.account_id && !!onSelectAccount;
+  const linkStyle: React.CSSProperties = { color: '#58a6ff', textDecoration: 'none', cursor: 'pointer' };
+
   return (
     <div style={{
       padding: '14px 20px',
@@ -83,10 +94,27 @@ export function CardHeader({ meta, onJumpToArticle }: {
           {meta.title}
         </a>
       </div>
-      <div>{meta.publish_time} — {meta.author}</div>
-      <div>
-        <a href={meta.url} target="_blank" rel="noopener noreferrer"
-          style={{ color: '#58a6ff', textDecoration: 'none', fontSize: '0.8rem' }}>
+      <div>{meta.publish_time ? meta.publish_time.replace('T', ' ').slice(0, 16) : ''}</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {meta.account && (
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); if (canSelectAccount) onSelectAccount!(meta.account_id!); }}
+            style={{ ...linkStyle, borderBottom: canSelectAccount ? '1px dashed #58a6ff60' : 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+          >
+            {meta.account}
+          </a>
+        )}
+        {meta.author && <span>{meta.author}</span>}
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); openInAppWindow(meta.url); }}
+          style={linkStyle}
+          onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+          onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+        >
           微信原文 ↗
         </a>
       </div>

@@ -78,6 +78,24 @@ fn open_article(app: AppHandle, url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Open a URL in a visible browser-like window. Each call reuses the same "wechat-viewer" window.
+#[tauri::command]
+fn open_url_window(app: AppHandle, url: String) -> Result<(), String> {
+    let parsed: url::Url = url.trim().parse().map_err(|e: url::ParseError| e.to_string())?;
+    if let Some(w) = app.webview_windows().get("wechat-viewer") {
+        w.navigate(parsed).map_err(|e| e.to_string())?;
+        let _ = w.show();
+        let _ = w.set_focus();
+    } else {
+        tauri::WebviewWindowBuilder::new(&app, "wechat-viewer", WebviewUrl::External(parsed))
+            .title("微信原文")
+            .inner_size(900.0, 800.0)
+            .build()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// No-op for compatibility with old frontend calls if any, or just remove.
 #[tauri::command]
 fn resize_webview() {}
@@ -203,6 +221,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             open_article,
+            open_url_window,
             resize_webview,
             toggle_webview,
             trigger_extract,

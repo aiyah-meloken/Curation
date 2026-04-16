@@ -6,7 +6,7 @@ export interface Card {
   title: string;
   content?: string;
   article_title?: string;
-  article_meta?: { title: string; url: string; publish_time: string; author: string; article_id?: string };
+  article_meta?: { title: string; url: string; publish_time: string; author: string; account?: string; account_id?: number; article_id?: string };
   read_at?: string;
   source_card_ids?: string | string[];
 }
