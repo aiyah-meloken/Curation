@@ -1,10 +1,12 @@
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Flag } from "lucide-react";
 import { stripFrontmatter, mdComponents, CardHeader } from "../lib/markdown";
 import { useMarkCardRead } from "../hooks/useCards";
 import type { Card } from "../hooks/useCards";
+import { FlagModal } from "./FlagModal";
 
 interface CardReaderProps {
   card: (Card & { content?: string }) | null;
@@ -13,10 +15,13 @@ interface CardReaderProps {
   onSelectAccount: (accountId: number) => void;
   cardViewTab: "aggregated" | "source";
   cardViewDate: string | null;
+  isAdmin?: boolean;
 }
 
-export function CardReader({ card, onJumpToSource, onJumpToArticle, onSelectAccount, cardViewTab, cardViewDate }: CardReaderProps) {
+export function CardReader({ card, onJumpToSource, onJumpToArticle, onSelectAccount, cardViewTab, cardViewDate, isAdmin }: CardReaderProps) {
   const markCardRead = useMarkCardRead(cardViewDate, cardViewTab);
+  const [flagging, setFlagging] = useState(false);
+  const [flagSuccess, setFlagSuccess] = useState(false);
 
   if (!card) {
     return (
@@ -89,6 +94,36 @@ export function CardReader({ card, onJumpToSource, onJumpToArticle, onSelectAcco
           </div>
         )}
       </div>
+      {isAdmin && (
+        <>
+          <button
+            onClick={() => setFlagging(true)}
+            title="标记问题"
+            style={{
+              position: "fixed", bottom: 28, right: 28, zIndex: 100,
+              width: 40, height: 40, borderRadius: "50%",
+              background: flagSuccess ? "rgba(35,134,54,0.9)" : "rgba(22,27,34,0.9)",
+              border: `1px solid ${flagSuccess ? "#3fb950" : "#30363d"}`,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "border-color 0.2s, background 0.2s",
+            }}
+          >
+            <Flag size={16} color={flagSuccess ? "#3fb950" : "#f85149"} />
+          </button>
+          {flagging && card && (
+            <FlagModal
+              card={card}
+              cardType={cardViewTab === "aggregated" ? "aggregated" : "source"}
+              onClose={() => setFlagging(false)}
+              onSuccess={() => {
+                setFlagging(false);
+                setFlagSuccess(true);
+                setTimeout(() => setFlagSuccess(false), 1500);
+              }}
+            />
+          )}
+        </>
+      )}
     </main>
   );
 }
