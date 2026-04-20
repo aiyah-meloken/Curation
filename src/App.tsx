@@ -23,6 +23,9 @@ import { AuthCallback } from './components/AuthCallback';
 import { useAuth } from './lib/authStore';
 import { API_BASE, WS_BASE } from './lib/api';
 import { authingClient } from './lib/authing';
+import { useAppearance } from "./hooks/useAppearance";
+import { useFontShortcuts } from "./hooks/useFontShortcuts";
+import { SettingsDrawer } from "./components/SettingsDrawer";
 import "./App.css";
 
 // Boot info
@@ -137,6 +140,11 @@ function AppMain({ currentUser, onLogout }: {
   currentUser: { id: number; email: string; username: string; role: string };
   onLogout: () => void;
 }) {
+  // Appearance (font system)
+  const appearance = useAppearance();
+  useFontShortcuts({ bump: appearance.bumpRootSize, clear: appearance.clearOverride });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   // View state
   const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites">("inbox");
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
@@ -318,6 +326,7 @@ function AppMain({ currentUser, onLogout }: {
         currentUser={currentUser}
         appVersion={appVersion}
         sidebarWidth={sidebarWidth}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       {/* Pane 2: List */}
@@ -365,6 +374,18 @@ function AppMain({ currentUser, onLogout }: {
           onOpenDrawer={() => setIsDrawerOpen(true)}
         />
       )}
+
+      {/* Settings Drawer */}
+      <SettingsDrawer
+        open={settingsOpen}
+        draft={appearance.draft}
+        autoSize={appearance.autoSize}
+        onClose={() => setSettingsOpen(false)}
+        onChange={appearance.setDraft}
+        onCommit={appearance.commit}
+        onCancel={appearance.cancel}
+        onReset={appearance.resetDefaults}
+      />
 
       {/* Article Drawer overlay */}
       <ArticleDrawer

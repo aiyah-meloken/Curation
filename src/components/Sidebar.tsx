@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inbox, ChevronLeft, ChevronRight, ChevronDown, Menu, ShieldCheck, LogOut, Trash2, UserMinus, UserPlus, Star } from "lucide-react";
+import { Inbox, ChevronLeft, ChevronRight, ChevronDown, Menu, ShieldCheck, LogOut, Trash2, UserMinus, UserPlus, Star, Settings } from "lucide-react";
 import { useAccounts, useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AddMenu } from "./AddMenu";
@@ -31,6 +31,7 @@ interface SidebarProps {
   sidebarWidth: number;
   favoritesCount: number;
   onNavigateToCard?: (cardId: string) => void;
+  onOpenSettings: () => void;
 }
 
 export function Sidebar({
@@ -57,6 +58,7 @@ export function Sidebar({
   sidebarWidth,
   favoritesCount,
   onNavigateToCard,
+  onOpenSettings,
 }: SidebarProps) {
   const { data: fetchedAccounts = [] } = useAccounts();
   const queryClient = useQueryClient();
@@ -334,6 +336,14 @@ export function Sidebar({
               {userName}
             </span>
             {appVersion && <span style={{ fontSize: "0.68rem", color: "#484f58", flexShrink: 0 }}>v{appVersion}</span>}
+            <button
+              className="btn-icon"
+              onClick={onOpenSettings}
+              title="外观设置"
+              style={{ padding: 4 }}
+            >
+              <Settings size={14} />
+            </button>
             <button className="btn-icon" title="退出登录" onClick={onLogout} style={{ padding: 4 }}>
               <LogOut size={14} style={{ color: "#8b949e" }} />
             </button>
