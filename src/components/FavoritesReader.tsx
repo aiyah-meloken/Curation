@@ -233,18 +233,6 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
                     查看原文
                   </button>
                 )}
-                {meta.url && (
-                  <button
-                    onClick={() => openInAppWindow(meta.url)}
-                    style={{
-                      background: "none", border: "1px solid var(--border)", borderRadius: 6,
-                      color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
-                      display: "flex", alignItems: "center", gap: 4,
-                    }}
-                  >
-                    <ExternalLink size={12} /> 微信原文
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -292,18 +280,6 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
               >
                 查看卡片
               </button>
-              {meta.url && (
-                <button
-                  onClick={() => openInAppWindow(meta.url)}
-                  style={{
-                    background: "none", border: "1px solid var(--border)", borderRadius: 6,
-                    color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
-                    display: "flex", alignItems: "center", gap: 4,
-                  }}
-                >
-                  <ExternalLink size={12} /> 微信原文
-                </button>
-              )}
             </div>
           </div>
         </div>

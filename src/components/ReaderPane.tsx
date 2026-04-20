@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { BookOpen, ExternalLink, Loader2 } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import { stripFrontmatter, mdComponents } from "../lib/markdown";
 import { useCardContent } from "../hooks/useCards";
 import { useArticleContent } from "../hooks/useArticles";
@@ -22,15 +22,6 @@ function formatTime(t: string | null) {
   return t.replace("T", " ").slice(0, 16);
 }
 
-async function openInAppWindow(url: string) {
-  try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("open_url_window", { url });
-  } catch {
-    window.open(url, "_blank");
-  }
-}
-
 interface ReaderPaneProps {
   selectedItem: InboxItem | null;
   selectedDiscardedItem: DiscardedItem | null;
@@ -44,7 +35,6 @@ function SourceBar({
   routing,
   isDiscarded,
   routingReason,
-  onOpenOriginal,
   onOpenDrawer,
   cardId,
 }: {
@@ -52,7 +42,6 @@ function SourceBar({
   routing?: "ai_curation" | "original_push";
   isDiscarded: boolean;
   routingReason?: string;
-  onOpenOriginal: () => void;
   onOpenDrawer?: () => void;
   cardId?: string;
 }) {
@@ -90,16 +79,6 @@ function SourceBar({
               查看原文
             </button>
           )}
-          <button
-            onClick={onOpenOriginal}
-            style={{
-              background: "none", border: "1px solid var(--border)", borderRadius: 6,
-              color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
-              display: "flex", alignItems: "center", gap: 4,
-            }}
-          >
-            <ExternalLink size={12} /> 微信原文
-          </button>
         </div>
       </div>
       {routingReason && (
@@ -220,7 +199,6 @@ export function ReaderPane({
           meta={selectedDiscardedItem.article_meta}
           isDiscarded={true}
           routingReason={selectedDiscardedItem.routing_reason}
-          onOpenOriginal={() => openInAppWindow(selectedDiscardedItem.article_meta.url)}
         />
         <div className="reader-content animate-in">
           <ArticleHtmlView articleId={selectedDiscardedItem.article_id} />
@@ -249,18 +227,6 @@ export function ReaderPane({
               {selectedItem.article_meta.author && <><span>·</span><span>{selectedItem.article_meta.author}</span></>}
               {selectedItem.article_meta.publish_time && <><span>·</span><span>{formatTime(selectedItem.article_meta.publish_time)}</span></>}
             </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={() => openInAppWindow(selectedItem.article_meta.url)}
-                style={{
-                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
-                  color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
-                  display: "flex", alignItems: "center", gap: 4,
-                }}
-              >
-                <ExternalLink size={12} /> 微信原文
-              </button>
-            </div>
           </div>
         </div>
         <div className="reader-content animate-in">
@@ -278,7 +244,6 @@ export function ReaderPane({
           meta={selectedItem.article_meta}
           routing={selectedItem.routing ?? undefined}
           isDiscarded={false}
-          onOpenOriginal={() => openInAppWindow(selectedItem.article_meta.url)}
           onOpenDrawer={selectedItem.routing === "ai_curation" ? onOpenDrawer : undefined}
           cardId={selectedItem.card_id ?? undefined}
         />

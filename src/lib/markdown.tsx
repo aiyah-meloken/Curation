@@ -57,11 +57,6 @@ export const mdComponents: any = {
   },
 };
 
-async function openInAppWindow(url: string) {
-  const { invoke } = await import('@tauri-apps/api/core');
-  await invoke('open_url_window', { url });
-}
-
 export function CardHeader({ meta, onJumpToArticle, onSelectAccount }: {
   meta: { title: string; url: string; publish_time: string; author: string; account?: string; account_id?: number; article_id?: string };
   onJumpToArticle?: (articleId: string) => void;
@@ -108,15 +103,6 @@ export function CardHeader({ meta, onJumpToArticle, onSelectAccount }: {
           </a>
         )}
         {meta.author && <span>{meta.author}</span>}
-        <a
-          href="#"
-          onClick={(e) => { e.preventDefault(); openInAppWindow(meta.url); }}
-          style={linkStyle}
-          onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-          onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-        >
-          微信原文 ↗
-        </a>
       </div>
     </div>
   );
