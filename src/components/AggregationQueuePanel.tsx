@@ -173,7 +173,7 @@ export default function AggregationQueuePanel() {
           <RefreshCw size={14} className={loading ? "spin" : ""} />
         </button>
 
-        <label style={{ fontSize: "0.75rem", color: "#8b949e", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+        <label style={{ fontSize: "var(--fs-sm)", color: "#8b949e", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
           <span>自动调度</span>
           <button
             onClick={() => patchStrategy({ auto_launch: !strategy.auto_launch })}
@@ -191,12 +191,12 @@ export default function AggregationQueuePanel() {
           </button>
         </label>
 
-        <label style={{ fontSize: "0.75rem", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
+        <label style={{ fontSize: "var(--fs-sm)", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
           并发
           <select
             value={strategy.max_concurrency}
             onChange={e => patchStrategy({ max_concurrency: Number(e.target.value) })}
-            style={{ fontSize: "0.75rem", background: "#21262d", color: "#c9d1d9", border: "1px solid #30363d", borderRadius: 4, padding: "2px 4px" }}
+            style={{ fontSize: "var(--fs-sm)", background: "#21262d", color: "#c9d1d9", border: "1px solid #30363d", borderRadius: 4, padding: "2px 4px" }}
           >
             {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -210,7 +210,7 @@ export default function AggregationQueuePanel() {
               key={key}
               onClick={() => toggleStatus(key)}
               style={{
-                fontSize: "0.7rem", padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+                fontSize: "var(--fs-xs)", padding: "2px 8px", borderRadius: 4, cursor: "pointer",
                 background: "#21262d", color: STATUS_COLOR[key],
                 border: statusFilters.has(key) ? `1.5px solid ${STATUS_COLOR[key]}` : "1px solid #30363d",
               }}
@@ -223,7 +223,7 @@ export default function AggregationQueuePanel() {
 
       {/* Queue table */}
       <div style={{ flex: 1, overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fs-sm)" }}>
           <thead>
             <tr style={{ position: "sticky", top: 0, background: "#161b22", zIndex: 1 }}>
               <th style={{ width: 30 }} />
@@ -257,16 +257,16 @@ export default function AggregationQueuePanel() {
                     <td style={{ padding: "6px 8px", color: "#c9d1d9" }}>{entry.username || entry.email || `User #${entry.user_id}`}</td>
                     <td style={{ padding: "6px 8px", color: "#c9d1d9" }}>{entry.date}</td>
                     <td style={{ padding: "6px 8px" }}>
-                      <span style={{ color: STATUS_COLOR[entry.status], fontSize: "0.72rem", fontWeight: 600 }}>
+                      <span style={{ color: STATUS_COLOR[entry.status], fontSize: "var(--fs-xs)", fontWeight: 600 }}>
                         {STATUS_LABEL[entry.status] || entry.status}
                       </span>
                       {entry.error_msg && (
-                        <span style={{ color: "#f85149", fontSize: "0.68rem", marginLeft: 6 }} title={entry.error_msg}>
+                        <span style={{ color: "#f85149", fontSize: "var(--fs-xs)", marginLeft: 6 }} title={entry.error_msg}>
                           ({entry.error_msg.slice(0, 30)}{entry.error_msg.length > 30 ? "\u2026" : ""})
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: "6px 8px", color: "#8b949e", fontSize: "0.72rem" }}>
+                    <td style={{ padding: "6px 8px", color: "#8b949e", fontSize: "var(--fs-xs)" }}>
                       {entry.status === "prereq" && entry.wait_until ? fmtTime(entry.wait_until) : ""}
                     </td>
                     <td style={{ padding: "6px 8px", color: "#8b949e", textAlign: "center" }}>{entry.request_count}</td>
@@ -275,7 +275,7 @@ export default function AggregationQueuePanel() {
                       {(entry.status === "pending" || entry.status === "prereq" || entry.status === "skipped") && (
                         <button
                           onClick={() => triggerRun(entry.user_id, entry.date)}
-                          style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer", background: "#238636", color: "#fff", marginRight: 4 }}
+                          style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer", background: "#238636", color: "#fff", marginRight: 4 }}
                         >
                           <Play size={10} style={{ marginRight: 2 }} />运行
                         </button>
@@ -283,7 +283,7 @@ export default function AggregationQueuePanel() {
                       {(entry.status === "done" || entry.status === "failed") && (
                         <button
                           onClick={() => retryEntry(entry.user_id, entry.date)}
-                          style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer", background: "#1f6feb", color: "#fff" }}
+                          style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer", background: "#1f6feb", color: "#fff" }}
                         >
                           <RotateCcw size={10} style={{ marginRight: 2 }} />重试
                         </button>
@@ -294,11 +294,11 @@ export default function AggregationQueuePanel() {
                     <tr key={`${entryKey}-detail`}>
                       <td colSpan={8} style={{ padding: "8px 16px", background: "#0d1117" }}>
                         {loadingRuns ? (
-                          <span style={{ color: "#8b949e", fontSize: "0.75rem" }}>加载中…</span>
+                          <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)" }}>加载中…</span>
                         ) : entryRuns.length === 0 ? (
-                          <span style={{ color: "#8b949e", fontSize: "0.75rem" }}>暂无运行记录</span>
+                          <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)" }}>暂无运行记录</span>
                         ) : (
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fs-xs)" }}>
                             <thead>
                               <tr>
                                 <th style={{ textAlign: "left", padding: "4px 8px", color: "#8b949e" }}>Run ID</th>
@@ -315,7 +315,7 @@ export default function AggregationQueuePanel() {
                                   <td style={{ padding: "4px 8px", color: "#c9d1d9" }}>
                                     #{run.id}
                                     {entry.run_id === run.id && (
-                                      <span style={{ marginLeft: 6, fontSize: "0.65rem", color: "#3fb950", border: "1px solid #3fb950", borderRadius: 3, padding: "0 4px" }}>
+                                      <span style={{ marginLeft: 6, fontSize: "var(--fs-xs)", color: "#3fb950", border: "1px solid #3fb950", borderRadius: 3, padding: "0 4px" }}>
                                         当前
                                       </span>
                                     )}
@@ -351,7 +351,7 @@ export default function AggregationQueuePanel() {
           </tbody>
         </table>
         {filteredQueue.length === 0 && (
-          <div style={{ textAlign: "center", padding: 40, color: "#484f58", fontSize: "0.85rem" }}>
+          <div style={{ textAlign: "center", padding: 40, color: "#484f58", fontSize: "var(--fs-base)" }}>
             暂无聚合任务
           </div>
         )}

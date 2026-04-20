@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, Play, RotateCcw, Trash2, Star } from "lucide-react";
+import { ChevronRight, ChevronDown, Play, RotateCcw, Trash2, Star, RefreshCw, ArrowUp, ArrowDown } from "lucide-react";
 import {
   fetchQueue, fetchStrategy, patchStrategy, fetchBackends,
   triggerQueueRun, retryQueueEntry, fetchArticleRuns, deleteRun, setServingRun,
@@ -22,12 +22,12 @@ function statusLabel(s: string) {
     failed:   { text: "失败",   color: "#f85149" },
   };
   const v = m[s] ?? { text: s, color: "#8b949e" };
-  return <span style={{ color: v.color, fontSize: "0.78rem" }}>{v.text}</span>;
+  return <span style={{ color: v.color, fontSize: "var(--fs-sm)" }}>{v.text}</span>;
 }
 
 function routingPill(routing: string | null) {
   if (!routing) {
-    return <span style={{ background: "#1c1c1c", color: "#484f58", padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>未推送</span>;
+    return <span style={{ background: "#1c1c1c", color: "#484f58", padding: "1px 8px", borderRadius: 10, fontSize: "var(--fs-xs)" }}>未推送</span>;
   }
   const m: Record<string, { text: string; bg: string; color: string }> = {
     ai_curation:   { text: "AI梳理",  bg: "#1a3a1a", color: "#3fb950" },
@@ -35,7 +35,7 @@ function routingPill(routing: string | null) {
     discard:       { text: "丢弃",     bg: "#2d2a1a", color: "#d29922" },
   };
   const v = m[routing] ?? { text: routing, bg: "#1c1c1c", color: "#484f58" };
-  return <span style={{ background: v.bg, color: v.color, padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>{v.text}</span>;
+  return <span style={{ background: v.bg, color: v.color, padding: "1px 8px", borderRadius: 10, fontSize: "var(--fs-xs)" }}>{v.text}</span>;
 }
 
 function runStatusColor(s: string) {
@@ -43,33 +43,49 @@ function runStatusColor(s: string) {
   return m[s] ?? "#8b949e";
 }
 
+type SortKey = "article_title" | "article_account" | "article_publish_time" | "status" | "routing" | "updated_at";
+
+function cmp(a: unknown, b: unknown): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), "zh-Hans-CN");
+}
+
 export function ArticleQueuePanel() {
   const qc = useQueryClient();
 
-  const { data: queue = [] } = useQuery<QueueEntry[]>({ queryKey: ["articleQueue"], queryFn: fetchQueue, refetchInterval: 5000 });
+  const { data: queue = [], refetch: refetchQueue, isFetching: queueFetching } = useQuery<QueueEntry[]>({ queryKey: ["articleQueue"], queryFn: fetchQueue, refetchInterval: 5000 });
   const { data: strategy } = useQuery({ queryKey: ["analysisStrategy"], queryFn: fetchStrategy, refetchInterval: 5000 });
   const { data: backendsData } = useQuery<AgentBackends>({ queryKey: ["analysisBackends"], queryFn: fetchBackends, staleTime: 60_000 });
 
-  const triggerMut = useMutation({ mutationFn: (aid: string) => triggerQueueRun(aid), onSuccess: () => qc.invalidateQueries({ queryKey: ["articleQueue"] }) });
-  const retryMut   = useMutation({ mutationFn: (aid: string) => retryQueueEntry(aid), onSuccess: () => qc.invalidateQueries({ queryKey: ["articleQueue"] }) });
-  const deleteMut  = useMutation({ mutationFn: (rid: number) => deleteRun(rid), onSuccess: () => { qc.invalidateQueries({ queryKey: ["articleQueue"] }); } });
-  const servingMut = useMutation({ mutationFn: ({ aid, rid }: { aid: string; rid: number }) => setServingRun(aid, rid), onSuccess: () => { qc.invalidateQueries({ queryKey: ["articleQueue"] }); } });
+  const invalidateRuns = (aid: string | null) => {
+    qc.invalidateQueries({ queryKey: ["articleQueue"] });
+    if (aid) qc.invalidateQueries({ queryKey: ["articleRuns", aid] });
+  };
 
   const [statusFilter, setStatusFilter]     = useState<string>("all");
   const [routingFilter, setRoutingFilter]   = useState<string>("all");
+  const [dateFilter, setDateFilter]         = useState<string>("");
+  const [sortKey, setSortKey]               = useState<SortKey>("updated_at");
+  const [sortDir, setSortDir]               = useState<"asc" | "desc">("desc");
   const [expandedId, setExpandedId]         = useState<string | null>(null);
-  const [articleRuns, setArticleRuns]        = useState<RunEntry[]>([]);
-  const [loadingRuns, setLoadingRuns]        = useState(false);
 
   const [previewArticleId, setPreviewArticleId] = useState<string | null>(null);
   const [previewRouting, setPreviewRouting]      = useState<string | null>(null);
   const [detailRunId, setDetailRunId]            = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!expandedId) { setArticleRuns([]); return; }
-    setLoadingRuns(true);
-    fetchArticleRuns(expandedId).then((runs) => { setArticleRuns(runs); setLoadingRuns(false); }).catch(() => setLoadingRuns(false));
-  }, [expandedId]);
+  const { data: articleRuns = [], isLoading: loadingRuns } = useQuery<RunEntry[]>({
+    queryKey: ["articleRuns", expandedId],
+    queryFn: () => fetchArticleRuns(expandedId!),
+    enabled: !!expandedId,
+  });
+
+  const triggerMut = useMutation({ mutationFn: (aid: string) => triggerQueueRun(aid), onSuccess: (_d, aid) => invalidateRuns(aid) });
+  const retryMut   = useMutation({ mutationFn: (aid: string) => retryQueueEntry(aid), onSuccess: (_d, aid) => invalidateRuns(aid) });
+  const deleteMut  = useMutation({ mutationFn: (rid: number) => deleteRun(rid), onSuccess: () => invalidateRuns(expandedId) });
+  const servingMut = useMutation({ mutationFn: ({ aid, rid }: { aid: string; rid: number }) => setServingRun(aid, rid), onSuccess: (_d, v) => invalidateRuns(v.aid) });
 
   const patchStrat = (key: string, value: unknown) => {
     patchStrategy({ [key]: value }).then(() => qc.invalidateQueries({ queryKey: ["analysisStrategy"] }));
@@ -77,42 +93,56 @@ export function ArticleQueuePanel() {
 
   const filtered = queue.filter((e) => {
     if (statusFilter !== "all" && e.status !== statusFilter) return false;
-    if (routingFilter === "all") return true;
-    if (routingFilter === "none") return !e.routing;
-    return e.routing === routingFilter;
+    if (routingFilter !== "all") {
+      if (routingFilter === "none") { if (e.routing) return false; }
+      else if (e.routing !== routingFilter) return false;
+    }
+    if (dateFilter) {
+      if (!e.article_publish_time) return false;
+      if (!e.article_publish_time.startsWith(dateFilter)) return false;
+    }
+    return true;
+  }).slice().sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return cmp((a as any)[sortKey], (b as any)[sortKey]) * dir;
   });
 
-  const backendList = backendsData ? Object.keys(backendsData.backends ?? backendsData) : [];
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("desc"); }
+  };
+
+  const backendList = backendsData ? Object.keys(backendsData.backends ?? {}) : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
       {strategy && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: "1px solid #21262d", background: "#161b22", flexWrap: "wrap", fontSize: "0.78rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: "1px solid #21262d", background: "#161b22", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
           <span style={{ color: "#8b949e" }}>自动启动</span>
           <button
             onClick={() => patchStrat("auto_launch", !strategy.auto_launch)}
-            style={{ background: strategy.auto_launch ? "#238636" : "#30363d", color: "#fff", border: "none", borderRadius: 10, padding: "1px 10px", cursor: "pointer", fontSize: "0.72rem" }}
+            style={{ background: strategy.auto_launch ? "#238636" : "#30363d", color: "#fff", border: "none", borderRadius: 10, padding: "1px 10px", cursor: "pointer", fontSize: "var(--fs-xs)" }}
           >{strategy.auto_launch ? "开" : "关"}</button>
 
           <span style={{ color: "#30363d" }}>|</span>
           <span style={{ color: "#8b949e" }}>并发</span>
           <select value={strategy.max_concurrency} onChange={(e) => patchStrat("max_concurrency", +e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 4px", fontSize: "0.75rem" }}>
+            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
             {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
 
           <span style={{ color: "#30363d" }}>|</span>
           <span style={{ color: "#8b949e" }}>后端</span>
           <select value={strategy.default_backend} onChange={(e) => patchStrat("default_backend", e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 4px", fontSize: "0.75rem" }}>
+            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
             {backendList.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
 
           <div style={{ flex: 1 }} />
 
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "2px 8px", fontSize: "0.72rem" }}>
+            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
             <option value="all">全部状态</option>
             <option value="pending">待处理</option>
             <option value="running">运行中</option>
@@ -121,23 +151,45 @@ export function ArticleQueuePanel() {
           </select>
 
           <select value={routingFilter} onChange={(e) => setRoutingFilter(e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "2px 8px", fontSize: "0.72rem" }}>
+            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
             <option value="all">全部推送</option>
             <option value="ai_curation">AI梳理</option>
             <option value="original_push">原文推送</option>
             <option value="discard">丢弃</option>
             <option value="none">未推送</option>
           </select>
+
+          <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 6px", fontSize: "var(--fs-xs)" }} />
+          {dateFilter && (
+            <button onClick={() => setDateFilter("")} title="清除日期"
+              style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", padding: "0 2px", fontSize: "var(--fs-xs)" }}>×</button>
+          )}
+
+          <button onClick={() => refetchQueue()} title="刷新"
+            disabled={queueFetching}
+            style={{ background: "#21262d", border: "1px solid #30363d", color: "#e6edf3", borderRadius: 4, padding: "2px 6px", cursor: queueFetching ? "default" : "pointer", display: "flex", alignItems: "center" }}>
+            <RefreshCw size={12} style={queueFetching ? { animation: "spin 1s linear infinite" } : undefined} />
+          </button>
         </div>
       )}
 
       <div style={{ flex: 1, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(240px,1fr) 90px 80px 80px 110px 50px", padding: "6px 16px", borderBottom: "1px solid #21262d", background: "#161b22", color: "#8b949e", fontSize: "0.7rem", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
-          <span>文章标题</span>
-          <span>发布时间</span>
-          <span>任务状态</span>
-          <span>推送状态</span>
-          <span>最后入队</span>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "6px 16px", borderBottom: "1px solid #21262d", background: "#161b22", color: "#8b949e", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
+          {([
+            ["article_title", "文章标题"],
+            ["article_account", "公众号"],
+            ["article_publish_time", "发布时间"],
+            ["status", "任务状态"],
+            ["routing", "推送状态"],
+            ["updated_at", "最后入队"],
+          ] as [SortKey, string][]).map(([k, label]) => (
+            <span key={k} onClick={() => toggleSort(k)}
+              style={{ cursor: "pointer", userSelect: "none", display: "inline-flex", alignItems: "center", gap: 2 }}>
+              {label}
+              {sortKey === k && (sortDir === "asc" ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+            </span>
+          ))}
           <span style={{ textAlign: "center" }}>操作</span>
         </div>
 
@@ -145,7 +197,7 @@ export function ArticleQueuePanel() {
           const isExpanded = expandedId === entry.article_id;
           return (
             <div key={entry.article_id} style={{ borderBottom: "1px solid #21262d" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(240px,1fr) 90px 80px 80px 110px 50px", padding: "8px 16px", alignItems: "center" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "8px 16px", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                   <span
                     onClick={() => setExpandedId(isExpanded ? null : entry.article_id)}
@@ -155,16 +207,17 @@ export function ArticleQueuePanel() {
                   </span>
                   <a
                     onClick={() => { setPreviewArticleId(entry.article_id); setPreviewRouting(entry.routing); }}
-                    style={{ color: "#58a6ff", cursor: "pointer", textDecoration: "none", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    style={{ color: "#58a6ff", cursor: "pointer", textDecoration: "none", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   >
                     {entry.article_title}
                   </a>
-                  <span style={{ color: "#484f58", fontSize: "0.68rem", flexShrink: 0 }}>{entry.run_count} runs</span>
+                  <span style={{ color: "#484f58", fontSize: "var(--fs-xs)", flexShrink: 0 }}>{entry.run_count} runs</span>
                 </div>
-                <span style={{ color: "#8b949e", fontSize: "0.78rem" }}>{fmtTime(entry.article_publish_time)}</span>
+                <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.article_account ?? "—"}</span>
+                <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.article_publish_time)}</span>
                 {statusLabel(entry.status)}
                 {routingPill(entry.routing)}
-                <span style={{ color: "#8b949e", fontSize: "0.78rem" }}>{fmtTime(entry.updated_at)}</span>
+                <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.updated_at)}</span>
                 <div style={{ textAlign: "center" }}>
                   {entry.status === "pending" && (
                     <button onClick={() => triggerMut.mutate(entry.article_id)} title="触发运行"
@@ -184,12 +237,12 @@ export function ArticleQueuePanel() {
               {isExpanded && (
                 <div style={{ background: "#161b22", borderTop: "1px solid #21262d", padding: "6px 16px 6px 36px" }}>
                   {loadingRuns ? (
-                    <div style={{ color: "#8b949e", fontSize: "0.75rem", padding: 8 }}>加载中...</div>
+                    <div style={{ color: "#8b949e", fontSize: "var(--fs-sm)", padding: 8 }}>加载中...</div>
                   ) : articleRuns.length === 0 ? (
-                    <div style={{ color: "#8b949e", fontSize: "0.75rem", padding: 8 }}>暂无运行记录</div>
+                    <div style={{ color: "#8b949e", fontSize: "var(--fs-sm)", padding: 8 }}>暂无运行记录</div>
                   ) : (
                     <>
-                      <div style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", color: "#8b949e", fontSize: "0.65rem", padding: "4px 0", borderBottom: "1px solid #21262d" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", color: "#8b949e", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid #21262d" }}>
                         <span>Run ID</span><span>后端</span><span>状态</span><span>耗时</span><span>创建时间</span><span>推送</span><span></span>
                       </div>
                       {articleRuns.map((run) => {
@@ -197,13 +250,13 @@ export function ArticleQueuePanel() {
                         return (
                         <div key={run.id} style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", padding: "5px 0", borderBottom: "1px solid #21262d", alignItems: "center" }}>
                           <a onClick={() => setDetailRunId(run.id)}
-                            style={{ color: "#58a6ff", fontSize: "0.75rem", cursor: "pointer", textDecoration: "none" }}>
+                            style={{ color: "#58a6ff", fontSize: "var(--fs-sm)", cursor: "pointer", textDecoration: "none" }}>
                             #{run.id}
                           </a>
-                          <span style={{ color: "#e6edf3", fontSize: "0.75rem" }}>{run.backend}</span>
-                          <span style={{ color: runStatusColor(run.overall_status), fontSize: "0.75rem" }}>{run.overall_status}</span>
-                          <span style={{ color: "#e6edf3", fontSize: "0.75rem" }}>{run.elapsed_s ? `${run.elapsed_s.toFixed(1)}s` : "—"}</span>
-                          <span style={{ color: "#8b949e", fontSize: "0.7rem" }}>{fmtTime(run.created_at)}</span>
+                          <span style={{ color: "#e6edf3", fontSize: "var(--fs-sm)" }}>{run.backend}</span>
+                          <span style={{ color: runStatusColor(run.overall_status), fontSize: "var(--fs-sm)" }}>{run.overall_status}</span>
+                          <span style={{ color: "#e6edf3", fontSize: "var(--fs-sm)" }}>{run.elapsed_s ? `${run.elapsed_s.toFixed(1)}s` : "—"}</span>
+                          <span style={{ color: "#8b949e", fontSize: "var(--fs-xs)" }}>{fmtTime(run.created_at)}</span>
                           <span>
                             {isServing ? (
                               <Star size={12} style={{ color: "#f0a500", fill: "#f0a500" }} />
