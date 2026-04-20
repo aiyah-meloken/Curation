@@ -170,7 +170,7 @@ export function Sidebar({
         {/* Subscribed accounts — collapsible */}
         {!isSidebarCollapsed && subscribedAccounts.length > 0 && (
           <div
-            style={{ padding: "4px 14px", fontSize: "0.72rem", color: "#6e7681", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
+            style={{ padding: "4px 14px", fontSize: "var(--fs-base)", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
             onClick={() => setIsAccountListOpen(!isAccountListOpen)}
           >
             {isAccountListOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -204,7 +204,7 @@ export function Sidebar({
               />
               {!isSidebarCollapsed && (
                 <div className="account-info">
-                  <div className="account-name" style={{ fontSize: "0.84rem" }}>{acc.name}</div>
+                  <div className="account-name">{acc.name}</div>
                 </div>
               )}
               {count > 0 && <span className="unread-badge">{count}</span>}
@@ -228,7 +228,7 @@ export function Sidebar({
         {/* Temporary accounts — collapsible */}
         {!isSidebarCollapsed && temporaryAccounts.length > 0 && (
           <div
-            style={{ padding: "4px 14px", fontSize: "0.72rem", color: "#6e7681", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none", marginTop: 8 }}
+            style={{ padding: "4px 14px", fontSize: "var(--fs-base)", color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none", marginTop: 8 }}
             onClick={() => setIsTempListOpen(!isTempListOpen)}
           >
             {isTempListOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -262,7 +262,7 @@ export function Sidebar({
               />
               {!isSidebarCollapsed && (
                 <div className="account-info">
-                  <div className="account-name" style={{ fontSize: "0.84rem" }}>{acc.name}</div>
+                  <div className="account-name">{acc.name}</div>
                 </div>
               )}
               {count > 0 && <span className="unread-badge">{count}</span>}
@@ -312,11 +312,11 @@ export function Sidebar({
             />
             <button
               className="primary-btn"
-              style={{ width: "100%", height: "36px", fontSize: "1.1rem" }}
+              style={{ width: "100%", height: "36px", fontSize: "var(--fs-lg)" }}
               onClick={() => setIsAddMenuOpen((v) => !v)}
               title="添加内容"
             >
-              + {!isSidebarCollapsed && <span style={{ fontSize: "0.82rem", marginLeft: 4 }}>添加</span>}
+              + {!isSidebarCollapsed && <span style={{ fontSize: "var(--fs-sm)", marginLeft: 4 }}>添加</span>}
             </button>
           </div>
           {!isSidebarCollapsed && currentUser.role === "admin" && (
@@ -332,10 +332,10 @@ export function Sidebar({
         </div>
         {!isSidebarCollapsed && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 2px" }}>
-            <span style={{ fontSize: "0.72rem", color: "#8b949e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "#8b949e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {userName}
             </span>
-            {appVersion && <span style={{ fontSize: "0.68rem", color: "#484f58", flexShrink: 0 }}>v{appVersion}</span>}
+            {appVersion && <span style={{ fontSize: "var(--fs-xs)", color: "#484f58", flexShrink: 0 }}>v{appVersion}</span>}
             <button
               className="btn-icon"
               onClick={onOpenSettings}
