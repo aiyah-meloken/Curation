@@ -333,12 +333,12 @@ body {
 }
 
 .reader-toolbar {
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-color);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-panel);
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--sp-3);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -348,7 +348,7 @@ body {
   max-width: var(--reader-max-width);
   width: 100%;
   margin: 0 auto;
-  padding: 40px 60px;
+  padding: var(--sp-7) var(--sp-5);
   background-color: transparent;
   color: var(--text-primary);
 }
@@ -370,8 +370,9 @@ body {
 
 /* Markdown Typography (for AI Summary) */
 .markdown-body {
+  font-family: var(--font-body);
   font-size: var(--fs-md);
-  line-height: 1.95;
+  line-height: var(--lh-body);
   letter-spacing: 0.012em;
   color: var(--text-primary) !important;
   background-color: transparent !important;
@@ -386,21 +387,21 @@ body {
 .markdown-body h1 {
   font-family: var(--font-ui);
   font-size: 1.7em;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-primary) !important;
   border-bottom: none !important;
-  margin: 0 0 8px;
-  letter-spacing: -0.025em;
+  margin: 0 0 var(--sp-2);
+  letter-spacing: -0.02em;
   line-height: 1.25;
 }
 .markdown-body h1::after {
   content: "";
   display: block;
   width: 56px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent-gold), #ef4444);
-  margin-top: 14px;
-  border-radius: 2px;
+  height: 2px;
+  background: var(--accent-gold);
+  margin-top: var(--sp-3);
+  border-radius: 1px;
 }
 
 .markdown-body h2 {
@@ -409,15 +410,18 @@ body {
   font-weight: 700;
   color: var(--accent-gold) !important;
   border-bottom: none !important;
-  margin: 36px 0 12px;
+  margin: var(--sp-6) 0 var(--sp-3);
+  letter-spacing: -0.01em;
 }
 
-.markdown-body h3, .markdown-body h4 {
+.markdown-body h3,
+.markdown-body h4 {
   font-family: var(--font-ui);
   color: var(--text-primary) !important;
   border-bottom: none !important;
   margin-top: 1.5em;
   margin-bottom: 0.8em;
+  font-weight: 700;
 }
 
 .markdown-body p {
@@ -437,24 +441,25 @@ body {
 }
 
 .markdown-body a {
-  color: var(--accent-gold);
+  color: var(--accent-blue);
   text-decoration: none;
-  border-bottom: 1px solid var(--accent-gold)40;
+  border-bottom: 1px solid var(--accent-blue-dim);
+  transition: border-color var(--dur-instant) var(--ease-out);
 }
 .markdown-body a:hover {
-  border-bottom-color: var(--accent-gold);
+  border-bottom-color: var(--accent-blue);
 }
 
 .markdown-body blockquote {
-  margin: 22px 0;
-  padding: 20px 24px 20px 28px;
+  margin: var(--sp-5) 0;
+  padding: var(--sp-5) var(--sp-5) var(--sp-5) var(--sp-6);
   border-left: none !important;
-  border: 1px solid #92400e33 !important;
-  background: linear-gradient(135deg, #1a1308 0%, #0f0e0a 100%) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg-panel) !important;
   border-radius: var(--r-lg);
-  color: #c4975a !important;
+  color: var(--text-secondary) !important;
   font-size: 1em;
-  line-height: 1.95;
+  line-height: var(--lh-body);
   font-style: normal;
   position: relative;
 }
@@ -464,7 +469,7 @@ body {
   top: 6px;
   left: 10px;
   font-size: 2.2em;
-  color: var(--accent-gold)22;
+  color: var(--accent-gold-dim);
   font-family: Georgia, serif;
   line-height: 1;
 }
@@ -663,7 +668,7 @@ body {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--border-strong), transparent) !important;
   border: none !important;
-  margin: 36px 0;
+  margin: var(--sp-6) 0;
 }
 
 /* Settings Overlay & Modal */
