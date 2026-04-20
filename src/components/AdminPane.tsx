@@ -1,33 +1,26 @@
-import { BookOpen, ExternalLink, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAccounts } from "../hooks/useAccounts";
 import { AdminManagementPanel } from "./AdminManagementPanel";
-import { ArticleAdminPanel } from "./ArticleAdminPanel";
-import { AnalysisQueuePanel } from "./AnalysisQueuePanel";
+import { ArticleQueuePanel } from "./ArticleQueuePanel";
 import AggregationQueuePanel from "./AggregationQueuePanel";
 import { InviteManagementPanel } from "./InviteManagementPanel";
 import { UserManagementPanel } from "./UserManagementPanel";
-import type { Article } from "../types";
 
-type AdminView = "management" | "analysis" | "queue" | "aggregation" | "invites" | "users";
+type AdminView = "management" | "queue" | "aggregation" | "invites" | "users";
 
 interface AdminPaneProps {
   adminView: AdminView;
   onAdminViewChange: (view: AdminView) => void;
-  activeArticle: Article | null;
-  articles: Article[];
   currentUser: { role: string };
-  onSelectArticle: (id: string) => void;
   onExitAdmin: () => void;
-  isLoadingArticles?: boolean;
 }
 
 export function AdminPane({
-  adminView, onAdminViewChange, activeArticle, articles, currentUser,
-  onSelectArticle, onExitAdmin, isLoadingArticles,
+  adminView, onAdminViewChange, currentUser,
 }: AdminPaneProps) {
   const { data: accounts = [] } = useAccounts();
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   return (
     <>
@@ -45,21 +38,7 @@ export function AdminPane({
               color: adminView === "management" ? '#fff' : '#8b949e',
             }}
           >
-            内容管理
-          </button>
-          <button
-            onClick={() => activeArticle && onAdminViewChange("analysis")}
-            disabled={!activeArticle}
-            style={{
-              fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none',
-              cursor: activeArticle ? 'pointer' : 'default',
-              background: adminView === "analysis" ? '#1f6feb' : '#21262d',
-              color: adminView === "analysis" ? '#fff' : (activeArticle ? '#8b949e' : '#4b5563'),
-              maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}
-            title={activeArticle?.title}
-          >
-            {activeArticle ? `分析: ${activeArticle.title.slice(0, 20)}…` : "分析（请选择文章）"}
+            公众号订阅管理
           </button>
           <button
             onClick={() => onAdminViewChange("queue")}
@@ -69,7 +48,7 @@ export function AdminPane({
               color: adminView === "queue" ? '#fff' : '#8b949e',
             }}
           >
-            任务队列
+            文章队列
           </button>
           <button
             onClick={() => onAdminViewChange("aggregation")}
@@ -107,47 +86,20 @@ export function AdminPane({
           )}
         </div>
         <div style={{ flex: 1 }} />
-        {activeArticle && (
-          <button className="btn-icon" title="打开原文" onClick={() => window.open(activeArticle.url)}>
-            <ExternalLink size={16} />
-          </button>
-        )}
       </div>
 
       {/* Tab content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {adminView === "management" ? (
-          <AdminManagementPanel
-            accounts={accounts}
-            articles={articles}
-            isLoading={isLoadingArticles}
-            onRefresh={() => { queryClient.invalidateQueries({ queryKey: ["accounts"] }); queryClient.invalidateQueries({ queryKey: ["articles"] }); }}
-            onSelectArticle={(id) => {
-              onSelectArticle(id);
-              onAdminViewChange("analysis");
-            }}
-          />
+          <AdminManagementPanel accounts={accounts} onRefresh={() => qc.invalidateQueries()} />
         ) : adminView === "queue" ? (
-          <AnalysisQueuePanel onNavigateToArticle={(id) => {
-            onSelectArticle(id);
-            onExitAdmin();
-          }} />
+          <ArticleQueuePanel />
         ) : adminView === "aggregation" ? (
           <AggregationQueuePanel />
         ) : adminView === "invites" ? (
           <InviteManagementPanel />
-        ) : adminView === "users" ? (
-          <UserManagementPanel />
-        ) : activeArticle ? (
-          <ArticleAdminPanel
-            article={activeArticle}
-            onArticleUpdate={() => queryClient.invalidateQueries({ queryKey: ["articles"] })}
-          />
         ) : (
-          <div className="reader-empty">
-            <div className="reader-empty-icon"><BookOpen size={48} /></div>
-            <h3>请先在内容管理中选择一篇文章</h3>
-          </div>
+          <UserManagementPanel />
         )}
       </div>
     </>
