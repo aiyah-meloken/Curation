@@ -1,0 +1,253 @@
+import { useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import { BookOpen, ExternalLink } from "lucide-react";
+import { stripFrontmatter, mdComponents } from "../lib/markdown";
+import { useCardContent } from "../hooks/useCards";
+import { useArticleContent } from "../hooks/useArticles";
+import { useMarkCardReadSingle } from "../hooks/useInbox";
+import type { InboxItem, DiscardedItem } from "../types";
+
+function routingTag(routing: "ai_curation" | "original_push") {
+  if (routing === "ai_curation") {
+    return <span className="inbox-tag tag-ai" style={{ fontSize: "0.72rem" }}>AI总结</span>;
+  }
+  return <span className="inbox-tag tag-original" style={{ fontSize: "0.72rem" }}>原文</span>;
+}
+
+function formatTime(t: string | null) {
+  if (!t) return "";
+  return t.replace("T", " ").slice(0, 16);
+}
+
+async function openInAppWindow(url: string) {
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("open_url_window", { url });
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
+interface ReaderPaneProps {
+  selectedItem: InboxItem | null;
+  selectedDiscardedItem: DiscardedItem | null;
+  isDiscardedView: boolean;
+  onOpenDrawer: () => void;
+  onSelectAccount?: (accountId: number) => void;
+}
+
+function SourceBar({
+  meta,
+  routing,
+  isDiscarded,
+  routingReason,
+  onOpenOriginal,
+  onOpenDrawer,
+}: {
+  meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
+  routing?: "ai_curation" | "original_push";
+  isDiscarded: boolean;
+  routingReason?: string;
+  onOpenOriginal: () => void;
+  onOpenDrawer?: () => void;
+}) {
+  return (
+    <div className="reader-source-bar">
+      <div style={{ marginBottom: 6 }}>
+        <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "0.88rem" }}>
+          {meta.title}
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "0.78rem", color: "#8b949e" }}>
+        <span>{meta.account}</span>
+        {meta.author && <><span>·</span><span>{meta.author}</span></>}
+        {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
+        {routing && routingTag(routing)}
+        {isDiscarded && (
+          <span className="inbox-tag tag-discard" style={{ fontSize: "0.72rem" }}>丢弃</span>
+        )}
+      </div>
+      {routingReason && (
+        <div style={{ fontSize: "0.76rem", color: "#f0883e", marginTop: 4 }}>
+          丢弃原因: {routingReason}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        {routing === "ai_curation" && onOpenDrawer && (
+          <button
+            onClick={onOpenDrawer}
+            style={{
+              background: "none", border: "1px solid #30363d", borderRadius: 6,
+              color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+            }}
+          >
+            查看原文
+          </button>
+        )}
+        <button
+          onClick={onOpenOriginal}
+          style={{
+            background: "none", border: "1px solid #30363d", borderRadius: 6,
+            color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+            display: "flex", alignItems: "center", gap: 4,
+          }}
+        >
+          <ExternalLink size={12} /> 微信原文
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CardContentView({ cardId }: { cardId: string }) {
+  const { data: cardData, isLoading } = useCardContent(cardId, "source");
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+        加载中...
+      </div>
+    );
+  }
+
+  if (!cardData?.content) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+        暂无内容
+      </div>
+    );
+  }
+
+  return (
+    <div className="markdown-body">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={mdComponents}
+      >
+        {stripFrontmatter(cardData.content)}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function ArticleHtmlView({ articleId }: { articleId: string }) {
+  const { data: articleData, isLoading } = useArticleContent(articleId);
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+        加载中...
+      </div>
+    );
+  }
+
+  const html = articleData?.rawHtml;
+  if (!html) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+        暂无原文内容
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rich-text-content"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+export function ReaderPane({
+  selectedItem,
+  selectedDiscardedItem,
+  isDiscardedView,
+  onOpenDrawer,
+}: ReaderPaneProps) {
+  const markRead = useMarkCardReadSingle();
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto mark-read after 2 seconds
+  useEffect(() => {
+    if (markReadTimerRef.current) {
+      clearTimeout(markReadTimerRef.current);
+      markReadTimerRef.current = null;
+    }
+
+    if (selectedItem && !selectedItem.read_at) {
+      markReadTimerRef.current = setTimeout(() => {
+        markRead.mutate(selectedItem.card_id);
+      }, 2000);
+    }
+
+    return () => {
+      if (markReadTimerRef.current) {
+        clearTimeout(markReadTimerRef.current);
+      }
+    };
+  }, [selectedItem?.card_id]);
+
+  // Empty state
+  if (!selectedItem && !selectedDiscardedItem) {
+    return (
+      <main className="reader-pane">
+        <div className="reader-empty">
+          <div className="reader-empty-icon"><BookOpen size={64} /></div>
+          <h3>请选择一篇内容阅读</h3>
+        </div>
+      </main>
+    );
+  }
+
+  // Discarded view
+  if (isDiscardedView && selectedDiscardedItem) {
+    return (
+      <main className="reader-pane">
+        <SourceBar
+          meta={selectedDiscardedItem.article_meta}
+          isDiscarded={true}
+          routingReason={selectedDiscardedItem.routing_reason}
+          onOpenOriginal={() => openInAppWindow(selectedDiscardedItem.article_meta.url)}
+        />
+        <div className="reader-content animate-in">
+          <ArticleHtmlView articleId={selectedDiscardedItem.article_id} />
+        </div>
+      </main>
+    );
+  }
+
+  // Inbox item view
+  if (selectedItem) {
+    return (
+      <main className="reader-pane">
+        <SourceBar
+          meta={selectedItem.article_meta}
+          routing={selectedItem.routing}
+          isDiscarded={false}
+          onOpenOriginal={() => openInAppWindow(selectedItem.article_meta.url)}
+          onOpenDrawer={selectedItem.routing === "ai_curation" ? onOpenDrawer : undefined}
+        />
+        <div className="reader-content animate-in">
+          {/* Card markdown content */}
+          <CardContentView cardId={selectedItem.card_id} />
+
+          {/* For original_push: show original article inline below */}
+          {selectedItem.routing === "original_push" && (
+            <>
+              <hr style={{ margin: "32px 0", border: "none", height: 1, background: "linear-gradient(90deg, transparent, #475569, transparent)" }} />
+              <div style={{ fontSize: "0.82rem", color: "#8b949e", marginBottom: 16, fontWeight: 600 }}>
+                原文全文
+              </div>
+              <ArticleHtmlView articleId={selectedItem.article_id} />
+            </>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  return null;
+}
