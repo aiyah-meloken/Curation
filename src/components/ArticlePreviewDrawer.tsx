@@ -33,14 +33,20 @@ function CardMarkdownView({ articleId }: { articleId: string }) {
 
   if (isLoading) return <div style={{ padding: 20, color: "#8b949e" }}>加载中...</div>;
 
-  const markdown = data?.markdown;
-  if (!markdown) return <div style={{ padding: 20, color: "#8b949e" }}>暂无卡片内容</div>;
+  // /articles/{id}/content returns { cards: [{card_id, title, content}, ...] }
+  const cards = data?.cards;
+  if (!cards || cards.length === 0) return <div style={{ padding: 20, color: "#8b949e" }}>暂无卡片内容</div>;
 
   return (
     <div className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
-        {stripFrontmatter(markdown)}
-      </ReactMarkdown>
+      {cards.map((card: { card_id: string; title: string; content: string }, i: number) => (
+        <div key={card.card_id}>
+          {i > 0 && <hr style={{ margin: "32px 0", border: "none", height: 1, background: "linear-gradient(90deg, transparent, #475569, transparent)" }} />}
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
+            {stripFrontmatter(card.content)}
+          </ReactMarkdown>
+        </div>
+      ))}
     </div>
   );
 }
