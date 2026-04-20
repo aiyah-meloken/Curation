@@ -123,13 +123,14 @@ export interface ArticleMeta {
 }
 
 export interface InboxItem {
-  card_id: string;
+  card_id: string | null;
   article_id: string;
   title: string;
   description: string | null;
-  routing: "ai_curation" | "original_push";
+  routing: "ai_curation" | "original_push" | null;
   article_date: string | null;
   read_at: string | null;
+  queue_status: "pending" | "running" | null;
   article_meta: ArticleMeta;
 }
 
@@ -146,6 +147,7 @@ export interface QueueEntry {
   article_id: string;
   article_title: string;
   article_publish_time: string | null;
+  article_account: string | null;
   serving_run_id: number | null;
   status: "pending" | "running" | "done" | "failed";
   run_id: number | null;
