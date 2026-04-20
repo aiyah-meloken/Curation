@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { X, ExternalLink } from "lucide-react";
 import { useArticleContent } from "../hooks/useArticles";
+import { FavoriteButton } from "./FavoriteButton";
 import type { InboxItem } from "../types";
 
 async function openInAppWindow(url: string) {
@@ -62,6 +63,9 @@ export function ArticleDrawer({
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {articleId && (
+              <FavoriteButton itemType="article" itemId={articleId} />
+            )}
             {siblingCards.length > 1 && (
               <div style={{ position: "relative" }}>
                 <select
