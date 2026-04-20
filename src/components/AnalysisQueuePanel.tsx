@@ -51,7 +51,7 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "#f85149",
 };
 
-type SortField = "created_at" | "request_count" | "status" | "article_publish_time";
+type SortField = "created_at" | "status" | "article_publish_time";
 type SortDir = "asc" | "desc";
 
 /** Extract unique YYYY-MM-DD dates from publish_time values */
@@ -144,7 +144,7 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
       setSortDir(prev => prev === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDir(field === "request_count" ? "desc" : "desc");
+      setSortDir("desc");
     }
   };
 
@@ -157,13 +157,9 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
     }
     items.sort((a, b) => {
       let cmp = 0;
-      if (sortField === "request_count") {
-        cmp = a.request_count - b.request_count;
-      } else {
-        const av = String(a[sortField] ?? "");
-        const bv = String(b[sortField] ?? "");
-        cmp = av.localeCompare(bv, undefined, { numeric: true });
-      }
+      const av = String(a[sortField] ?? "");
+      const bv = String(b[sortField] ?? "");
+      cmp = av.localeCompare(bv, undefined, { numeric: true });
       return sortDir === "asc" ? cmp : -cmp;
     });
     return items;
@@ -377,7 +373,6 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
                 {thSortable("article_publish_time", "发布时间")}
                 {thSortable("status", "分析状态")}
                 <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500 }}>推送状态</th>
-                {thSortable("request_count", "请求次数")}
                 {thSortable("created_at", "入队时间")}
                 <th style={{ padding: "8px 14px", textAlign: "center", fontWeight: 500 }}>操作</th>
               </tr>
@@ -435,9 +430,6 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
                           {entry.serving_run_id ? "已推送" : "未推送"}
                         </span>
                       </td>
-                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#e6edf3" }}>
-                        {entry.request_count}
-                      </td>
                       <td style={{ padding: "9px 14px", textAlign: "center", color: "#8b949e", whiteSpace: "nowrap", fontSize: "0.78rem" }}>
                         {formatQueueTime(entry.created_at)}
                       </td>
@@ -478,7 +470,7 @@ export function AnalysisQueuePanel({ onNavigateToArticle }: Props) {
                     </tr>
                     {isExpanded && (
                       <tr key={`${entry.id}-runs`} style={{ borderTop: "none" }}>
-                        <td colSpan={8} style={{ padding: 0, background: "#161b22" }}>
+                        <td colSpan={7} style={{ padding: 0, background: "#161b22" }}>
                           {loadingRuns ? (
                             <div style={{ padding: "12px 24px", color: "#8b949e", fontSize: "0.8rem" }}>加载中...</div>
                           ) : articleRuns.length === 0 ? (
