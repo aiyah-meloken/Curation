@@ -425,6 +425,7 @@ body {
 .markdown-body p {
   margin: 16px 0;
   text-align: justify;
+  white-space: pre-line;
 }
 
 .markdown-body strong {
