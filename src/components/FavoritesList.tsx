@@ -10,7 +10,7 @@ function routingTag(routing: string | null) {
   if (routing === "original_push") {
     return <span className="inbox-tag tag-original">原文</span>;
   }
-  return <span className="inbox-tag" style={{ background: "#21262d", color: "#8b949e" }}>原文</span>;
+  return <span className="inbox-tag" style={{ background: "var(--bg-panel)", color: "var(--text-muted)" }}>原文</span>;
 }
 
 function formatTime(t: string | null) {
@@ -40,7 +40,7 @@ function FavoriteItemRow({
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title ?? "(已删除)"}</span>
-        <Star size={12} fill="#e3b341" style={{ color: "#e3b341", flexShrink: 0, marginTop: 3 }} />
+        <Star size={12} fill="var(--accent-gold)" style={{ color: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
         {routingTag(item.routing)}
       </div>
       {item.description && (
@@ -84,18 +84,18 @@ export function FavoritesList({ selectedId, onSelect, listWidth }: FavoritesList
             style={{ padding: "4px 8px", fontSize: "0.78rem" }}
           />
         </div>
-        <span style={{ fontSize: "0.72rem", color: "#8b949e", flexShrink: 0 }}>
+        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", flexShrink: 0 }}>
           {favorites?.length ?? 0} 项
         </span>
       </header>
 
       <div className="list-content">
         {isLoading ? (
-          <div style={{ padding: 20, textAlign: "center", color: "#8b949e", fontSize: "0.85rem" }}>
+          <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
             加载中...
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 20, textAlign: "center", color: "#8b949e", fontSize: "0.85rem" }}>
+          <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
             {search.trim() ? "没有匹配的收藏" : "暂无收藏"}
           </div>
         ) : (

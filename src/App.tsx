@@ -37,7 +37,7 @@ getVersion()
       `  WS:     ${WS_BASE}\n` +
       `  Auth:   ${import.meta.env.VITE_AUTHING_DOMAIN ?? '(not set)'}\n` +
       `  Env:    ${import.meta.env.MODE}`,
-      'background:#1f6feb;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px',
+      'background:var(--accent-gold);color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px',
       '',
     );
   })
@@ -82,10 +82,10 @@ function UpdateBanner() {
   return (
     <button onClick={() => relaunch()} style={{
       position: 'fixed', top: 12, right: 16, zIndex: 200,
-      background: '#1f6feb', color: '#fff', border: 'none',
+      background: 'var(--accent-gold)', color: '#1a1208', border: 'none',
       borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
       fontSize: 'var(--fs-sm)', display: 'flex', alignItems: 'center', gap: 6,
-      boxShadow: '0 2px 8px rgba(31,111,235,0.4)',
+      boxShadow: '0 2px 8px rgba(212,164,92,0.4)',
     }}>
       ↑ 重启以更新软件
     </button>
@@ -98,7 +98,7 @@ function App() {
   if (authState.status === "loading") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center",
-        justifyContent: "center", background: "#0d1117", color: "#8b949e", fontSize: 14 }}>
+        justifyContent: "center", background: "var(--bg-base)", color: "var(--text-muted)", fontSize: 14 }}>
         <UpdateBanner />
         加载中…
       </div>
@@ -400,15 +400,15 @@ function AppMain({ currentUser, onLogout }: {
       {notification && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 500,
-          background: '#161b22', border: '1px solid #3fb950',
+          background: 'var(--bg-panel)', border: '1px solid var(--accent-green)',
           borderRadius: 10, padding: '12px 18px',
           display: 'flex', alignItems: 'center', gap: 10,
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
           animation: 'fadeIn 0.2s ease',
         }}>
-          <Sparkles size={16} style={{ color: '#3fb950', flexShrink: 0 }} />
-          <span style={{ color: '#e6edf3', fontSize: 'var(--fs-base)' }}>{notification}</span>
-          <button onClick={() => setNotification(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b949e', padding: 2, marginLeft: 4 }}>
+          <Sparkles size={16} style={{ color: 'var(--accent-green)', flexShrink: 0 }} />
+          <span style={{ color: 'var(--text-primary)', fontSize: 'var(--fs-base)' }}>{notification}</span>
+          <button onClick={() => setNotification(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, marginLeft: 4 }}>
             <X size={14} />
           </button>
         </div>

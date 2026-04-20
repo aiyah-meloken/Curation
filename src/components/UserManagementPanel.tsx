@@ -74,17 +74,17 @@ export function UserManagementPanel() {
   }
 
   return (
-    <div style={{ padding: 20, color: "#e6edf3", fontSize: 13 }}>
+    <div style={{ padding: 20, color: "var(--text-primary)", fontSize: 13 }}>
       <h2 style={{ margin: "0 0 20px", fontSize: 15, fontWeight: 600 }}>用户管理</h2>
 
       {loading ? (
-        <p style={{ color: "#8b949e" }}>加载中…</p>
+        <p style={{ color: "var(--text-muted)" }}>加载中…</p>
       ) : users.length === 0 ? (
-        <p style={{ color: "#8b949e" }}>暂无用户</p>
+        <p style={{ color: "var(--text-muted)" }}>暂无用户</p>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ color: "#8b949e", borderBottom: "1px solid #30363d" }}>
+            <tr style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border)" }}>
               <SortTh label="用户" col="username" />
               <SortTh label="手机号" col="phone" />
               <SortTh label="邮箱" col="email" />
@@ -96,7 +96,7 @@ export function UserManagementPanel() {
           </thead>
           <tbody>
             {sorted.map((u) => (
-              <tr key={u.id} style={{ borderBottom: "1px solid #21262d" }}>
+              <tr key={u.id} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
                 <td style={{ ...td, display: "flex", alignItems: "center", gap: 8 }}>
                   {u.picture ? (
                     <img
@@ -107,8 +107,8 @@ export function UserManagementPanel() {
                   ) : (
                     <span style={{
                       width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                      background: "#30363d", display: "flex", alignItems: "center",
-                      justifyContent: "center", fontSize: 12, color: "#8b949e",
+                      background: "var(--border)", display: "flex", alignItems: "center",
+                      justifyContent: "center", fontSize: 12, color: "var(--text-muted)",
                     }}>
                       {(u.username || "?")[0]}
                     </span>
@@ -116,8 +116,8 @@ export function UserManagementPanel() {
                   <span>{u.username || "—"}</span>
                 </td>
                 <td style={td}>{u.phone || "—"}</td>
-                <td style={{ ...td, color: "#8b949e" }}>{u.email || "—"}</td>
-                <td style={{ ...td, color: u.role === "admin" ? "#f0883e" : "#8b949e", fontSize: 12 }}>
+                <td style={{ ...td, color: "var(--text-muted)" }}>{u.email || "—"}</td>
+                <td style={{ ...td, color: u.role === "admin" ? "var(--accent-gold-hi)" : "var(--text-muted)", fontSize: 12 }}>
                   {u.role}
                 </td>
                 <td style={td}>
@@ -127,15 +127,15 @@ export function UserManagementPanel() {
                       checked={u.is_active}
                       onChange={(e) => handleUpdate(u.id, { is_active: e.target.checked })}
                     />
-                    <span style={{ color: u.is_active ? "#3fb950" : "#8b949e" }}>
+                    <span style={{ color: u.is_active ? "var(--accent-green)" : "var(--text-muted)" }}>
                       {u.is_active ? "活跃" : "禁用"}
                     </span>
                   </label>
                 </td>
-                <td style={{ ...td, color: "#8b949e" }}>
+                <td style={{ ...td, color: "var(--text-muted)" }}>
                   {u.created_at ? u.created_at.slice(0, 10) : "—"}
                 </td>
-                <td style={{ ...td, color: "#8b949e" }}>
+                <td style={{ ...td, color: "var(--text-muted)" }}>
                   {u.last_login ? u.last_login.slice(0, 10) : "从未"}
                 </td>
               </tr>

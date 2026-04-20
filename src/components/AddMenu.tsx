@@ -29,8 +29,8 @@ export function AddMenu({ open, onClose, onSubscribe, onAddArticle }: Props) {
         position: "absolute",
         bottom: "calc(100% + 8px)",
         left: 0,
-        background: "#1c2128",
-        border: "1px solid #30363d",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border)",
         borderRadius: 8,
         overflow: "hidden",
         boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
@@ -44,27 +44,27 @@ export function AddMenu({ open, onClose, onSubscribe, onAddArticle }: Props) {
           display: "flex", alignItems: "center", gap: 10,
           width: "100%", padding: "10px 14px",
           background: "none", border: "none", cursor: "pointer",
-          color: "#e6edf3", fontSize: "var(--fs-base)", textAlign: "left",
+          color: "var(--text-primary)", fontSize: "var(--fs-base)", textAlign: "left",
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = "#21262d")}
+        onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-panel)")}
         onMouseLeave={e => (e.currentTarget.style.background = "none")}
       >
-        <Rss size={15} style={{ color: "#60a5fa" }} />
+        <Rss size={15} style={{ color: "var(--accent-blue)" }} />
         订阅公众号
       </button>
-      <div style={{ height: 1, background: "#30363d" }} />
+      <div style={{ height: 1, background: "var(--border)" }} />
       <button
         onClick={onAddArticle}
         style={{
           display: "flex", alignItems: "center", gap: 10,
           width: "100%", padding: "10px 14px",
           background: "none", border: "none", cursor: "pointer",
-          color: "#e6edf3", fontSize: "var(--fs-base)", textAlign: "left",
+          color: "var(--text-primary)", fontSize: "var(--fs-base)", textAlign: "left",
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = "#21262d")}
+        onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-panel)")}
         onMouseLeave={e => (e.currentTarget.style.background = "none")}
       >
-        <FileText size={15} style={{ color: "#60a5fa" }} />
+        <FileText size={15} style={{ color: "var(--accent-blue)" }} />
         添加文章
       </button>
     </div>

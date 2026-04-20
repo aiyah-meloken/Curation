@@ -78,23 +78,23 @@ function CardsDrawer({
             <button className="btn-icon" onClick={onClose} style={{ padding: 4 }}>
               <X size={18} />
             </button>
-            <span style={{ fontWeight: 600, fontSize: "var(--fs-base)", color: "#e6edf3" }}>
+            <span style={{ fontWeight: 600, fontSize: "var(--fs-base)", color: "var(--text-primary)" }}>
               AI 卡片
             </span>
           </div>
         </div>
         <div className="drawer-content">
           {loading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>加载中...</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>加载中...</div>
           ) : cards.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>暂无卡片</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>暂无卡片</div>
           ) : (
             cards.map((card, idx) => (
               <div key={card.card_id}>
                 {cards.length > 1 && (
                   <div style={{
-                    padding: "8px 0", fontSize: "var(--fs-sm)", color: "#8b949e", fontWeight: 600,
-                    borderBottom: "1px solid #30363d", marginBottom: 12,
+                    padding: "8px 0", fontSize: "var(--fs-sm)", color: "var(--text-muted)", fontWeight: 600,
+                    borderBottom: "1px solid var(--border)", marginBottom: 12,
                   }}>
                     卡片 {idx + 1}/{cards.length}
                     {card.title && <span style={{ marginLeft: 8, fontWeight: 400 }}>{card.title}</span>}
@@ -106,7 +106,7 @@ function CardsDrawer({
                   </ReactMarkdown>
                 </div>
                 {idx < cards.length - 1 && (
-                  <hr style={{ margin: "24px 0", border: "none", height: 2, background: "linear-gradient(90deg, transparent, #475569, transparent)" }} />
+                  <hr style={{ margin: "24px 0", border: "none", height: 2, background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
                 )}
               </div>
             ))
@@ -151,7 +151,7 @@ function OriginalDrawer({
             <button className="btn-icon" onClick={onClose} style={{ padding: 4 }}>
               <X size={18} />
             </button>
-            <span style={{ fontWeight: 600, fontSize: "var(--fs-base)", color: "#e6edf3" }}>
+            <span style={{ fontWeight: 600, fontSize: "var(--fs-base)", color: "var(--text-primary)" }}>
               原文
             </span>
           </div>
@@ -168,11 +168,11 @@ function OriginalDrawer({
         </div>
         <div className="drawer-content">
           {isLoading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>加载中...</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>加载中...</div>
           ) : html ? (
             <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: html }} />
           ) : (
-            <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>暂无原文内容</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>暂无原文内容</div>
           )}
         </div>
       </div>
@@ -209,13 +209,13 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
         {meta && (
           <div className="reader-source-bar">
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-              <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "var(--fs-base)", flex: 1 }}>
+              <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "var(--fs-base)", flex: 1 }}>
                 {meta.title}
               </span>
               {routingTag(selectedFavorite.routing)}
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ fontSize: "var(--fs-sm)", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                 <span>{meta.account}</span>
                 {meta.author && <><span>·</span><span>{meta.author}</span></>}
                 {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
@@ -226,8 +226,8 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
                   <button
                     onClick={() => setDrawerOpen(true)}
                     style={{
-                      background: "none", border: "1px solid #30363d", borderRadius: 6,
-                      color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
+                      background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                      color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
                     }}
                   >
                     查看原文
@@ -237,8 +237,8 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
                   <button
                     onClick={() => openInAppWindow(meta.url)}
                     style={{
-                      background: "none", border: "1px solid #30363d", borderRadius: 6,
-                      color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
+                      background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                      color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
                       display: "flex", alignItems: "center", gap: 4,
                     }}
                   >
@@ -270,13 +270,13 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
       {meta && (
         <div className="reader-source-bar">
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-            <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "var(--fs-base)", flex: 1 }}>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "var(--fs-base)", flex: 1 }}>
               {selectedFavorite.title}
             </span>
-            <span className="inbox-tag" style={{ background: "#21262d", color: "#8b949e", fontSize: "var(--fs-xs)" }}>原文</span>
+            <span className="inbox-tag" style={{ background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>原文</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ fontSize: "var(--fs-sm)", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
               <span>{meta.account}</span>
               {meta.author && <><span>·</span><span>{meta.author}</span></>}
               {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
@@ -286,8 +286,8 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
               <button
                 onClick={() => setDrawerOpen(true)}
                 style={{
-                  background: "none", border: "1px solid #30363d", borderRadius: 6,
-                  color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
+                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                  color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
                 }}
               >
                 查看卡片
@@ -296,8 +296,8 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
                 <button
                   onClick={() => openInAppWindow(meta.url)}
                   style={{
-                    background: "none", border: "1px solid #30363d", borderRadius: 6,
-                    color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
+                    background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                    color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "var(--fs-sm)",
                     display: "flex", alignItems: "center", gap: 4,
                   }}
                 >
@@ -323,8 +323,8 @@ export function FavoritesReader({ selectedFavorite }: FavoritesReaderProps) {
 /** Renders card markdown content */
 function CardContentRenderer({ cardId }: { cardId: string }) {
   const { data: cardData, isLoading } = useCardContent(cardId, "source");
-  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>加载中...</div>;
-  if (!cardData?.content) return <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>暂无内容</div>;
+  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>加载中...</div>;
+  if (!cardData?.content) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>暂无内容</div>;
   return (
     <div className="markdown-body">
       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
@@ -337,8 +337,8 @@ function CardContentRenderer({ cardId }: { cardId: string }) {
 /** Renders article HTML content */
 function ArticleHtmlRenderer({ articleId }: { articleId: string }) {
   const { data: articleData, isLoading } = useArticleContent(articleId);
-  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>加载中...</div>;
+  if (isLoading) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>加载中...</div>;
   const html = articleData?.rawHtml;
-  if (!html) return <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>暂无原文内容</div>;
+  if (!html) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>暂无原文内容</div>;
   return <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: html }} />;
 }

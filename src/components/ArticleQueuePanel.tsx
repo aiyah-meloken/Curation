@@ -16,31 +16,31 @@ function fmtTime(t: string | null) {
 
 function statusLabel(s: string) {
   const m: Record<string, { text: string; color: string }> = {
-    pending:  { text: "待处理", color: "#8b949e" },
-    running:  { text: "运行中", color: "#d29922" },
-    done:     { text: "完成",   color: "#3fb950" },
-    failed:   { text: "失败",   color: "#f85149" },
+    pending:  { text: "待处理", color: "var(--text-muted)" },
+    running:  { text: "运行中", color: "var(--accent-gold)" },
+    done:     { text: "完成",   color: "var(--accent-green)" },
+    failed:   { text: "失败",   color: "var(--accent-red)" },
   };
-  const v = m[s] ?? { text: s, color: "#8b949e" };
+  const v = m[s] ?? { text: s, color: "var(--text-muted)" };
   return <span style={{ color: v.color, fontSize: "var(--fs-sm)" }}>{v.text}</span>;
 }
 
 function routingPill(routing: string | null) {
   if (!routing) {
-    return <span style={{ background: "#1c1c1c", color: "#484f58", padding: "1px 8px", borderRadius: 10, fontSize: "var(--fs-xs)" }}>未推送</span>;
+    return <span style={{ background: "var(--bg-base)", color: "var(--text-faint)", padding: "1px 8px", borderRadius: 10, fontSize: "var(--fs-xs)" }}>未推送</span>;
   }
   const m: Record<string, { text: string; bg: string; color: string }> = {
-    ai_curation:   { text: "AI梳理",  bg: "#1a3a1a", color: "#3fb950" },
-    original_push: { text: "原文推送", bg: "#1a3a1a", color: "#3fb950" },
-    discard:       { text: "丢弃",     bg: "#2d2a1a", color: "#d29922" },
+    ai_curation:   { text: "AI梳理",  bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    original_push: { text: "原文推送", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    discard:       { text: "丢弃",     bg: "var(--bg-panel)", color: "var(--accent-gold)" },
   };
-  const v = m[routing] ?? { text: routing, bg: "#1c1c1c", color: "#484f58" };
+  const v = m[routing] ?? { text: routing, bg: "var(--bg-base)", color: "var(--text-faint)" };
   return <span style={{ background: v.bg, color: v.color, padding: "1px 8px", borderRadius: 10, fontSize: "var(--fs-xs)" }}>{v.text}</span>;
 }
 
 function runStatusColor(s: string) {
-  const m: Record<string, string> = { done: "#3fb950", failed: "#f85149", running: "#d29922", pending: "#8b949e" };
-  return m[s] ?? "#8b949e";
+  const m: Record<string, string> = { done: "var(--accent-green)", failed: "var(--accent-red)", running: "var(--accent-gold)", pending: "var(--text-muted)" };
+  return m[s] ?? "var(--text-muted)";
 }
 
 type SortKey = "article_title" | "article_account" | "article_publish_time" | "status" | "routing" | "updated_at";
@@ -118,31 +118,31 @@ export function ArticleQueuePanel() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
       {strategy && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: "1px solid #21262d", background: "#161b22", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
-          <span style={{ color: "#8b949e" }}>自动启动</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
+          <span style={{ color: "var(--text-muted)" }}>自动启动</span>
           <button
             onClick={() => patchStrat("auto_launch", !strategy.auto_launch)}
-            style={{ background: strategy.auto_launch ? "#238636" : "#30363d", color: "#fff", border: "none", borderRadius: 10, padding: "1px 10px", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+            style={{ background: strategy.auto_launch ? "var(--accent-green)" : "var(--border)", color: "#fff", border: "none", borderRadius: 10, padding: "1px 10px", cursor: "pointer", fontSize: "var(--fs-xs)" }}
           >{strategy.auto_launch ? "开" : "关"}</button>
 
-          <span style={{ color: "#30363d" }}>|</span>
-          <span style={{ color: "#8b949e" }}>并发</span>
+          <span style={{ color: "var(--border)" }}>|</span>
+          <span style={{ color: "var(--text-muted)" }}>并发</span>
           <select value={strategy.max_concurrency} onChange={(e) => patchStrat("max_concurrency", +e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
             {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
 
-          <span style={{ color: "#30363d" }}>|</span>
-          <span style={{ color: "#8b949e" }}>后端</span>
+          <span style={{ color: "var(--border)" }}>|</span>
+          <span style={{ color: "var(--text-muted)" }}>后端</span>
           <select value={strategy.default_backend} onChange={(e) => patchStrat("default_backend", e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
             {backendList.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
 
           <div style={{ flex: 1 }} />
 
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
             <option value="all">全部状态</option>
             <option value="pending">待处理</option>
             <option value="running">运行中</option>
@@ -151,7 +151,7 @@ export function ArticleQueuePanel() {
           </select>
 
           <select value={routingFilter} onChange={(e) => setRoutingFilter(e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
             <option value="all">全部推送</option>
             <option value="ai_curation">AI梳理</option>
             <option value="original_push">原文推送</option>
@@ -160,22 +160,22 @@ export function ArticleQueuePanel() {
           </select>
 
           <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
-            style={{ background: "#21262d", color: "#e6edf3", border: "1px solid #30363d", borderRadius: 4, padding: "1px 6px", fontSize: "var(--fs-xs)" }} />
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 6px", fontSize: "var(--fs-xs)" }} />
           {dateFilter && (
             <button onClick={() => setDateFilter("")} title="清除日期"
-              style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", padding: "0 2px", fontSize: "var(--fs-xs)" }}>×</button>
+              style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0 2px", fontSize: "var(--fs-xs)" }}>×</button>
           )}
 
           <button onClick={() => refetchQueue()} title="刷新"
             disabled={queueFetching}
-            style={{ background: "#21262d", border: "1px solid #30363d", color: "#e6edf3", borderRadius: 4, padding: "2px 6px", cursor: queueFetching ? "default" : "pointer", display: "flex", alignItems: "center" }}>
+            style={{ background: "var(--bg-panel)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 4, padding: "2px 6px", cursor: queueFetching ? "default" : "pointer", display: "flex", alignItems: "center" }}>
             <RefreshCw size={12} style={queueFetching ? { animation: "spin 1s linear infinite" } : undefined} />
           </button>
         </div>
       )}
 
       <div style={{ flex: 1, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "6px 16px", borderBottom: "1px solid #21262d", background: "#161b22", color: "#8b949e", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "6px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
           {([
             ["article_title", "文章标题"],
             ["article_account", "公众号"],
@@ -196,38 +196,38 @@ export function ArticleQueuePanel() {
         {filtered.map((entry) => {
           const isExpanded = expandedId === entry.article_id;
           return (
-            <div key={entry.article_id} style={{ borderBottom: "1px solid #21262d" }}>
+            <div key={entry.article_id} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
               <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "8px 16px", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                   <span
                     onClick={() => setExpandedId(isExpanded ? null : entry.article_id)}
-                    style={{ cursor: "pointer", color: "#8b949e", flexShrink: 0, width: 16 }}
+                    style={{ cursor: "pointer", color: "var(--text-muted)", flexShrink: 0, width: 16 }}
                   >
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </span>
                   <a
                     onClick={() => { setPreviewArticleId(entry.article_id); setPreviewRouting(entry.routing); }}
-                    style={{ color: "#58a6ff", cursor: "pointer", textDecoration: "none", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    style={{ color: "var(--accent-blue)", cursor: "pointer", textDecoration: "none", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   >
                     {entry.article_title}
                   </a>
-                  <span style={{ color: "#484f58", fontSize: "var(--fs-xs)", flexShrink: 0 }}>{entry.run_count} runs</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-xs)", flexShrink: 0 }}>{entry.run_count} runs</span>
                 </div>
-                <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.article_account ?? "—"}</span>
-                <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.article_publish_time)}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.article_account ?? "—"}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.article_publish_time)}</span>
                 {statusLabel(entry.status)}
                 {routingPill(entry.routing)}
-                <span style={{ color: "#8b949e", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.updated_at)}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.updated_at)}</span>
                 <div style={{ textAlign: "center" }}>
                   {entry.status === "pending" && (
                     <button onClick={() => triggerMut.mutate(entry.article_id)} title="触发运行"
-                      style={{ background: "none", border: "none", color: "#3fb950", cursor: "pointer", padding: 2 }}>
+                      style={{ background: "none", border: "none", color: "var(--accent-green)", cursor: "pointer", padding: 2 }}>
                       <Play size={14} />
                     </button>
                   )}
                   {(entry.status === "done" || entry.status === "failed") && (
                     <button onClick={() => retryMut.mutate(entry.article_id)} title="重试"
-                      style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", padding: 2 }}>
+                      style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
                       <RotateCcw size={14} />
                     </button>
                   )}
@@ -235,40 +235,40 @@ export function ArticleQueuePanel() {
               </div>
 
               {isExpanded && (
-                <div style={{ background: "#161b22", borderTop: "1px solid #21262d", padding: "6px 16px 6px 36px" }}>
+                <div style={{ background: "var(--bg-panel)", borderTop: "1px solid var(--bg-panel)", padding: "6px 16px 6px 36px" }}>
                   {loadingRuns ? (
-                    <div style={{ color: "#8b949e", fontSize: "var(--fs-sm)", padding: 8 }}>加载中...</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", padding: 8 }}>加载中...</div>
                   ) : articleRuns.length === 0 ? (
-                    <div style={{ color: "#8b949e", fontSize: "var(--fs-sm)", padding: 8 }}>暂无运行记录</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", padding: 8 }}>暂无运行记录</div>
                   ) : (
                     <>
-                      <div style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", color: "#8b949e", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid #21262d" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--bg-panel)" }}>
                         <span>Run ID</span><span>后端</span><span>状态</span><span>耗时</span><span>创建时间</span><span>推送</span><span></span>
                       </div>
                       {articleRuns.map((run) => {
                         const isServing = run.id === entry.serving_run_id;
                         return (
-                        <div key={run.id} style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", padding: "5px 0", borderBottom: "1px solid #21262d", alignItems: "center" }}>
+                        <div key={run.id} style={{ display: "grid", gridTemplateColumns: "60px 80px 70px 60px 100px 50px 30px", padding: "5px 0", borderBottom: "1px solid var(--bg-panel)", alignItems: "center" }}>
                           <a onClick={() => setDetailRunId(run.id)}
-                            style={{ color: "#58a6ff", fontSize: "var(--fs-sm)", cursor: "pointer", textDecoration: "none" }}>
+                            style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)", cursor: "pointer", textDecoration: "none" }}>
                             #{run.id}
                           </a>
-                          <span style={{ color: "#e6edf3", fontSize: "var(--fs-sm)" }}>{run.backend}</span>
+                          <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{run.backend}</span>
                           <span style={{ color: runStatusColor(run.overall_status), fontSize: "var(--fs-sm)" }}>{run.overall_status}</span>
-                          <span style={{ color: "#e6edf3", fontSize: "var(--fs-sm)" }}>{run.elapsed_s ? `${run.elapsed_s.toFixed(1)}s` : "—"}</span>
-                          <span style={{ color: "#8b949e", fontSize: "var(--fs-xs)" }}>{fmtTime(run.created_at)}</span>
+                          <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{run.elapsed_s ? `${run.elapsed_s.toFixed(1)}s` : "—"}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtTime(run.created_at)}</span>
                           <span>
                             {isServing ? (
-                              <Star size={12} style={{ color: "#f0a500", fill: "#f0a500" }} />
+                              <Star size={12} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)" }} />
                             ) : run.overall_status === "done" ? (
                               <button onClick={() => servingMut.mutate({ aid: entry.article_id, rid: run.id })} title="设为推送版本"
-                                style={{ background: "none", border: "none", color: "#8b949e", cursor: "pointer", padding: 0 }}>
+                                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 0 }}>
                                 <Star size={12} />
                               </button>
                             ) : null}
                           </span>
                           <button onClick={() => { if (confirm("删除此run?")) deleteMut.mutate(run.id); }}
-                            style={{ background: "none", border: "none", color: "#f85149", cursor: "pointer", padding: 0 }}>
+                            style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", padding: 0 }}>
                             <Trash2 size={12} />
                           </button>
                         </div>
@@ -283,7 +283,7 @@ export function ArticleQueuePanel() {
         })}
 
         {filtered.length === 0 && (
-          <div style={{ padding: 40, textAlign: "center", color: "#484f58" }}>暂无数据</div>
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-faint)" }}>暂无数据</div>
         )}
       </div>
 

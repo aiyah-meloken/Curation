@@ -18,7 +18,7 @@ interface InboxListProps {
 function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus?: "pending" | "running" | null) {
   if (queueStatus) {
     return (
-      <span className="inbox-tag" style={{ background: "#1a2332", color: "#58a6ff", display: "inline-flex", alignItems: "center", gap: 3 }}>
+      <span className="inbox-tag" style={{ background: "var(--accent-blue-dim)", color: "var(--accent-blue)", display: "inline-flex", alignItems: "center", gap: 3 }}>
         <Loader2 size={10} className="animate-spin" />
         分析中
       </span>
@@ -98,7 +98,7 @@ function InboxItemRow({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
         {!isAnalyzing && item.read_at && (
-          <Check size={12} style={{ color: "#3fb950", flexShrink: 0, marginTop: 3 }} />
+          <Check size={12} style={{ color: "var(--accent-green)", flexShrink: 0, marginTop: 3 }} />
         )}
         {routingTag(item.routing, item.queue_status)}
       </div>
@@ -277,13 +277,13 @@ export function InboxList({
       {/* List content */}
       <div className="list-content">
         {isLoading ? (
-          <div style={{ padding: 20, textAlign: "center", color: "#8b949e", fontSize: "var(--fs-base)" }}>
+          <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: "var(--fs-base)" }}>
             加载中...
           </div>
         ) : isDiscardedView ? (
           /* Discarded view: grouped by date */
           discardedGroups.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#8b949e", fontSize: "var(--fs-base)" }}>
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: "var(--fs-base)" }}>
               暂无丢弃文章
             </div>
           ) : (
@@ -311,7 +311,7 @@ export function InboxList({
         ) : (
           /* Inbox view: grouped by date */
           groups.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#8b949e", fontSize: "var(--fs-base)" }}>
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: "var(--fs-base)" }}>
               {showUnreadOnly ? "没有未读内容" : "暂无内容"}
             </div>
           ) : (

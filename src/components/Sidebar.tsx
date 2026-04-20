@@ -135,7 +135,7 @@ export function Sidebar({
           onClick={onSelectInbox}
           title="收件箱"
         >
-          <div className="account-avatar" style={{ background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+          <div className="account-avatar" style={{ background: "var(--accent-gold)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1a1208" }}>
             <Inbox size={18} />
           </div>
           {!isSidebarCollapsed && (
@@ -154,8 +154,8 @@ export function Sidebar({
           onClick={onSelectFavorites}
           title="收藏"
         >
-          <div className="account-avatar" style={{ background: "#21262d", display: "flex", alignItems: "center", justifyContent: "center", color: "#e3b341" }}>
-            <Star size={16} fill="#e3b341" />
+          <div className="account-avatar" style={{ background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-gold)" }}>
+            <Star size={16} fill="var(--accent-gold)" />
           </div>
           {!isSidebarCollapsed && (
             <div className="account-info">
@@ -163,7 +163,7 @@ export function Sidebar({
             </div>
           )}
           {favoritesCount > 0 && (
-            <span className="unread-badge" style={{ background: "#e3b341", color: "#0d1117" }}>{favoritesCount}</span>
+            <span className="unread-badge" style={{ background: "var(--accent-gold)", color: "var(--bg-base)" }}>{favoritesCount}</span>
           )}
         </div>
 
@@ -219,7 +219,7 @@ export function Sidebar({
                     padding: 3, flexShrink: 0, background: "none",
                   }}
                 >
-                  <UserMinus size={13} style={{ color: "#f85149" }} />
+                  <UserMinus size={13} style={{ color: "var(--accent-red)" }} />
                 </button>
               )}
             </div>
@@ -278,7 +278,7 @@ export function Sidebar({
                     padding: 3, flexShrink: 0, background: "none",
                   }}
                 >
-                  <UserPlus size={13} style={{ color: "#3fb950" }} />
+                  <UserPlus size={13} style={{ color: "var(--accent-green)" }} />
                 </button>
               )}
             </div>
@@ -292,7 +292,7 @@ export function Sidebar({
           title="未推送"
           style={{ marginTop: 8 }}
         >
-          <div className="account-avatar" style={{ background: "#21262d", display: "flex", alignItems: "center", justifyContent: "center", color: "#8b949e" }}>
+          <div className="account-avatar" style={{ background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
             <Trash2 size={16} />
           </div>
           {!isSidebarCollapsed && (
@@ -303,7 +303,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="sidebar-footer" style={{ padding: "10px", borderTop: "1px solid #30363d" }}>
+      <div className="sidebar-footer" style={{ padding: "10px", borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", gap: "8px", marginBottom: "10px", position: "relative" }}>
           <div style={{ position: "relative", flex: 1 }}>
             <AddMenu
@@ -324,7 +324,7 @@ export function Sidebar({
           {!isSidebarCollapsed && currentUser.role === "admin" && (
             <button
               className="btn-icon"
-              style={{ background: isAdminMode ? "#1d4ed8" : "#21262d" }}
+              style={{ background: isAdminMode ? "var(--accent-gold)" : "var(--bg-panel)" }}
               title="管理员模式"
               onClick={onToggleAdmin}
             >
@@ -334,10 +334,10 @@ export function Sidebar({
         </div>
         {!isSidebarCollapsed && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 2px" }}>
-            <span style={{ fontSize: "var(--fs-xs)", color: "#8b949e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {userName}
             </span>
-            {appVersion && <span style={{ fontSize: "var(--fs-xs)", color: "#484f58", flexShrink: 0 }}>v{appVersion}</span>}
+            {appVersion && <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-faint)", flexShrink: 0 }}>v{appVersion}</span>}
             <button
               className="btn-icon"
               onClick={onOpenSettings}
@@ -347,7 +347,7 @@ export function Sidebar({
               <Settings size={14} />
             </button>
             <button className="btn-icon" title="退出登录" onClick={onLogout} style={{ padding: 4 }}>
-              <LogOut size={14} style={{ color: "#8b949e" }} />
+              <LogOut size={14} style={{ color: "var(--text-muted)" }} />
             </button>
           </div>
         )}

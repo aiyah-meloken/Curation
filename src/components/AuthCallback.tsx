@@ -144,13 +144,13 @@ export function AuthCallback({ onDone }: AuthCallbackProps) {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#0d1117",
+    background: "var(--bg-base)",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   };
 
   if (step === "loading") {
     return (
-      <div style={{ ...container, color: "#8b949e", fontSize: 14 }}>
+      <div style={{ ...container, color: "var(--text-muted)", fontSize: 14 }}>
         正在完成登录…
       </div>
     );
@@ -159,7 +159,7 @@ export function AuthCallback({ onDone }: AuthCallbackProps) {
   if (step === "error") {
     return (
       <div style={{ ...container, flexDirection: "column", gap: 16 }}>
-        <p style={{ color: "#f85149", fontSize: 14, margin: 0 }}>{error}</p>
+        <p style={{ color: "var(--accent-red)", fontSize: 14, margin: 0 }}>{error}</p>
         <button
           onClick={() => { resetCallback(); authingClient.logoutWithRedirect({ redirectUri: window.location.origin }); }}
           style={ghostBtn}
@@ -174,31 +174,31 @@ export function AuthCallback({ onDone }: AuthCallbackProps) {
   return (
     <div style={container}>
       <div style={{
-        background: "#161b22",
-        border: "1px solid #30363d",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border)",
         borderRadius: 12,
         padding: "40px 48px",
         width: 360,
-        color: "#e6edf3",
+        color: "var(--text-primary)",
       }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px", textAlign: "center" }}>
           Curation
         </h1>
-        <p style={{ fontSize: 13, color: "#3fb950", margin: "0 0 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--accent-green)", margin: "0 0 24px", textAlign: "center" }}>
           ✓ 身份验证完成
         </p>
 
         {error && (
           <div style={{
-            background: "#3d1a1a", border: "1px solid #6e3535",
+            background: "rgba(201, 120, 112, 0.12)", border: "1px solid var(--accent-red)",
             borderRadius: 6, padding: "8px 12px",
-            fontSize: 13, color: "#f85149", marginBottom: 16,
+            fontSize: 13, color: "var(--accent-red)", marginBottom: 16,
           }}>
             {error}
           </div>
         )}
 
-        <p style={{ fontSize: 13, color: "#8b949e", marginBottom: 8 }}>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>
           输入邀请码以激活账号：
         </p>
         <input
@@ -229,19 +229,19 @@ export function AuthCallback({ onDone }: AuthCallbackProps) {
 
 const primaryBtn: React.CSSProperties = {
   width: "100%", padding: "10px 0",
-  background: "#238636", border: "none", borderRadius: 6,
+  background: "var(--accent-green)", border: "none", borderRadius: 6,
   color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 8,
 };
 
 const ghostBtn: React.CSSProperties = {
   width: "100%", padding: "8px 0",
-  background: "none", border: "1px solid #30363d", borderRadius: 6,
-  color: "#8b949e", fontSize: 13, cursor: "pointer",
+  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+  color: "var(--text-muted)", fontSize: 13, cursor: "pointer",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "8px 12px",
-  background: "#0d1117", border: "1px solid #30363d", borderRadius: 6,
-  color: "#e6edf3", fontSize: 14, outline: "none",
+  background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 6,
+  color: "var(--text-primary)", fontSize: 14, outline: "none",
   marginBottom: 8, boxSizing: "border-box",
 };

@@ -14,20 +14,20 @@ export function LoginScreen() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      background: "#0d1117",
+      background: "var(--bg-base)",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
       <div style={{
-        background: "#161b22",
-        border: "1px solid #30363d",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border)",
         borderRadius: 12,
         padding: "40px 48px",
         width: 360,
-        color: "#e6edf3",
+        color: "var(--text-primary)",
         textAlign: "center",
       }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 6px" }}>Curation</h1>
-        <p style={{ fontSize: 13, color: "#8b949e", margin: "0 0 32px" }}>你的专属资讯助理</p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 32px" }}>你的专属资讯助理</p>
         <button onClick={handleEnter} style={primaryBtn}>
           登录 / 注册
         </button>
@@ -39,7 +39,7 @@ export function LoginScreen() {
 const primaryBtn: React.CSSProperties = {
   width: "100%",
   padding: "10px 0",
-  background: "#238636",
+  background: "var(--accent-green)",
   border: "none",
   borderRadius: 6,
   color: "#fff",

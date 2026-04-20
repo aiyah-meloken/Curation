@@ -25,17 +25,17 @@ export function AdminPane({
   return (
     <>
       {/* Admin toolbar with tabs */}
-      <div className="reader-toolbar" style={{ borderBottom: '1px solid #30363d', paddingBottom: 8, justifyContent: 'flex-start', gap: 8 }}>
-        <ShieldCheck size={15} style={{ color: '#60a5fa', flexShrink: 0 }} />
-        <span style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 600, flexShrink: 0 }}>管理</span>
+      <div className="reader-toolbar" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8, justifyContent: 'flex-start', gap: 8 }}>
+        <ShieldCheck size={15} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+        <span style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: 600, flexShrink: 0 }}>管理</span>
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
           <button
             onClick={() => onAdminViewChange("management")}
             style={{
               fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-              background: adminView === "management" ? '#1f6feb' : '#21262d',
-              color: adminView === "management" ? '#fff' : '#8b949e',
+              background: adminView === "management" ? 'var(--accent-gold)' : 'var(--bg-panel)',
+              color: adminView === "management" ? '#1a1208' : 'var(--text-muted)',
             }}
           >
             公众号订阅管理
@@ -44,8 +44,8 @@ export function AdminPane({
             onClick={() => onAdminViewChange("queue")}
             style={{
               fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-              background: adminView === "queue" ? '#1f6feb' : '#21262d',
-              color: adminView === "queue" ? '#fff' : '#8b949e',
+              background: adminView === "queue" ? 'var(--accent-gold)' : 'var(--bg-panel)',
+              color: adminView === "queue" ? '#1a1208' : 'var(--text-muted)',
             }}
           >
             文章队列
@@ -54,8 +54,8 @@ export function AdminPane({
             onClick={() => onAdminViewChange("aggregation")}
             style={{
               fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-              background: adminView === "aggregation" ? '#1f6feb' : '#21262d',
-              color: adminView === "aggregation" ? '#fff' : '#8b949e',
+              background: adminView === "aggregation" ? 'var(--accent-gold)' : 'var(--bg-panel)',
+              color: adminView === "aggregation" ? '#1a1208' : 'var(--text-muted)',
             }}
           >
             聚合队列
@@ -66,8 +66,8 @@ export function AdminPane({
                 onClick={() => onAdminViewChange("invites")}
                 style={{
                   fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                  background: adminView === "invites" ? '#1f6feb' : '#21262d',
-                  color: adminView === "invites" ? '#fff' : '#8b949e',
+                  background: adminView === "invites" ? 'var(--accent-gold)' : 'var(--bg-panel)',
+                  color: adminView === "invites" ? '#1a1208' : 'var(--text-muted)',
                 }}
               >
                 邀请码
@@ -76,8 +76,8 @@ export function AdminPane({
                 onClick={() => onAdminViewChange("users")}
                 style={{
                   fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
-                  background: adminView === "users" ? '#1f6feb' : '#21262d',
-                  color: adminView === "users" ? '#fff' : '#8b949e',
+                  background: adminView === "users" ? 'var(--accent-gold)' : 'var(--bg-panel)',
+                  color: adminView === "users" ? '#1a1208' : 'var(--text-muted)',
                 }}
               >
                 用户管理

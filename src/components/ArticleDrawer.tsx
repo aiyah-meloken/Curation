@@ -58,7 +58,7 @@ export function ArticleDrawer({
             <button className="btn-icon" onClick={onClose} style={{ padding: 4, flexShrink: 0 }}>
               <X size={18} />
             </button>
-            <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#e6edf3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               原文
             </span>
           </div>
@@ -72,7 +72,7 @@ export function ArticleDrawer({
                   value={item.card_id ?? ""}
                   onChange={(e) => onSelectCard(e.target.value)}
                   style={{
-                    background: "#21262d", color: "#8b949e", border: "1px solid #30363d",
+                    background: "var(--bg-panel)", color: "var(--text-muted)", border: "1px solid var(--border)",
                     borderRadius: 6, padding: "3px 8px", fontSize: "0.76rem", cursor: "pointer",
                     appearance: "auto",
                   }}
@@ -83,7 +83,7 @@ export function ArticleDrawer({
                     </option>
                   ))}
                 </select>
-                <span style={{ fontSize: "0.72rem", color: "#8b949e", marginLeft: 4 }}>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginLeft: 4 }}>
                   同文章卡片 ({siblingCards.length})
                 </span>
               </div>
@@ -102,7 +102,7 @@ export function ArticleDrawer({
         {/* Content */}
         <div className="drawer-content">
           {isLoading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
               加载中...
             </div>
           ) : html ? (
@@ -111,7 +111,7 @@ export function ArticleDrawer({
               dangerouslySetInnerHTML={{ __html: html }}
             />
           ) : (
-            <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
               暂无原文内容
             </div>
           )}

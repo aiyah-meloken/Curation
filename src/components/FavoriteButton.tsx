@@ -22,9 +22,9 @@ export function FavoriteButton({ itemType, itemId, size = 12 }: FavoriteButtonPr
       title={isFavorited ? "取消收藏" : "收藏"}
       style={{
         background: "none",
-        border: "1px solid #30363d",
+        border: "1px solid var(--border)",
         borderRadius: 6,
-        color: isFavorited ? "#e3b341" : "#8b949e",
+        color: isFavorited ? "var(--accent-gold)" : "var(--text-muted)",
         padding: "3px 10px",
         cursor: toggle.isPending ? "wait" : "pointer",
         fontSize: "var(--fs-sm)",
@@ -34,7 +34,7 @@ export function FavoriteButton({ itemType, itemId, size = 12 }: FavoriteButtonPr
         opacity: toggle.isPending ? 0.6 : 1,
       }}
     >
-      <Star size={size} fill={isFavorited ? "#e3b341" : "none"} />
+      <Star size={size} fill={isFavorited ? "var(--accent-gold)" : "none"} />
       {isFavorited ? "已收藏" : "收藏"}
     </button>
   );

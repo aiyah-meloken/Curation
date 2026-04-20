@@ -60,7 +60,7 @@ function SourceBar({
     <div className="reader-source-bar">
       {/* Line 1: original title + tag */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-        <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
+        <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
           {meta.title}
         </span>
         {routing && routingTag(routing)}
@@ -70,7 +70,7 @@ function SourceBar({
       </div>
       {/* Line 2: meta left, buttons right */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: "0.78rem", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
           <span>{meta.account}</span>
           {meta.author && <><span>·</span><span>{meta.author}</span></>}
           {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
@@ -83,8 +83,8 @@ function SourceBar({
             <button
               onClick={onOpenDrawer}
               style={{
-                background: "none", border: "1px solid #30363d", borderRadius: 6,
-                color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+                background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
               }}
             >
               查看原文
@@ -93,8 +93,8 @@ function SourceBar({
           <button
             onClick={onOpenOriginal}
             style={{
-              background: "none", border: "1px solid #30363d", borderRadius: 6,
-              color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+              background: "none", border: "1px solid var(--border)", borderRadius: 6,
+              color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
               display: "flex", alignItems: "center", gap: 4,
             }}
           >
@@ -103,7 +103,7 @@ function SourceBar({
         </div>
       </div>
       {routingReason && (
-        <div style={{ fontSize: "0.76rem", color: "#f0883e", marginTop: 4 }}>
+        <div style={{ fontSize: "0.76rem", color: "var(--accent-gold-hi)", marginTop: 4 }}>
           丢弃原因: {routingReason}
         </div>
       )}
@@ -116,7 +116,7 @@ function CardContentView({ cardId }: { cardId: string }) {
 
   if (isLoading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
         加载中...
       </div>
     );
@@ -124,7 +124,7 @@ function CardContentView({ cardId }: { cardId: string }) {
 
   if (!cardData?.content) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
         暂无内容
       </div>
     );
@@ -148,7 +148,7 @@ function ArticleHtmlView({ articleId }: { articleId: string }) {
 
   if (isLoading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
         加载中...
       </div>
     );
@@ -157,7 +157,7 @@ function ArticleHtmlView({ articleId }: { articleId: string }) {
   const html = articleData?.rawHtml;
   if (!html) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#8b949e" }}>
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
         暂无原文内容
       </div>
     );
@@ -235,16 +235,16 @@ export function ReaderPane({
       <main className="reader-pane">
         <div className="reader-source-bar">
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-            <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
               {selectedItem.article_meta.title}
             </span>
-            <span className="inbox-tag" style={{ background: "#1a2332", color: "#58a6ff", display: "inline-flex", alignItems: "center", gap: 3, fontSize: "0.72rem" }}>
+            <span className="inbox-tag" style={{ background: "var(--accent-blue-dim)", color: "var(--accent-blue)", display: "inline-flex", alignItems: "center", gap: 3, fontSize: "0.72rem" }}>
               <Loader2 size={10} className="animate-spin" />
               正在分析...
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ fontSize: "0.78rem", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
               <span>{selectedItem.article_meta.account}</span>
               {selectedItem.article_meta.author && <><span>·</span><span>{selectedItem.article_meta.author}</span></>}
               {selectedItem.article_meta.publish_time && <><span>·</span><span>{formatTime(selectedItem.article_meta.publish_time)}</span></>}
@@ -253,8 +253,8 @@ export function ReaderPane({
               <button
                 onClick={() => openInAppWindow(selectedItem.article_meta.url)}
                 style={{
-                  background: "none", border: "1px solid #30363d", borderRadius: 6,
-                  color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                  color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
                   display: "flex", alignItems: "center", gap: 4,
                 }}
               >
@@ -289,7 +289,7 @@ export function ReaderPane({
           {/* Original push: show original article (rich text HTML) below the guide card */}
           {selectedItem.routing === "original_push" && (
             <>
-              <hr style={{ margin: "32px 0", border: "none", height: 1, background: "linear-gradient(90deg, transparent, #475569, transparent)" }} />
+              <hr style={{ margin: "32px 0", border: "none", height: 1, background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
               <ArticleHtmlView articleId={selectedItem.article_id} />
             </>
           )}

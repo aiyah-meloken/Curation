@@ -72,15 +72,15 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
   const renderAccountRow = (acc: Account) => (
     <div key={acc.id} style={{
       display: "flex", alignItems: "center", gap: 10,
-      background: "#0d1117", borderRadius: 7, padding: "8px 10px",
+      background: "var(--bg-base)", borderRadius: 7, padding: "8px 10px",
     }}>
       {acc.avatar_url && (
         <img src={acc.avatar_url} alt="" referrerPolicy="no-referrer"
           style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0 }} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: "#e6edf3", fontSize: "0.82rem", fontWeight: 500 }}>{acc.name}</div>
-        <div style={{ color: "#8b949e", fontSize: "0.72rem" }}>
+        <div style={{ color: "var(--text-primary)", fontSize: "0.82rem", fontWeight: 500 }}>{acc.name}</div>
+        <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
           {acc.article_count ?? 0} 篇文章
           {acc.last_monitored_at ? ` · 最后同步 ${new Date(acc.last_monitored_at).toLocaleDateString("zh-CN")}` : ""}
           {acc.avg_daily_freq != null ? ` · ${acc.avg_daily_freq.toFixed(1)} 篇/天` : ""}
@@ -88,7 +88,7 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
         </div>
       </div>
       {syncMsgs[acc.id] && (
-        <span style={{ fontSize: "0.72rem", color: syncMsgs[acc.id].startsWith("+") ? "#3fb950" : "#8b949e" }}>
+        <span style={{ fontSize: "0.72rem", color: syncMsgs[acc.id].startsWith("+") ? "var(--accent-green)" : "var(--text-muted)" }}>
           {syncMsgs[acc.id]}
         </span>
       )}
@@ -98,8 +98,8 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
           disabled={syncingId !== null}
           title="同步最新文章"
           style={{
-            background: "none", border: "1px solid #30363d", borderRadius: 5,
-            color: "#8b949e", padding: "4px 8px", cursor: "pointer",
+            background: "none", border: "1px solid var(--border)", borderRadius: 5,
+            color: "var(--text-muted)", padding: "4px 8px", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 4, fontSize: "0.72rem",
             opacity: syncingId !== null ? 0.4 : 1,
           }}
@@ -114,7 +114,7 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
         title="删除"
         style={{
           background: "none", border: "none", cursor: "pointer",
-          color: "#6e7681", padding: 4, borderRadius: 4,
+          color: "var(--text-muted)", padding: 4, borderRadius: 4,
         }}
       >
         <Trash2 size={13} />
@@ -125,9 +125,9 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {errorMsg && (
-        <div style={{ margin: "10px 20px 0", padding: "8px 12px", background: "#3d1a1a", border: "1px solid #6e3535", borderRadius: 6, fontSize: "0.8rem", color: "#f85149", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ margin: "10px 20px 0", padding: "8px 12px", background: "rgba(201, 120, 112, 0.12)", border: "1px solid var(--accent-red)", borderRadius: 6, fontSize: "0.8rem", color: "var(--accent-red)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {errorMsg}
-          <button onClick={() => setErrorMsg(null)} style={{ background: "none", border: "none", color: "#f85149", cursor: "pointer", padding: 0, marginLeft: 8 }}>✕</button>
+          <button onClick={() => setErrorMsg(null)} style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", padding: 0, marginLeft: 8 }}>✕</button>
         </div>
       )}
 
@@ -136,15 +136,15 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
       {/* Accounts */}
       <div style={{ padding: "8px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontSize: "0.72rem", color: "#8b949e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             已订阅公众号
           </span>
           <button
             onClick={() => setIsSubscribeOpen(true)}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              background: "#21262d", border: "1px solid #30363d", borderRadius: 5,
-              color: "#60a5fa", fontSize: "0.75rem", padding: "4px 10px", cursor: "pointer",
+              background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 5,
+              color: "var(--accent-blue)", fontSize: "0.75rem", padding: "4px 10px", cursor: "pointer",
             }}
           >
             <Plus size={12} /> 订阅
@@ -152,7 +152,7 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
         </div>
 
         {subscribedAccounts.length === 0 ? (
-          <p style={{ color: "#4b5563", fontSize: "0.82rem", margin: "8px 0" }}>暂无订阅</p>
+          <p style={{ color: "var(--text-faint)", fontSize: "0.82rem", margin: "8px 0" }}>暂无订阅</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {subscribedAccounts.map(acc => renderAccountRow(acc))}
@@ -161,7 +161,7 @@ export function AdminManagementPanel({ accounts, onRefresh }: Props) {
 
         {temporaryAccounts.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: "0.68rem", color: "#6e7681", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+            <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
               临时阅读
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

@@ -68,17 +68,17 @@ export function AddArticleModal({ open, onClose, onRefresh, onNavigateToCard }: 
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200,
     }} onClick={onClose}>
       <div style={{
-        background: "#161b22", border: "1px solid #30363d", borderRadius: 12,
+        background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 12,
         padding: 24, width: 440, maxWidth: "90vw",
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <h3 style={{ margin: 0, color: "#e6edf3", fontSize: "1rem" }}>添加文章</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8b949e", padding: 4 }}>
+          <h3 style={{ margin: 0, color: "var(--text-primary)", fontSize: "1rem" }}>添加文章</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
-        <p style={{ color: "#8b949e", fontSize: "0.8rem", margin: "0 0 12px" }}>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", margin: "0 0 12px" }}>
           粘贴微信公众号文章链接，系统自动归类。
         </p>
 
@@ -91,8 +91,8 @@ export function AddArticleModal({ open, onClose, onRefresh, onNavigateToCard }: 
             placeholder="https://mp.weixin.qq.com/s/..."
             autoFocus
             style={{
-              flex: 1, background: "#0d1117", border: "1px solid #30363d",
-              borderRadius: 6, padding: "8px 12px", color: "#e6edf3", fontSize: "0.85rem",
+              flex: 1, background: "var(--bg-base)", border: "1px solid var(--border)",
+              borderRadius: 6, padding: "8px 12px", color: "var(--text-primary)", fontSize: "0.85rem",
               outline: "none",
             }}
           />
@@ -100,7 +100,7 @@ export function AddArticleModal({ open, onClose, onRefresh, onNavigateToCard }: 
             onClick={handleAdd}
             disabled={loading || !url.trim()}
             style={{
-              background: "#1f6feb", color: "#fff", border: "none", borderRadius: 6,
+              background: "var(--accent-gold)", color: "#1a1208", border: "none", borderRadius: 6,
               padding: "8px 14px", cursor: loading ? "default" : "pointer",
               fontSize: "0.85rem",
               opacity: loading || !url.trim() ? 0.6 : 1,
@@ -117,13 +117,13 @@ export function AddArticleModal({ open, onClose, onRefresh, onNavigateToCard }: 
             type="checkbox"
             checked={subscribe}
             onChange={e => setSubscribe(e.target.checked)}
-            style={{ width: 14, height: 14, accentColor: "#1f6feb", cursor: "pointer" }}
+            style={{ width: 14, height: 14, accentColor: "var(--accent-gold)", cursor: "pointer" }}
           />
-          <span style={{ fontSize: "0.82rem", color: "#8b949e" }}>同时订阅该文章所属公众号</span>
+          <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>同时订阅该文章所属公众号</span>
         </label>
 
         {msg && (
-          <p style={{ marginTop: 12, fontSize: "0.8rem", color: msg.type === "ok" ? "#3fb950" : "#f85149" }}>
+          <p style={{ marginTop: 12, fontSize: "0.8rem", color: msg.type === "ok" ? "var(--accent-green)" : "var(--accent-red)" }}>
             {msg.text}
           </p>
         )}

@@ -13,25 +13,25 @@ export const mdComponents: any = {
     <img {...props} referrerPolicy="no-referrer" loading="lazy" />
   ),
   table: ({ children, ...props }: any) => (
-    <div style={{ overflowX: 'auto', margin: '16px 0', borderRadius: 8, overflow: 'hidden', border: '1px solid #30363d' }}>
+    <div style={{ overflowX: 'auto', margin: '16px 0', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
       <table {...props} style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--fs-base)' }}>{children}</table>
     </div>
   ),
   th: ({ children, ...props }: any) => (
     <th {...props} style={{
       padding: '11px 16px', textAlign: 'left', fontWeight: 600,
-      background: '#1f2937', color: '#f9fafb', borderBottom: '2px solid #3b82f6',
+      background: 'var(--bg-panel)', color: 'var(--text-primary)', borderBottom: '2px solid var(--accent-gold)',
     }}>{children}</th>
   ),
   td: ({ children, ...props }: any) => (
-    <td {...props} style={{ padding: '9px 16px', color: '#c9d1d9' }}>{children}</td>
+    <td {...props} style={{ padding: '9px 16px', color: 'var(--text-secondary)' }}>{children}</td>
   ),
   tbody: ({ children, ...props }: any) => (
     <tbody {...props}>
       {Array.isArray(children) ? children.map((child: any, i: number) => {
         if (!child) return child;
         return (
-          <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : '#161b22' }}>
+          <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'var(--bg-panel)' }}>
             {child.props?.children}
           </tr>
         );
@@ -40,7 +40,7 @@ export const mdComponents: any = {
   ),
   pre: ({ children, ...props }: any) => (
     <pre {...props} style={{
-      background: '#0d1117', border: '1px solid #30363d', borderRadius: 8,
+      background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 8,
       padding: '16px', overflow: 'auto', fontSize: 'var(--fs-sm)', lineHeight: 1.6,
       margin: '16px 0',
     }}>{children}</pre>
@@ -51,7 +51,7 @@ export const mdComponents: any = {
     return (
       <code style={{
         background: 'rgba(59,130,246,0.1)', padding: '2px 6px', borderRadius: 4,
-        fontSize: '0.9em', color: '#93c5fd',
+        fontSize: '0.9em', color: 'var(--accent-blue)',
       }} {...props}>{children}</code>
     );
   },
@@ -69,16 +69,16 @@ export function CardHeader({ meta, onJumpToArticle, onSelectAccount }: {
 }) {
   const canJump = !!meta.article_id && !!onJumpToArticle;
   const canSelectAccount = !!meta.account_id && !!onSelectAccount;
-  const linkStyle: React.CSSProperties = { color: '#58a6ff', textDecoration: 'none', cursor: 'pointer' };
+  const linkStyle: React.CSSProperties = { color: 'var(--accent-blue)', textDecoration: 'none', cursor: 'pointer' };
 
   return (
     <div style={{
       padding: '14px 20px',
-      background: '#161b22',
-      borderBottom: '1px solid #30363d',
+      background: 'var(--bg-panel)',
+      borderBottom: '1px solid var(--border)',
       fontSize: 'var(--fs-sm)',
       lineHeight: 1.9,
-      color: '#8b949e',
+      color: 'var(--text-muted)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     }}>
       <div>
@@ -86,8 +86,8 @@ export function CardHeader({ meta, onJumpToArticle, onSelectAccount }: {
           href="#"
           onClick={(e) => { e.preventDefault(); if (canJump) onJumpToArticle!(meta.article_id!); }}
           style={{
-            color: '#e6edf3', textDecoration: 'none', fontWeight: 500, fontSize: 'var(--fs-base)',
-            borderBottom: canJump ? '1px dashed #58a6ff60' : 'none',
+            color: 'var(--text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: 'var(--fs-base)',
+            borderBottom: canJump ? '1px dashed var(--accent-blue-dim)' : 'none',
             cursor: canJump ? 'pointer' : 'default',
           }}
         >
@@ -100,7 +100,7 @@ export function CardHeader({ meta, onJumpToArticle, onSelectAccount }: {
           <a
             href="#"
             onClick={(e) => { e.preventDefault(); if (canSelectAccount) onSelectAccount!(meta.account_id!); }}
-            style={{ ...linkStyle, borderBottom: canSelectAccount ? '1px dashed #58a6ff60' : 'none' }}
+            style={{ ...linkStyle, borderBottom: canSelectAccount ? '1px dashed var(--accent-blue-dim)' : 'none' }}
             onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
             onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
           >

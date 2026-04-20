@@ -102,32 +102,32 @@ export function InviteManagementPanel() {
   }
 
   function statusLabel(c: InviteCode) {
-    if (!c.is_active) return { text: "已撤销", bg: "#2d2d2d", color: "#8b949e" };
+    if (!c.is_active) return { text: "已撤销", bg: "var(--bg-panel)", color: "var(--text-muted)" };
     if (c.max_uses !== null && c.use_count >= c.max_uses)
-      return { text: "已满", bg: "#3d2d1a", color: "#d29922" };
-    return { text: "可用", bg: "#1a3a1a", color: "#3fb950" };
+      return { text: "已满", bg: "var(--accent-gold-dim)", color: "var(--accent-gold)" };
+    return { text: "可用", bg: "var(--bg-panel)", color: "var(--accent-green)" };
   }
 
   return (
-    <div style={{ padding: 20, color: "#e6edf3", fontSize: 13 }}>
+    <div style={{ padding: 20, color: "var(--text-primary)", fontSize: 13 }}>
       {/* Toolbar */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>邀请码管理</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexWrap: "wrap" }}>
-          <label style={{ color: "#8b949e" }}>数量</label>
+          <label style={{ color: "var(--text-muted)" }}>数量</label>
           <input
             type="number" min={1} max={20} value={count}
             onChange={(e) => setCount(Number(e.target.value))}
             style={numInput(52)}
           />
-          <label style={{ color: "#8b949e" }}>次数上限</label>
+          <label style={{ color: "var(--text-muted)" }}>次数上限</label>
           <input
             type="number" min={1} placeholder="无限"
             value={maxUses}
             onChange={(e) => setMaxUses(e.target.value)}
             style={numInput(72)}
           />
-          <label style={{ color: "#8b949e" }}>有效天数</label>
+          <label style={{ color: "var(--text-muted)" }}>有效天数</label>
           <input
             type="number" min={1} placeholder="永久"
             value={expiresInDays}
@@ -139,7 +139,7 @@ export function InviteManagementPanel() {
             disabled={generating}
             style={{
               padding: "6px 14px",
-              background: "#238636",
+              background: "var(--accent-green)",
               border: "none",
               borderRadius: 6,
               color: "#fff",
@@ -153,13 +153,13 @@ export function InviteManagementPanel() {
       </div>
 
       {loading ? (
-        <p style={{ color: "#8b949e" }}>加载中…</p>
+        <p style={{ color: "var(--text-muted)" }}>加载中…</p>
       ) : codes.length === 0 ? (
-        <p style={{ color: "#8b949e" }}>暂无邀请码</p>
+        <p style={{ color: "var(--text-muted)" }}>暂无邀请码</p>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ color: "#8b949e", borderBottom: "1px solid #30363d" }}>
+            <tr style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border)" }}>
               <SortTh label="邀请码" col="code" />
               <SortTh label="状态" col="is_active" />
               <SortTh label="已用/上限" col="use_count" />
@@ -172,9 +172,9 @@ export function InviteManagementPanel() {
             {sorted.map((c) => {
               const status = statusLabel(c);
               return (
-                <tr key={c.id} style={{ borderBottom: "1px solid #21262d" }}>
+                <tr key={c.id} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
                   <td style={td}>
-                    <code style={{ fontSize: 12, color: "#58a6ff" }}>{c.code}</code>
+                    <code style={{ fontSize: 12, color: "var(--accent-blue)" }}>{c.code}</code>
                   </td>
                   <td style={td}>
                     <span style={{
@@ -184,23 +184,23 @@ export function InviteManagementPanel() {
                       {status.text}
                     </span>
                   </td>
-                  <td style={{ ...td, color: "#8b949e" }}>{usageLabel(c)}</td>
-                  <td style={{ ...td, color: "#8b949e" }}>
+                  <td style={{ ...td, color: "var(--text-muted)" }}>{usageLabel(c)}</td>
+                  <td style={{ ...td, color: "var(--text-muted)" }}>
                     {c.expires_at ? c.expires_at.slice(0, 10) : "永久"}
                   </td>
-                  <td style={{ ...td, color: "#8b949e" }}>{c.last_used_by_email || "—"}</td>
+                  <td style={{ ...td, color: "var(--text-muted)" }}>{c.last_used_by_email || "—"}</td>
                   <td style={td}>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => handleCopy(c.code)} title="复制" style={iconBtn}>
                         {copied === c.code
-                          ? <span style={{ fontSize: 11, color: "#3fb950" }}>✓</span>
+                          ? <span style={{ fontSize: 11, color: "var(--accent-green)" }}>✓</span>
                           : <Copy size={13} />}
                       </button>
                       {c.is_active && (
                         <button
                           onClick={() => handleRevoke(c.code)}
                           title="撤销"
-                          style={{ ...iconBtn, color: "#f85149" }}
+                          style={{ ...iconBtn, color: "var(--accent-red)" }}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -221,10 +221,10 @@ function numInput(width: number): React.CSSProperties {
   return {
     width,
     padding: "4px 8px",
-    background: "#0d1117",
-    border: "1px solid #30363d",
+    background: "var(--bg-base)",
+    border: "1px solid var(--border)",
     borderRadius: 6,
-    color: "#e6edf3",
+    color: "var(--text-primary)",
     fontSize: 13,
   };
 }
@@ -242,7 +242,7 @@ const iconBtn: React.CSSProperties = {
   background: "none",
   border: "none",
   cursor: "pointer",
-  color: "#8b949e",
+  color: "var(--text-muted)",
   padding: 4,
   display: "flex",
   alignItems: "center",
