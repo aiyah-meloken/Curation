@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchInbox, fetchDiscarded, markAllCardsRead, apiFetch } from "../lib/api";
 import type { InboxItem, DiscardedItem } from "../types";
 
-export interface DateGroup {
+export interface DateGroup<T = InboxItem> {
   key: "today" | "yesterday" | "thisWeek" | "lastWeek" | "older";
   label: string;
-  items: InboxItem[];
+  items: T[];
 }
 
 export function useInbox(accountId?: number | null, unreadOnly?: boolean) {
@@ -17,6 +17,13 @@ export function useInbox(accountId?: number | null, unreadOnly?: boolean) {
       return data.items ?? [];
     },
     staleTime: 5 * 60 * 1000,
+    refetchInterval: (query) => {
+      const items = query.state.data;
+      if (items?.some((item) => item.queue_status != null)) {
+        return 10_000;
+      }
+      return false;
+    },
   });
 }
 
@@ -67,7 +74,7 @@ function getMondayOfWeek(d: Date): Date {
   return startOfDay(mon);
 }
 
-export function groupByDateBucket(items: InboxItem[]): DateGroup[] {
+export function groupByDateBucket<T extends { article_date: string | null }>(items: T[]): DateGroup<T>[] {
   const now = new Date();
   const today = startOfDay(now);
   const yesterday = new Date(today);
@@ -81,7 +88,7 @@ export function groupByDateBucket(items: InboxItem[]): DateGroup[] {
   const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, ...
   const isMondayOrTuesday = dayOfWeek === 1 || dayOfWeek === 2;
 
-  const buckets: Record<DateGroup["key"], InboxItem[]> = {
+  const buckets: Record<DateGroup["key"], T[]> = {
     today: [],
     yesterday: [],
     thisWeek: [],
