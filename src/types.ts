@@ -184,3 +184,16 @@ export interface RunFile {
   size: number;
   is_dir: boolean;
 }
+
+export interface FavoriteItem {
+  item_type: "card" | "article";
+  item_id: string;
+  created_at: string;
+  title: string | null;
+  description: string | null;
+  routing: "ai_curation" | "original_push" | null;
+  article_id: string | null;
+  article_title: string | null;
+  article_account: string | null;
+  article_meta: ArticleMeta | null;
+}
