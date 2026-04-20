@@ -140,3 +140,47 @@ export interface DiscardedItem {
   article_date: string | null;
   article_meta: ArticleMeta;
 }
+
+export interface QueueEntry {
+  id: number;
+  article_id: string;
+  article_title: string;
+  article_publish_time: string | null;
+  serving_run_id: number | null;
+  status: "pending" | "running" | "done" | "failed";
+  run_id: number | null;
+  routing: string | null;
+  routing_reason: string | null;
+  run_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RunEntry {
+  id: number;
+  article_id: string;
+  backend: string;
+  workspace_path: string | null;
+  overall_status: string;
+  elapsed_s: number | null;
+  routing: string | null;
+  routing_reason: string | null;
+  progress_log: string | null;
+  error_msg: string | null;
+  created_at: string;
+}
+
+export interface RunStreamLine {
+  type: string;
+  stage?: string;
+  elapsed_s?: number;
+  error?: string;
+  run_id?: number;
+  [key: string]: unknown;
+}
+
+export interface RunFile {
+  name: string;
+  size: number;
+  is_dir: boolean;
+}

@@ -116,3 +116,75 @@ export async function markAllCardsRead(cardIds: string[]) {
     body: JSON.stringify({ card_ids: cardIds }),
   });
 }
+
+export async function fetchQueue() {
+  const res = await apiFetch("/queue");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchStrategy() {
+  const res = await apiFetch("/strategy");
+  const json = await res.json();
+  return json.data;
+}
+
+export async function patchStrategy(body: Record<string, unknown>) {
+  const res = await apiFetch("/strategy", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+export async function fetchBackends() {
+  const res = await apiFetch("/agent/backends");
+  const json = await res.json();
+  return json;
+}
+
+export async function triggerQueueRun(articleId: string) {
+  const res = await apiFetch(`/queue/${articleId}/run`, { method: "POST" });
+  return res.json();
+}
+
+export async function retryQueueEntry(articleId: string) {
+  const res = await apiFetch(`/queue/${articleId}/retry`, { method: "POST" });
+  return res.json();
+}
+
+export async function fetchArticleRuns(articleId: string) {
+  const res = await apiFetch(`/articles/${articleId}/runs`);
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchRun(runId: number) {
+  const res = await apiFetch(`/runs/${runId}`);
+  const json = await res.json();
+  return json.data;
+}
+
+export async function deleteRun(runId: number) {
+  const res = await apiFetch(`/runs/${runId}`, { method: "DELETE" });
+  return res.json();
+}
+
+export async function fetchRunStream(runId: number, offset = 0, limit = 500) {
+  const res = await apiFetch(`/runs/${runId}/stream?offset=${offset}&limit=${limit}`);
+  const json = await res.json();
+  return json;
+}
+
+export async function fetchRunFiles(runId: number) {
+  const res = await apiFetch(`/runs/${runId}/files`);
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchRunFile(runId: number, filepath: string) {
+  const res = await apiFetch(`/runs/${runId}/files/${filepath}`);
+  const json = await res.json();
+  return json.content;
+}
