@@ -7,6 +7,7 @@ import { stripFrontmatter, mdComponents } from "../lib/markdown";
 import { useCardContent } from "../hooks/useCards";
 import { useArticleContent } from "../hooks/useArticles";
 import { useMarkCardReadSingle } from "../hooks/useInbox";
+import { FavoriteButton } from "./FavoriteButton";
 import type { InboxItem, DiscardedItem } from "../types";
 
 function routingTag(routing: "ai_curation" | "original_push") {
@@ -45,6 +46,7 @@ function SourceBar({
   routingReason,
   onOpenOriginal,
   onOpenDrawer,
+  cardId,
 }: {
   meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
   routing?: "ai_curation" | "original_push";
@@ -52,6 +54,7 @@ function SourceBar({
   routingReason?: string;
   onOpenOriginal: () => void;
   onOpenDrawer?: () => void;
+  cardId?: string;
 }) {
   return (
     <div className="reader-source-bar">
@@ -73,6 +76,9 @@ function SourceBar({
           {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {cardId && (
+            <FavoriteButton itemType="card" itemId={cardId} />
+          )}
           {routing === "ai_curation" && onOpenDrawer && (
             <button
               onClick={onOpenDrawer}
@@ -233,6 +239,7 @@ export function ReaderPane({
           isDiscarded={false}
           onOpenOriginal={() => openInAppWindow(selectedItem.article_meta.url)}
           onOpenDrawer={selectedItem.routing === "ai_curation" ? onOpenDrawer : undefined}
+          cardId={selectedItem.card_id}
         />
         <div className="reader-content animate-in">
           {/* Card content (markdown) — shown for both ai_curation and original_push */}
