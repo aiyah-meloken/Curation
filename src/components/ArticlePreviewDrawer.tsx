@@ -41,7 +41,16 @@ function CardMarkdownView({ articleId }: { articleId: string }) {
     <div className="markdown-body">
       {cards.map((card: { card_id: string; title: string; content: string }, i: number) => (
         <div key={card.card_id}>
-          {i > 0 && <hr style={{ margin: "32px 0", border: "none", height: 1, background: "linear-gradient(90deg, transparent, #475569, transparent)" }} />}
+          {i > 0 && <hr style={{ margin: "24px 0", border: "none", height: 2, background: "linear-gradient(90deg, transparent, #475569, transparent)" }} />}
+          {cards.length > 1 && (
+            <div style={{
+              padding: "8px 0", fontSize: "0.76rem", color: "#8b949e", fontWeight: 600,
+              borderBottom: "1px solid #30363d", marginBottom: 12,
+            }}>
+              卡片 {i + 1}/{cards.length}
+              {card.title && <span style={{ marginLeft: 8, fontWeight: 400 }}>{card.title}</span>}
+            </div>
+          )}
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
             {stripFrontmatter(card.content)}
           </ReactMarkdown>
