@@ -55,48 +55,52 @@ function SourceBar({
 }) {
   return (
     <div className="reader-source-bar">
-      <div style={{ marginBottom: 6 }}>
-        <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "0.88rem" }}>
+      {/* Line 1: original title + tag */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+        <span style={{ color: "#e6edf3", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
           {meta.title}
         </span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "0.78rem", color: "#8b949e" }}>
-        <span>{meta.account}</span>
-        {meta.author && <><span>·</span><span>{meta.author}</span></>}
-        {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
         {routing && routingTag(routing)}
         {isDiscarded && (
           <span className="inbox-tag tag-discard" style={{ fontSize: "0.72rem" }}>丢弃</span>
         )}
+      </div>
+      {/* Line 2: meta left, buttons right */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ fontSize: "0.78rem", color: "#8b949e", display: "flex", alignItems: "center", gap: 4 }}>
+          <span>{meta.account}</span>
+          {meta.author && <><span>·</span><span>{meta.author}</span></>}
+          {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {routing === "ai_curation" && onOpenDrawer && (
+            <button
+              onClick={onOpenDrawer}
+              style={{
+                background: "none", border: "1px solid #30363d", borderRadius: 6,
+                color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+              }}
+            >
+              查看原文
+            </button>
+          )}
+          <button
+            onClick={onOpenOriginal}
+            style={{
+              background: "none", border: "1px solid #30363d", borderRadius: 6,
+              color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+              display: "flex", alignItems: "center", gap: 4,
+            }}
+          >
+            <ExternalLink size={12} /> 微信原文
+          </button>
+        </div>
       </div>
       {routingReason && (
         <div style={{ fontSize: "0.76rem", color: "#f0883e", marginTop: 4 }}>
           丢弃原因: {routingReason}
         </div>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        {routing === "ai_curation" && onOpenDrawer && (
-          <button
-            onClick={onOpenDrawer}
-            style={{
-              background: "none", border: "1px solid #30363d", borderRadius: 6,
-              color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
-            }}
-          >
-            查看原文
-          </button>
-        )}
-        <button
-          onClick={onOpenOriginal}
-          style={{
-            background: "none", border: "1px solid #30363d", borderRadius: 6,
-            color: "#8b949e", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
-            display: "flex", alignItems: "center", gap: 4,
-          }}
-        >
-          <ExternalLink size={12} /> 微信原文
-        </button>
-      </div>
     </div>
   );
 }

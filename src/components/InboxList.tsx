@@ -83,13 +83,11 @@ function InboxItemRow({
       className={`inbox-item ${isSelected ? "selected" : ""} ${item.read_at ? "read" : ""}`}
       onClick={onSelect}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <span className="inbox-item-title">{item.title}</span>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+        <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
         {item.read_at && (
-          <Check size={12} style={{ color: "#3fb950", flexShrink: 0 }} />
+          <Check size={12} style={{ color: "#3fb950", flexShrink: 0, marginTop: 3 }} />
         )}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
         {routingTag(item.routing)}
       </div>
       {item.description && (
