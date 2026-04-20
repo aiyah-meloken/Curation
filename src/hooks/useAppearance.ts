@@ -62,32 +62,26 @@ export function useAppearance(): UseAppearance {
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
+  // Autosave: every change writes to DOM + localStorage + state atomically.
   const setDraft = useCallback((patch: Partial<AppearanceSettings>) => {
     setDraftState((prev) => {
       const next = { ...prev, ...patch };
       apply(next, window.innerWidth);
+      save(next);
+      setSaved(next);
       return next;
     });
   }, []);
 
-  const commit = useCallback(() => {
-    setDraftState((d) => {
-      save(d);
-      setSaved(d);
-      return d;
-    });
-  }, []);
-
-  const cancel = useCallback(() => {
-    setDraftState(() => {
-      apply(savedRef.current, window.innerWidth);
-      return savedRef.current;
-    });
-  }, []);
+  // Kept for API compatibility; autosave makes them no-ops.
+  const commit = useCallback(() => {}, []);
+  const cancel = useCallback(() => {}, []);
 
   const resetDefaults = useCallback(() => {
     const next = { ...DEFAULTS };
     apply(next, window.innerWidth);
+    save(next);
+    setSaved(next);
     setDraftState(next);
   }, []);
 

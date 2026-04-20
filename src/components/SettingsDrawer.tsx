@@ -152,17 +152,15 @@ export function SettingsDrawer({
   const systemSize = draft.rootSizeOverride ?? autoSize;
   const isAuto = draft.rootSizeOverride === null;
 
-  const handleApply = () => {
-    onCommit();
-    onClose();
-  };
-  const handleCancel = () => {
-    onCancel();
+  // Autosave: just close (no commit/cancel distinction).
+  void onCommit;
+  void onCancel;
+  const handleClose = () => {
     onClose();
   };
 
   return (
-    <div className="settings-drawer-overlay" onClick={handleCancel}>
+    <div className="settings-drawer-overlay" onClick={handleClose}>
       <aside
         className="settings-drawer-panel ts-panel"
         onClick={(e) => e.stopPropagation()}
@@ -175,7 +173,7 @@ export function SettingsDrawer({
             <span className="ts-masthead-rule" />
             <span className="ts-masthead-sans">SETTINGS</span>
           </div>
-          <button className="ts-close" onClick={handleCancel} aria-label="关闭">
+          <button className="ts-close" onClick={handleClose} aria-label="关闭">
             <X size={15} />
           </button>
         </header>
@@ -332,11 +330,9 @@ export function SettingsDrawer({
             恢复默认
           </button>
           <div style={{ flex: 1 }} />
-          <button className="ts-footer-btn" onClick={handleCancel}>
-            取消
-          </button>
-          <button className="ts-footer-btn primary" onClick={handleApply}>
-            应用
+          <span className="ts-autosave-note">更改即刻保存</span>
+          <button className="ts-footer-btn primary" onClick={handleClose}>
+            完成
           </button>
         </footer>
       </aside>

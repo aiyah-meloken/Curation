@@ -2097,6 +2097,15 @@ body {
   color: var(--accent-gold);
 }
 
+.ts-autosave-note {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-style: italic;
+  font-family: var(--font-body);
+  letter-spacing: 0.04em;
+  margin-right: var(--sp-3);
+}
+
 .ts-footer-btn {
   background: transparent;
   border: 1px solid var(--border);
