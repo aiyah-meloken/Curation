@@ -1,4 +1,5 @@
 mod acp;
+mod chat_commands;
 mod commands;
 mod crypto;
 mod db;
@@ -206,6 +207,8 @@ pub fn run() {
                 auth_token: std::sync::Mutex::new(None),
                 sync_client_base: std::sync::Mutex::new("http://127.0.0.1:8889".to_string()),
                 db_path,
+                acp_manager: crate::acp::AcpManager::new(),
+                current_card_context: std::sync::Mutex::new(None),
             };
             app.manage(state);
 
@@ -257,7 +260,15 @@ pub fn run() {
             commands::mark_read,
             commands::toggle_favorite,
             commands::get_cached_article,
-            commands::run_sync
+            commands::run_sync,
+            chat_commands::detect_available_agents,
+            chat_commands::set_current_card_context,
+            chat_commands::create_chat_session,
+            chat_commands::get_session_for_card,
+            chat_commands::get_home_session,
+            chat_commands::get_chat_messages,
+            chat_commands::send_chat_message,
+            chat_commands::cancel_chat_stream,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
