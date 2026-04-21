@@ -1,3 +1,4 @@
+mod acp;
 mod commands;
 mod crypto;
 mod db;
