@@ -101,9 +101,6 @@ function InboxItemRow({
           <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
         )}
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
-        {!isAnalyzing && item.read_at && (
-          <Check size={12} style={{ color: "var(--accent-green)", flexShrink: 0, marginTop: 3 }} />
-        )}
         {routingTag(item.routing, item.queue_status)}
       </div>
       {item.description && (

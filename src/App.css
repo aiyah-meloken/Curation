@@ -212,6 +212,8 @@ body {
   position: relative;
   display: flex;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .search-input {

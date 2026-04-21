@@ -27,7 +27,6 @@ interface SidebarProps {
   currentUser: { id: number; email: string; username: string; role: string };
   appVersion: string;
   sidebarWidth: number;
-  favoritesCount: number;
   onNavigateToCard?: (cardId: string) => void;
   onOpenSettings: () => void;
 }
@@ -52,7 +51,7 @@ export function Sidebar({
   currentUser,
   appVersion,
   sidebarWidth,
-  favoritesCount,
+
   onNavigateToCard,
   onOpenSettings,
 }: SidebarProps) {
@@ -160,20 +159,24 @@ export function Sidebar({
               <div className="account-name">收藏</div>
             </div>
           )}
-          {favoritesCount > 0 && (
-            <span className="unread-badge" style={{ background: "var(--accent-gold)", color: "var(--bg-base)" }}>{favoritesCount}</span>
-          )}
         </div>
 
         {/* Subscribed accounts — collapsible */}
-        {!isSidebarCollapsed && subscribedAccounts.length > 0 && (
+        {subscribedAccounts.length > 0 && (
           <div
-            className="label-caps"
-            style={{ padding: "var(--sp-2) var(--sp-4)", paddingLeft: 20, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
+            className="account-item"
             onClick={() => setIsAccountListOpen(!isAccountListOpen)}
+            title="公众号"
+            style={{ cursor: "pointer" }}
           >
-            {isAccountListOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            <span>公众号 ({subscribedAccounts.length})</span>
+            <div className="account-avatar" style={{ background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+              {isAccountListOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="account-info">
+                <div className="account-name">公众号 ({subscribedAccounts.length})</div>
+              </div>
+            )}
           </div>
         )}
         {isAccountListOpen && subscribedAccounts.map((acc) => {

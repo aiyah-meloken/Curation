@@ -7,7 +7,7 @@ import type { InboxItem } from "./types";
 import { setCurrentCardContext } from "./lib/chat";
 import type { CardContext } from "./lib/chat";
 import { FavoritesList } from './components/FavoritesList';
-import { FavoritesReader } from './components/FavoritesReader';
+
 import { useFavorites } from './hooks/useFavorites';
 import type { FavoriteItem } from './types';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -239,31 +239,59 @@ function AppMain({ currentUser, onLogout }: {
     }
   }, [inboxItems, selectedCardId]);
 
-  // Set current card context on card selection for MCP
-  useEffect(() => {
-    if (!selectedItem || !selectedItem.card_id) {
-      setCurrentCardContext(null).catch(console.error);
-      return;
-    }
-    const ctx: CardContext = {
-      card_id: selectedItem.card_id,
-      title: selectedItem.article_meta.title,
-      content_md: "",
-      article_html: null,
-      account: selectedItem.article_meta.account,
-      author: selectedItem.article_meta.author ?? null,
-      article_date: selectedItem.article_date ?? null,
-      url: selectedItem.article_meta.url,
-      routing: selectedItem.routing ?? "ai_curation",
-    };
-    setCurrentCardContext(ctx).catch(console.error);
-  }, [selectedItem?.card_id]);
-
   // Find selected discarded item
   const selectedDiscardedItem = useMemo(() => {
     if (!selectedDiscardedId || !discardedItems) return null;
     return discardedItems.find((i) => i.article_id === selectedDiscardedId) ?? null;
   }, [selectedDiscardedId, discardedItems]);
+
+  // Convert selected favorite to InboxItem for ReaderPane reuse
+  const favoriteAsInboxItem: InboxItem | null = useMemo(() => {
+    if (!selectedFavorite || selectedFavorite.item_type !== "card") return null;
+    const meta = selectedFavorite.article_meta ?? {
+      title: selectedFavorite.article_title ?? selectedFavorite.title ?? "",
+      account: selectedFavorite.article_account ?? "",
+      account_id: 0,
+      author: null,
+      publish_time: null,
+      url: "",
+    };
+    return {
+      card_id: selectedFavorite.item_id,
+      article_id: selectedFavorite.article_id ?? "",
+      title: selectedFavorite.title ?? "",
+      description: selectedFavorite.description,
+      routing: selectedFavorite.routing,
+      article_date: null,
+      read_at: selectedFavorite.created_at, // favorites are "read"
+      queue_status: null,
+      article_meta: meta,
+    };
+  }, [selectedFavorite]);
+
+  // The item to show in ReaderPane — works for both inbox and favorites
+  const activeReaderItem = selectedView === "favorites" ? favoriteAsInboxItem : selectedItem;
+
+  // Set current card context on card selection for MCP
+  useEffect(() => {
+    const item = activeReaderItem;
+    if (!item || !item.card_id) {
+      setCurrentCardContext(null).catch(console.error);
+      return;
+    }
+    const ctx: CardContext = {
+      card_id: item.card_id,
+      title: item.article_meta.title,
+      content_md: "",
+      article_html: null,
+      account: item.article_meta.account,
+      author: item.article_meta.author ?? null,
+      article_date: item.article_date ?? null,
+      url: item.article_meta.url,
+      routing: item.routing ?? "ai_curation",
+    };
+    setCurrentCardContext(ctx).catch(console.error);
+  }, [activeReaderItem?.card_id]);
 
   // Sibling cards (same article) for drawer
   const siblingCards = useMemo(() => {
@@ -368,7 +396,7 @@ function AppMain({ currentUser, onLogout }: {
         onSelectDiscarded={handleSelectDiscarded}
         onSelectFavorites={handleSelectFavorites}
 
-        favoritesCount={favoritesData?.length ?? 0}
+
         onNavigateToCard={handleNavigateToCard}
 
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
@@ -429,11 +457,9 @@ function AppMain({ currentUser, onLogout }: {
             onExitAdmin={() => setIsAdminMode(false)}
           />
         </main>
-      ) : selectedView === "favorites" ? (
-        <FavoritesReader selectedFavorite={selectedFavorite} />
       ) : (
         <ReaderPane
-          selectedItem={selectedItem}
+          selectedItem={activeReaderItem}
           selectedDiscardedItem={selectedDiscardedItem}
           isDiscardedView={isDiscardedView}
           isHomeView={selectedView === "home"}
