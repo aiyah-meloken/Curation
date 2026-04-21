@@ -367,7 +367,7 @@ function AppMain({ currentUser, onLogout }: {
         onSelectAccount={handleSelectAccount}
         onSelectDiscarded={handleSelectDiscarded}
         onSelectFavorites={handleSelectFavorites}
-        onSelectSearch={handleSelectSearch}
+
         favoritesCount={favoritesData?.length ?? 0}
         onNavigateToCard={handleNavigateToCard}
 
@@ -405,6 +405,11 @@ function AppMain({ currentUser, onLogout }: {
           onSelect={handleListSelect}
           isLoading={isDiscardedView ? isLoadingDiscarded : isLoadingInbox}
           listWidth={listWidth}
+          favoriteCardIds={new Set(
+            (favoritesData ?? [])
+              .filter((f) => f.item_type === "card" && f.item_id)
+              .map((f) => f.item_id)
+          )}
         />
       )}
 

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Loader2, Star } from "lucide-react";
 import type { InboxItem, DiscardedItem } from "../types";
 import { groupByDateBucket } from "../hooks/useInbox";
 import type { DateGroup } from "../hooks/useInbox";
@@ -13,6 +13,7 @@ interface InboxListProps {
   onSelect: (id: string, type: "card" | "discarded") => void;
   isLoading: boolean;
   listWidth: number;
+  favoriteCardIds?: Set<string>;
 }
 
 function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus?: "pending" | "running" | null) {
@@ -81,10 +82,12 @@ function InboxGroupHeader({
 function InboxItemRow({
   item,
   isSelected,
+  isFavorite,
   onSelect,
 }: {
   item: InboxItem;
   isSelected: boolean;
+  isFavorite: boolean;
   onSelect: () => void;
 }) {
   const isAnalyzing = !!item.queue_status;
@@ -94,6 +97,9 @@ function InboxItemRow({
       onClick={onSelect}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+        {isFavorite && (
+          <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
+        )}
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
         {!isAnalyzing && item.read_at && (
           <Check size={12} style={{ color: "var(--accent-green)", flexShrink: 0, marginTop: 3 }} />
@@ -150,6 +156,7 @@ export function InboxList({
   onSelect,
   isLoading,
   listWidth,
+  favoriteCardIds = new Set(),
 }: InboxListProps) {
   const [search, setSearch] = useState("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -307,6 +314,7 @@ export function InboxList({
                           ? selectedId === item.card_id
                           : selectedId === item.article_id
                       }
+                      isFavorite={!!item.card_id && favoriteCardIds.has(item.card_id)}
                       onSelect={() =>
                         onSelect(item.card_id ?? item.article_id, "card")
                       }

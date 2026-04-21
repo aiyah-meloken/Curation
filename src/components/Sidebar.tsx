@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inbox, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Trash2, UserMinus, UserPlus, Star, Settings, Search } from "lucide-react";
+import { Inbox, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Trash2, UserMinus, UserPlus, Star, Settings } from "lucide-react";
 import { useAccounts, useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AddMenu } from "./AddMenu";
@@ -18,7 +18,6 @@ interface SidebarProps {
   onSelectAccount: (accountId: number) => void;
   onSelectDiscarded: () => void;
   onSelectFavorites: () => void;
-  onSelectSearch: () => void;
   onToggleAdmin: () => void;
   onBack?: () => void;
   onForward?: () => void;
@@ -44,7 +43,6 @@ export function Sidebar({
   onSelectAccount,
   onSelectDiscarded,
   onSelectFavorites,
-  onSelectSearch,
   onToggleAdmin,
   onBack,
   onForward,
@@ -98,7 +96,7 @@ export function Sidebar({
           <span className="sidebar-brand">
             <span className="sidebar-brand-name">Curation</span>
             {!isSidebarCollapsed && (
-              <span className="sidebar-brand-slogan">值得读完的文章，<br />远比你以为的少</span>
+              <span className="sidebar-brand-slogan">值得读完的文章，远比你以为的少</span>
             )}
           </span>
         </h2>
@@ -167,27 +165,11 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Search */}
-        <div
-          className={`account-item ${selectedView === "search" ? "active" : ""}`}
-          onClick={onSelectSearch}
-          title="搜索 (⌘K)"
-        >
-          <div className="account-avatar" style={{ background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
-            <Search size={16} />
-          </div>
-          {!isSidebarCollapsed && (
-            <div className="account-info">
-              <div className="account-name">搜索</div>
-            </div>
-          )}
-        </div>
-
         {/* Subscribed accounts — collapsible */}
         {!isSidebarCollapsed && subscribedAccounts.length > 0 && (
           <div
             className="label-caps"
-            style={{ padding: "var(--sp-2) var(--sp-4)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
+            style={{ padding: "var(--sp-2) var(--sp-4)", paddingLeft: 20, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, userSelect: "none" }}
             onClick={() => setIsAccountListOpen(!isAccountListOpen)}
           >
             {isAccountListOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
