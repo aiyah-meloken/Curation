@@ -79,10 +79,6 @@ export function toggleFavoriteLocal(itemType: string, itemId: string, isFavorite
   return invoke("toggle_favorite", { itemType, itemId, isFavorited });
 }
 
-export function getCachedArticle(articleId: string): Promise<string | null> {
-  return invoke("get_cached_article", { articleId });
-}
-
 export function getCardContent(cardId: string): Promise<string | null> {
   return invoke("get_card_content", { cardId });
 }

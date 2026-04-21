@@ -25,66 +25,31 @@ where
 }
 
 #[tauri::command]
-pub fn open_db_from_keychain(state: State<'_, AppState>) -> Result<bool, String> {
-    let hex_key = match crypto::load_key()? {
-        Some(k) => {
-            println!("[cache] keychain key found ({}... chars)", k.len());
-            k
-        }
-        None => {
-            println!("[cache] no keychain key found");
-            return Ok(false);
-        }
-    };
-    if !state.db_path.exists() {
-        println!("[cache] db file not found at {:?}", state.db_path);
-        return Ok(false);
-    }
-    println!("[cache] opening existing db at {:?}", state.db_path);
-    let db = CacheDb::open(&state.db_path, &hex_key)?;
-    let mut guard = state.db.lock().map_err(|e| e.to_string())?;
-    *guard = Some(db);
-    println!("[cache] db opened successfully from keychain");
-    Ok(true)
-}
-
-#[tauri::command]
 pub fn init_db_with_login(
     state: State<'_, AppState>,
     token: String,
     user_id: String,
 ) -> Result<(), String> {
-    let new_key = crypto::derive_key(&token, &user_id);
+    let hex_key = crypto::derive_key(&token, &user_id);
     println!("[cache] init_db_with_login called, db exists: {}", state.db_path.exists());
 
-    // Try to open existing DB with old key, then rekey
     let db = if state.db_path.exists() {
-        if let Some(old_key) = crypto::load_key()? {
-            println!("[cache] attempting rekey with old keychain key");
-            match CacheDb::open(&state.db_path, &old_key) {
-                Ok(existing) => {
-                    println!("[cache] old key works, rekeying to new key");
-                    existing.rekey(&new_key)?;
-                    existing
-                }
-                Err(e) => {
-                    println!("[cache] old key FAILED: {}, CREATING NEW DB (data lost!)", e);
-                    CacheDb::create(&state.db_path, &new_key)?
-                }
+        match CacheDb::open(&state.db_path, &hex_key) {
+            Ok(db) => {
+                println!("[cache] opened existing db");
+                db
             }
-        } else {
-            println!("[cache] no old key in keychain, CREATING NEW DB (data lost!)");
-            CacheDb::create(&state.db_path, &new_key)?
+            Err(e) => {
+                println!("[cache] key mismatch ({}), recreating db", e);
+                CacheDb::create(&state.db_path, &hex_key)?
+            }
         }
     } else {
-        // Ensure parent directory exists
         if let Some(parent) = state.db_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        CacheDb::create(&state.db_path, &new_key)?
+        CacheDb::create(&state.db_path, &hex_key)?
     };
-
-    crypto::store_key(&new_key)?;
 
     let mut db_guard = state.db.lock().map_err(|e| e.to_string())?;
     *db_guard = Some(db);
@@ -177,14 +142,6 @@ pub fn get_card_content(
     card_id: String,
 ) -> Result<Option<String>, String> {
     with_db(&state, |db| db.get_card_content(&card_id))
-}
-
-#[tauri::command]
-pub fn get_cached_article(
-    state: State<'_, AppState>,
-    article_id: String,
-) -> Result<Option<String>, String> {
-    with_db(&state, |db| db.get_article_content(&article_id))
 }
 
 #[tauri::command]

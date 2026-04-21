@@ -668,6 +668,65 @@ impl CacheDb {
         Ok(())
     }
 
+    /// Return up to `limit` card_ids that have no content_md, ordered recent → older.
+    pub fn get_cards_missing_content(&self, limit: i64) -> Result<Vec<String>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT card_id FROM cards
+                 WHERE content_md IS NULL
+                 ORDER BY article_date DESC NULLS LAST, card_id
+                 LIMIT ?1",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([limit], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        Ok(rows)
+    }
+
+    /// Write content_md for a card and update its FTS entry.
+    pub fn update_card_content(&self, card_id: &str, content_md: &str, updated_at: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE cards SET content_md = ?1, updated_at = ?2 WHERE card_id = ?3",
+            rusqlite::params![content_md, updated_at, card_id],
+        )
+        .map_err(|e| e.to_string())?;
+        // Refresh FTS entry
+        if let Ok(rowid) = conn.query_row(
+            "SELECT rowid FROM cards WHERE card_id = ?1",
+            [card_id],
+            |r| r.get::<_, i64>(0),
+        ) {
+            conn.execute(
+                "DELETE FROM cards_fts WHERE rowid = ?1",
+                rusqlite::params![rowid],
+            )
+            .ok();
+            let title: Option<String> = conn
+                .query_row(
+                    "SELECT title FROM cards WHERE card_id = ?1",
+                    [card_id],
+                    |r| r.get(0),
+                )
+                .ok()
+                .flatten();
+            conn.execute(
+                "INSERT INTO cards_fts (rowid, title, content_md) VALUES (?1, ?2, ?3)",
+                rusqlite::params![
+                    rowid,
+                    title.as_deref().unwrap_or_default(),
+                    content_md,
+                ],
+            )
+            .ok();
+        }
+        Ok(())
+    }
+
     // -----------------------------------------------------------------------
     // Chat
     // -----------------------------------------------------------------------

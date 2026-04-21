@@ -152,6 +152,7 @@ impl SyncClient {
         let mut all_changed: HashSet<String> = HashSet::new();
         let mut cursor: Option<String> = None;
 
+        // Pass 1: pull meta pages
         loop {
             // Async fetch — no lock held here.
             let body = self
@@ -160,7 +161,6 @@ impl SyncClient {
 
             let page = PullResult {
                 cards: body["cards"].as_array().cloned().unwrap_or_default(),
-                articles: body["articles"].as_array().cloned().unwrap_or_default(),
                 favorites: body["favorites"].as_array().cloned().unwrap_or_default(),
                 sync_ts: body["sync_ts"].as_str().map(|s| s.to_string()),
             };
@@ -192,13 +192,68 @@ impl SyncClient {
             }
         }
 
+        // Pass 2: backfill content_md for cards missing it, recent → older, batches of 10
+        loop {
+            // Read next batch of card_ids missing content_md (brief lock)
+            let pending: Vec<String> = {
+                let guard = db_arc.lock().map_err(|e| e.to_string())?;
+                let db = guard.as_ref().ok_or("database not initialized")?;
+                db.get_cards_missing_content(10)?
+            };
+            if pending.is_empty() {
+                break;
+            }
+
+            let mut batch_changed = false;
+            for card_id in &pending {
+                let url = format!("{}/cards/{}/content", base_url, card_id);
+                let result = self
+                    .client
+                    .get(&url)
+                    .bearer_auth(token)
+                    .send()
+                    .await;
+                match result {
+                    Err(e) => {
+                        eprintln!("[sync] Pass2 fetch failed for {}: {}", card_id, e);
+                        continue;
+                    }
+                    Ok(resp) => {
+                        if !resp.status().is_success() {
+                            eprintln!("[sync] Pass2 {} returned {}", card_id, resp.status());
+                            continue;
+                        }
+                        let body: serde_json::Value = match resp.json().await {
+                            Ok(v) => v,
+                            Err(e) => {
+                                eprintln!("[sync] Pass2 JSON parse failed for {}: {}", card_id, e);
+                                continue;
+                            }
+                        };
+                        let content = body["content"].as_str().unwrap_or("").to_string();
+                        let now = chrono::Utc::now().to_rfc3339();
+                        {
+                            let guard = db_arc.lock().map_err(|e| e.to_string())?;
+                            let db = guard.as_ref().ok_or("database not initialized")?;
+                            db.update_card_content(card_id, &content, &now)?;
+                        }
+                        batch_changed = true;
+                    }
+                }
+            }
+
+            if batch_changed {
+                on_page_committed(&["cards".to_string()]);
+                all_changed.insert("cards".to_string());
+            }
+        }
+
         Ok(all_changed.into_iter().collect())
     }
 }
 
 struct PullResult {
     cards: Vec<serde_json::Value>,
-    articles: Vec<serde_json::Value>,
     favorites: Vec<serde_json::Value>,
     sync_ts: Option<String>,
 }
@@ -213,10 +268,6 @@ fn apply_pull_result(
     if !pull.cards.is_empty() {
         db.upsert_cards(&pull.cards)?;
         changed.insert("cards".to_string());
-    }
-    if !pull.articles.is_empty() {
-        db.upsert_articles(&pull.articles)?;
-        changed.insert("articles".to_string());
     }
     if !pull.favorites.is_empty() {
         db.apply_favorites_sync(&pull.favorites)?;
