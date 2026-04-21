@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, Play, RotateCcw, Trash2, Star, RefreshCw, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Play, RotateCcw, Trash2, Star, RefreshCw, ArrowUp, ArrowDown, Lock, X } from "lucide-react";
 import {
   fetchQueue, fetchStrategy, patchStrategy, fetchBackends,
   triggerQueueRun, retryQueueEntry, fetchArticleRuns, deleteRun, setServingRun,
+  dismissQueueEntry,
 } from "../lib/api";
 import { ArticlePreviewDrawer } from "./ArticlePreviewDrawer";
 import { RunDetailDrawer } from "./RunDetailDrawer";
@@ -14,15 +15,16 @@ function fmtTime(t: string | null) {
   return t.replace("T", " ").slice(5, 16);
 }
 
-function statusLabel(s: string) {
+function statusLabel(s: string, failReason?: string | null) {
   const m: Record<string, { text: string; color: string }> = {
     pending:  { text: "待处理", color: "var(--text-muted)" },
     running:  { text: "运行中", color: "var(--accent-gold)" },
     done:     { text: "完成",   color: "var(--accent-green)" },
     failed:   { text: "失败",   color: "var(--accent-red)" },
+    locked:   { text: "已锁定", color: "var(--accent-green)" },
   };
   const v = m[s] ?? { text: s, color: "var(--text-muted)" };
-  return <span style={{ color: v.color, fontSize: "var(--fs-sm)" }}>{v.text}</span>;
+  return <span title={failReason || undefined} style={{ color: v.color, fontSize: "var(--fs-sm)", cursor: failReason ? "help" : undefined }}>{v.text}</span>;
 }
 
 function routingPill(routing: string | null) {
@@ -56,8 +58,8 @@ function cmp(a: unknown, b: unknown): number {
 export function ArticleQueuePanel() {
   const qc = useQueryClient();
 
-  const { data: queue = [], refetch: refetchQueue, isFetching: queueFetching } = useQuery<QueueEntry[]>({ queryKey: ["articleQueue"], queryFn: fetchQueue, refetchInterval: 5000 });
-  const { data: strategy } = useQuery({ queryKey: ["analysisStrategy"], queryFn: fetchStrategy, refetchInterval: 5000 });
+  const { data: queue = [], refetch: refetchQueue, isFetching: queueFetching } = useQuery<QueueEntry[]>({ queryKey: ["articleQueue"], queryFn: fetchQueue, refetchInterval: 1000, staleTime: 500 });
+  const { data: strategy } = useQuery({ queryKey: ["analysisStrategy"], queryFn: fetchStrategy, refetchInterval: 1000, staleTime: 500 });
   const { data: backendsData } = useQuery<AgentBackends>({ queryKey: ["analysisBackends"], queryFn: fetchBackends, staleTime: 60_000 });
 
   const invalidateRuns = (aid: string | null) => {
@@ -82,10 +84,11 @@ export function ArticleQueuePanel() {
     enabled: !!expandedId,
   });
 
-  const triggerMut = useMutation({ mutationFn: (aid: string) => triggerQueueRun(aid), onSuccess: (_d, aid) => invalidateRuns(aid) });
-  const retryMut   = useMutation({ mutationFn: (aid: string) => retryQueueEntry(aid), onSuccess: (_d, aid) => invalidateRuns(aid) });
-  const deleteMut  = useMutation({ mutationFn: (rid: number) => deleteRun(rid), onSuccess: () => invalidateRuns(expandedId) });
-  const servingMut = useMutation({ mutationFn: ({ aid, rid }: { aid: string; rid: number }) => setServingRun(aid, rid), onSuccess: (_d, v) => invalidateRuns(v.aid) });
+  const triggerMut  = useMutation({ mutationFn: (aid: string) => triggerQueueRun(aid), onSuccess: (_d, aid) => invalidateRuns(aid) });
+  const retryMut    = useMutation({ mutationFn: (aid: string) => retryQueueEntry(aid), onSuccess: (_d, aid) => invalidateRuns(aid) });
+  const deleteMut   = useMutation({ mutationFn: (rid: number) => deleteRun(rid), onSuccess: () => invalidateRuns(expandedId) });
+  const servingMut  = useMutation({ mutationFn: ({ aid, rid }: { aid: string; rid: number }) => setServingRun(aid, rid), onSuccess: (_d, v) => invalidateRuns(v.aid) });
+  const dismissMut  = useMutation({ mutationFn: (aid: string) => dismissQueueEntry(aid), onSuccess: () => invalidateRuns(null) });
 
   const patchStrat = (key: string, value: unknown) => {
     patchStrategy({ [key]: value }).then(() => qc.invalidateQueries({ queryKey: ["analysisStrategy"] }));
@@ -148,6 +151,7 @@ export function ArticleQueuePanel() {
             <option value="running">运行中</option>
             <option value="done">完成</option>
             <option value="failed">失败</option>
+            <option value="locked">已锁定</option>
           </select>
 
           <select value={routingFilter} onChange={(e) => setRoutingFilter(e.target.value)}
@@ -175,7 +179,7 @@ export function ArticleQueuePanel() {
       )}
 
       <div style={{ flex: 1, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "6px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 80px", padding: "6px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
           {([
             ["article_title", "文章标题"],
             ["article_account", "公众号"],
@@ -197,7 +201,7 @@ export function ArticleQueuePanel() {
           const isExpanded = expandedId === entry.article_id;
           return (
             <div key={entry.article_id} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 50px", padding: "8px 16px", alignItems: "center" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,1fr) 110px 90px 80px 80px 110px 80px", padding: "8px 16px", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                   <span
                     onClick={() => setExpandedId(isExpanded ? null : entry.article_id)}
@@ -205,6 +209,9 @@ export function ArticleQueuePanel() {
                   >
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </span>
+                  {entry.is_locked && (
+                    <Lock size={12} style={{ color: "var(--accent-gold)", flexShrink: 0 }} />
+                  )}
                   <a
                     onClick={() => { setPreviewArticleId(entry.article_id); setPreviewRouting(entry.routing); }}
                     style={{ color: "var(--accent-blue)", cursor: "pointer", textDecoration: "none", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -215,27 +222,36 @@ export function ArticleQueuePanel() {
                 </div>
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.article_account ?? "—"}</span>
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.article_publish_time)}</span>
-                {statusLabel(entry.status)}
+                {statusLabel(entry.status, entry.fail_reason)}
                 {routingPill(entry.routing)}
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.updated_at)}</span>
-                <div style={{ textAlign: "center" }}>
-                  {entry.status === "pending" && (
+                <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                  {entry.status === "pending" && !entry.is_locked && (
                     <button onClick={() => triggerMut.mutate(entry.article_id)} title="触发运行"
                       style={{ background: "none", border: "none", color: "var(--accent-green)", cursor: "pointer", padding: 2 }}>
                       <Play size={14} />
                     </button>
                   )}
-                  {(entry.status === "done" || entry.status === "failed") && (
+                  {(entry.status === "done" || entry.status === "failed") && !entry.is_locked && (
                     <button onClick={() => retryMut.mutate(entry.article_id)} title="重试"
                       style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
                       <RotateCcw size={14} />
                     </button>
                   )}
+                  <button onClick={() => dismissMut.mutate(entry.article_id)} title="移除"
+                    style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 2 }}>
+                    <X size={14} />
+                  </button>
                 </div>
               </div>
 
               {isExpanded && (
                 <div style={{ background: "var(--bg-panel)", borderTop: "1px solid var(--bg-panel)", padding: "6px 16px 6px 36px" }}>
+                  {entry.status === "failed" && entry.fail_reason && (
+                    <div style={{ color: "var(--accent-red)", fontSize: "var(--fs-sm)", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                      {entry.fail_reason}
+                    </div>
+                  )}
                   {loadingRuns ? (
                     <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", padding: 8 }}>加载中...</div>
                   ) : articleRuns.length === 0 ? (

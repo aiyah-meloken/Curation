@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { RefreshCw, Play, RotateCcw, Trash2, ArrowUp, ArrowDown, ChevronRight, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AggregationQueueEntry, AggregationRunEntry, AggregationStrategy } from "../types";
-import { apiFetch } from "../lib/api";
+import type { AggregationQueueEntry, AggregationRunEntry, AggregationStrategy, AgentBackends } from "../types";
+import { apiFetch, fetchBackends } from "../lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
   prereq: "等待中",
@@ -34,7 +34,8 @@ export default function AggregationQueuePanel() {
       const resp = await apiFetch("/aggregation-queue").then(r => r.json());
       return resp.status === "ok" ? (resp.data as AggregationQueueEntry[]) : [];
     },
-    refetchInterval: 5000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
   const queue = queueData ?? [];
 
@@ -44,13 +45,18 @@ export default function AggregationQueuePanel() {
       const resp = await apiFetch("/aggregation-strategy").then(r => r.json());
       return resp.status === "ok" ? (resp.data as AggregationStrategy) : { auto_launch: true, max_concurrency: 1, default_backend: "" };
     },
-    refetchInterval: 5000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
   const strategy = strategyData ?? { auto_launch: true, max_concurrency: 1, default_backend: "" };
 
+  const { data: backendsData } = useQuery<AgentBackends>({ queryKey: ["analysisBackends"], queryFn: fetchBackends, staleTime: 60_000 });
+  const backendList = backendsData ? Object.keys(backendsData.backends ?? {}) : [];
+
   const loading = isFetching;
 
-  const [statusFilters, setStatusFilters] = useState<Set<string>>(new Set(["prereq", "pending", "running", "done", "failed", "skipped"]));
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("");
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null);
@@ -120,16 +126,9 @@ export default function AggregationQueuePanel() {
     }
   };
 
-  const toggleStatus = (s: string) => {
-    setStatusFilters(prev => {
-      const next = new Set(prev);
-      if (next.has(s)) next.delete(s); else next.add(s);
-      return next;
-    });
-  };
-
   const filteredQueue = useMemo(() => {
-    let items = queue.filter(e => statusFilters.has(e.status));
+    let items = statusFilter === "all" ? [...queue] : queue.filter(e => e.status === statusFilter);
+    if (dateFilter) items = items.filter(e => e.date && e.date.startsWith(dateFilter));
     items.sort((a, b) => {
       const av = a[sortField] ?? "";
       const bv = b[sortField] ?? "";
@@ -139,17 +138,13 @@ export default function AggregationQueuePanel() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return items;
-  }, [queue, statusFilters, sortField, sortDir]);
+  }, [queue, statusFilter, sortField, sortDir]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortField(field); setSortDir("desc"); }
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null;
-    return sortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />;
-  };
 
   const fmtTime = (s: string | null) => {
     if (!s) return "";
@@ -167,189 +162,167 @@ export default function AggregationQueuePanel() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      {/* Strategy controls */}
-      <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <button className="btn-icon" onClick={() => invalidateQueue()} title="刷新" style={{ padding: 4 }}>
-          <RefreshCw size={14} className={loading ? "spin" : ""} />
-        </button>
+      {/* Strategy controls — same layout as ArticleQueuePanel */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", flexWrap: "wrap", fontSize: "var(--fs-sm)" }}>
+        <span style={{ color: "var(--text-muted)" }}>自动调度</span>
+        <button
+          onClick={() => patchStrategy({ auto_launch: !strategy.auto_launch })}
+          style={{ background: strategy.auto_launch ? "var(--accent-green)" : "var(--border)", color: "#fff", border: "none", borderRadius: 10, padding: "1px 10px", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+        >{strategy.auto_launch ? "开" : "关"}</button>
 
-        <label style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-          <span>自动调度</span>
-          <button
-            onClick={() => patchStrategy({ auto_launch: !strategy.auto_launch })}
-            style={{
-              width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
-              background: strategy.auto_launch ? "var(--accent-gold)" : "var(--text-faint)",
-              position: "relative", transition: "background 0.2s",
-            }}
-          >
-            <span style={{
-              position: "absolute", top: 2, left: strategy.auto_launch ? 18 : 2,
-              width: 16, height: 16, borderRadius: 8, background: "#fff",
-              transition: "left 0.2s",
-            }} />
-          </button>
-        </label>
+        <span style={{ color: "var(--border)" }}>|</span>
+        <span style={{ color: "var(--text-muted)" }}>并发</span>
+        <select value={strategy.max_concurrency} onChange={e => patchStrategy({ max_concurrency: Number(e.target.value) })}
+          style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
+          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
 
-        <label style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-          并发
-          <select
-            value={strategy.max_concurrency}
-            onChange={e => patchStrategy({ max_concurrency: Number(e.target.value) })}
-            style={{ fontSize: "var(--fs-sm)", background: "var(--bg-panel)", color: "var(--text-secondary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 4px" }}
-          >
-            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
+        <span style={{ color: "var(--border)" }}>|</span>
+        <span style={{ color: "var(--text-muted)" }}>后端</span>
+        <select value={strategy.default_backend} onChange={e => patchStrategy({ default_backend: e.target.value })}
+          style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-sm)" }}>
+          {backendList.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ display: "flex", gap: 4 }}>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
+          <option value="all">全部状态</option>
           {Object.entries(STATUS_LABEL).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => toggleStatus(key)}
-              style={{
-                fontSize: "var(--fs-xs)", padding: "2px 8px", borderRadius: 4, cursor: "pointer",
-                background: "var(--bg-panel)", color: STATUS_COLOR[key],
-                border: statusFilters.has(key) ? `1.5px solid ${STATUS_COLOR[key]}` : "1px solid var(--border)",
-              }}
-            >
-              {label}
-            </button>
+            <option key={key} value={key}>{label}</option>
           ))}
-        </div>
+        </select>
+
+        <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
+          style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 6px", fontSize: "var(--fs-xs)" }} />
+        {dateFilter && (
+          <button onClick={() => setDateFilter("")} title="清除日期"
+            style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0 2px", fontSize: "var(--fs-xs)" }}>×</button>
+        )}
+
+        <button onClick={() => invalidateQueue()} title="刷新"
+          style={{ background: "var(--bg-panel)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 4, padding: "2px 6px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+          <RefreshCw size={12} style={loading ? { animation: "spin 1s linear infinite" } : undefined} />
+        </button>
       </div>
 
-      {/* Queue table */}
+      {/* Queue list — grid layout matching ArticleQueuePanel */}
       <div style={{ flex: 1, overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fs-sm)" }}>
-          <thead>
-            <tr style={{ position: "sticky", top: 0, background: "var(--bg-panel)", zIndex: 1 }}>
-              <th style={{ width: 30 }} />
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500 }}>用户</th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("date")}>
-                日期 <SortIcon field="date" />
-              </th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("status")}>
-                状态 <SortIcon field="status" />
-              </th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500 }}>等待至</th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("request_count")}>
-                请求次数 <SortIcon field="request_count" />
-              </th>
-              <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => handleSort("created_at")}>
-                入队时间 <SortIcon field="created_at" />
-              </th>
-              <th style={{ textAlign: "right", padding: "6px 8px", color: "var(--text-muted)", fontWeight: 500 }}>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredQueue.map(entry => {
-              const entryKey = `${entry.user_id}-${entry.date}`;
-              const isExpanded = expandedEntry === entryKey;
-              return (
-                <>
-                  <tr key={entryKey} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
-                    <td style={{ padding: "6px 4px", textAlign: "center", cursor: "pointer" }} onClick={() => toggleExpand(entry.user_id, entry.date)}>
-                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    </td>
-                    <td style={{ padding: "6px 8px", color: "var(--text-secondary)" }}>{entry.username || entry.email || `User #${entry.user_id}`}</td>
-                    <td style={{ padding: "6px 8px", color: "var(--text-secondary)" }}>{entry.date}</td>
-                    <td style={{ padding: "6px 8px" }}>
-                      <span style={{ color: STATUS_COLOR[entry.status], fontSize: "var(--fs-xs)", fontWeight: 600 }}>
-                        {STATUS_LABEL[entry.status] || entry.status}
-                      </span>
-                      {entry.error_msg && (
-                        <span style={{ color: "var(--accent-red)", fontSize: "var(--fs-xs)", marginLeft: 6 }} title={entry.error_msg}>
-                          ({entry.error_msg.slice(0, 30)}{entry.error_msg.length > 30 ? "\u2026" : ""})
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: "6px 8px", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
-                      {entry.status === "prereq" && entry.wait_until ? fmtTime(entry.wait_until) : ""}
-                    </td>
-                    <td style={{ padding: "6px 8px", color: "var(--text-muted)", textAlign: "center" }}>{entry.request_count}</td>
-                    <td style={{ padding: "6px 8px", color: "var(--text-muted)" }}>{fmtTime(entry.created_at)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-                      {(entry.status === "pending" || entry.status === "prereq" || entry.status === "skipped") && (
-                        <button
-                          onClick={() => triggerRun(entry.user_id, entry.date)}
-                          style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer", background: "var(--accent-green)", color: "#fff", marginRight: 4 }}
-                        >
-                          <Play size={10} style={{ marginRight: 2 }} />运行
-                        </button>
-                      )}
-                      {(entry.status === "done" || entry.status === "failed") && (
-                        <button
-                          onClick={() => retryEntry(entry.user_id, entry.date)}
-                          style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer", background: "var(--accent-gold)", color: "#1a1208" }}
-                        >
-                          <RotateCcw size={10} style={{ marginRight: 2 }} />重试
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr key={`${entryKey}-detail`}>
-                      <td colSpan={8} style={{ padding: "8px 16px", background: "var(--bg-base)" }}>
-                        {loadingRuns ? (
-                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>加载中…</span>
-                        ) : entryRuns.length === 0 ? (
-                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>暂无运行记录</span>
-                        ) : (
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fs-xs)" }}>
-                            <thead>
-                              <tr>
-                                <th style={{ textAlign: "left", padding: "4px 8px", color: "var(--text-muted)" }}>Run ID</th>
-                                <th style={{ textAlign: "left", padding: "4px 8px", color: "var(--text-muted)" }}>Backend</th>
-                                <th style={{ textAlign: "left", padding: "4px 8px", color: "var(--text-muted)" }}>状态</th>
-                                <th style={{ textAlign: "left", padding: "4px 8px", color: "var(--text-muted)" }}>耗时</th>
-                                <th style={{ textAlign: "left", padding: "4px 8px", color: "var(--text-muted)" }}>时间</th>
-                                <th style={{ textAlign: "right", padding: "4px 8px", color: "var(--text-muted)" }}>操作</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {entryRuns.map(run => (
-                                <tr key={run.id} style={{ borderTop: "1px solid var(--bg-panel)" }}>
-                                  <td style={{ padding: "4px 8px", color: "var(--text-secondary)" }}>
-                                    #{run.id}
-                                    {entry.run_id === run.id && (
-                                      <span style={{ marginLeft: 6, fontSize: "var(--fs-xs)", color: "var(--accent-green)", border: "1px solid var(--accent-green)", borderRadius: 3, padding: "0 4px" }}>
-                                        当前
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td style={{ padding: "4px 8px", color: "var(--text-muted)" }}>{run.backend}</td>
-                                  <td style={{ padding: "4px 8px" }}>
-                                    <span style={{ color: STATUS_COLOR[run.overall_status] || "var(--text-muted)" }}>
-                                      {STATUS_LABEL[run.overall_status] || run.overall_status}
-                                    </span>
-                                  </td>
-                                  <td style={{ padding: "4px 8px", color: "var(--text-muted)" }}>{fmtElapsed(run.elapsed_s)}</td>
-                                  <td style={{ padding: "4px 8px", color: "var(--text-muted)" }}>{fmtTime(run.created_at)}</td>
-                                  <td style={{ padding: "4px 8px", textAlign: "right" }}>
-                                    <button
-                                      onClick={() => deleteRun(run.id)}
-                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-red)", padding: 2 }}
-                                      title="删除"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </td>
-                    </tr>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(120px,1fr) 100px 80px 100px 70px 100px 60px", padding: "6px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1 }}>
+          {([
+            ["created_at", "用户"],
+            ["date", "日期"],
+            ["status", "状态"],
+          ] as [SortField, string][]).map(([k, label]) => (
+            <span key={k} onClick={() => handleSort(k)}
+              style={{ cursor: "pointer", userSelect: "none", display: "inline-flex", alignItems: "center", gap: 2 }}>
+              {label}
+              {sortField === k && (sortDir === "asc" ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+            </span>
+          ))}
+          <span>等待至</span>
+          <span onClick={() => handleSort("request_count")}
+            style={{ cursor: "pointer", userSelect: "none", display: "inline-flex", alignItems: "center", gap: 2 }}>
+            请求次数
+            {sortField === "request_count" && (sortDir === "asc" ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+          </span>
+          <span onClick={() => handleSort("created_at")}
+            style={{ cursor: "pointer", userSelect: "none", display: "inline-flex", alignItems: "center", gap: 2 }}>
+            入队时间
+            {sortField === "created_at" && (sortDir === "asc" ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+          </span>
+          <span style={{ textAlign: "center" }}>操作</span>
+        </div>
+
+        {filteredQueue.map(entry => {
+          const entryKey = `${entry.user_id}-${entry.date}`;
+          const isExpanded = expandedEntry === entryKey;
+          return (
+            <div key={entryKey} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(120px,1fr) 100px 80px 100px 70px 100px 60px", padding: "8px 16px", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                  <span
+                    onClick={() => toggleExpand(entry.user_id, entry.date)}
+                    style={{ cursor: "pointer", color: "var(--text-muted)", flexShrink: 0, width: 16 }}
+                  >
+                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.username || entry.email || `#${entry.user_id}`}</span>
+                </div>
+                <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{entry.date}</span>
+                <span>
+                  <span style={{ color: STATUS_COLOR[entry.status], fontSize: "var(--fs-sm)" }}>
+                    {STATUS_LABEL[entry.status] || entry.status}
+                  </span>
+                  {entry.error_msg && (
+                    <span style={{ color: "var(--accent-red)", fontSize: "var(--fs-xs)", marginLeft: 4 }} title={entry.error_msg}>!</span>
                   )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
+                </span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>
+                  {entry.status === "prereq" && entry.wait_until ? fmtTime(entry.wait_until) : "—"}
+                </span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{entry.request_count}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{fmtTime(entry.created_at)}</span>
+                <div style={{ textAlign: "center" }}>
+                  {(entry.status === "pending" || entry.status === "prereq" || entry.status === "skipped") && (
+                    <button onClick={() => triggerRun(entry.user_id, entry.date)} title="触发运行"
+                      style={{ background: "none", border: "none", color: "var(--accent-green)", cursor: "pointer", padding: 2 }}>
+                      <Play size={14} />
+                    </button>
+                  )}
+                  {(entry.status === "done" || entry.status === "failed") && (
+                    <button onClick={() => retryEntry(entry.user_id, entry.date)} title="重试"
+                      style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
+                      <RotateCcw size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div style={{ background: "var(--bg-panel)", borderTop: "1px solid var(--bg-panel)", padding: "6px 16px 6px 36px" }}>
+                  {entry.error_msg && (
+                    <div style={{ color: "var(--accent-red)", fontSize: "var(--fs-sm)", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                      {entry.error_msg}
+                    </div>
+                  )}
+                  {loadingRuns ? (
+                    <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", padding: 8 }}>加载中...</div>
+                  ) : entryRuns.length === 0 ? (
+                    <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", padding: 8 }}>暂无运行记录</div>
+                  ) : (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 70px 60px 100px 30px", color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--bg-panel)" }}>
+                        <span>Run ID</span><span>后端</span><span>状态</span><span>耗时</span><span>创建时间</span><span></span>
+                      </div>
+                      {entryRuns.map(run => (
+                        <div key={run.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 70px 60px 100px 30px", padding: "5px 0", borderBottom: "1px solid var(--bg-panel)", alignItems: "center" }}>
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
+                            #{run.id}
+                            {entry.run_id === run.id && (
+                              <span style={{ marginLeft: 4, fontSize: "var(--fs-xs)", color: "var(--accent-green)" }}>★</span>
+                            )}
+                          </span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{run.backend}</span>
+                          <span style={{ color: STATUS_COLOR[run.overall_status] || "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
+                            {STATUS_LABEL[run.overall_status] || run.overall_status}
+                          </span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtElapsed(run.elapsed_s)}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtTime(run.created_at)}</span>
+                          <button onClick={() => deleteRun(run.id)} title="删除"
+                            style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", padding: 2 }}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {filteredQueue.length === 0 && (
           <div style={{ textAlign: "center", padding: 40, color: "var(--text-faint)", fontSize: "var(--fs-base)" }}>
             暂无聚合任务
