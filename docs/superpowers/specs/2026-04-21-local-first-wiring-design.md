@@ -41,6 +41,19 @@ Make reads instantaneous (always served from local SQLite) and writes non-blocki
 - No eviction policy. SQLite keeps everything.
 - No new sync strategies (WebSocket signal + heartbeat stays).
 
+## Do not touch (existing local-only subsystems)
+
+The local SQLite DB already hosts an unrelated subsystem that must survive this refactor untouched:
+
+- **Chat persistence** — `chat_sessions` and `chat_messages` tables (`src-tauri/src/db.rs:159-176`), with commands in `src-tauri/src/chat_commands.rs` and UI in `src/hooks/useChat.ts` / `src/lib/chat.ts`. Chat is **local-only**, never touches `/sync`, never enters `sync_queue`. The only cross-link is a soft (no-cascade) `chat_sessions.card_id` reference to `cards.card_id`.
+
+Implications for the refactor:
+- Do **not** drop/recreate tables wholesale when adjusting `cards` schema. Any migration must be additive and preserve `chat_sessions` / `chat_messages` contents.
+- Do **not** include chat tables in any `/sync` pull or sync_queue push that this project adds.
+- When deleting cards locally (e.g. honoring a tombstone), **leave** `chat_sessions` rows even if their `card_id` becomes orphaned — the app already handles null/missing card context.
+
+`notesPath` is a localStorage string only (not in SQLite); no special handling needed.
+
 ## Design
 
 ### Data flow (after)
