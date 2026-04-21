@@ -188,8 +188,103 @@ async fn receive_article(
     Ok(())
 }
 
+/// Rebuild the process PATH so subprocesses see what the user's terminal sees.
+///
+/// Strategy (in order, each step merged in):
+///   1. Ask the user's login shell (`$SHELL -ilc 'printf %s "$PATH"'`) what
+///      its PATH is. This is authoritative — it matches the terminal exactly.
+///      Guarded by a 2-second timeout; if the shell hangs, we move on.
+///   2. The inherited (GUI-default) PATH, preserved so we never lose entries.
+///   3. A static list of common user bin directories as belt-and-suspenders.
+///
+/// Entries are deduplicated while preserving order; earlier sources win.
+fn init_user_path() {
+    use std::collections::HashSet;
+    use std::ffi::OsString;
+    use std::path::PathBuf;
+
+    fn probe_login_shell() -> Option<String> {
+        use std::sync::mpsc;
+        use std::time::Duration;
+        let shell = std::env::var("SHELL").ok()?;
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let out = std::process::Command::new(&shell)
+                .args(["-ilc", "printf '%s' \"$PATH\""])
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::null())
+                .output();
+            let _ = tx.send(out);
+        });
+        match rx.recv_timeout(Duration::from_secs(2)) {
+            Ok(Ok(output)) if output.status.success() => {
+                let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if s.is_empty() { None } else { Some(s) }
+            }
+            _ => None,
+        }
+    }
+
+    fn static_fallbacks() -> Vec<PathBuf> {
+        let mut out = Vec::new();
+        if let Some(home) = std::env::var_os("HOME") {
+            let h = std::path::Path::new(&home);
+            for sub in [".local/bin", ".cargo/bin", ".bun/bin", ".volta/bin", ".npm-global/bin"] {
+                out.push(h.join(sub));
+            }
+        }
+        for p in ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin"] {
+            out.push(PathBuf::from(p));
+        }
+        out
+    }
+
+    let shell_path = probe_login_shell();
+    let inherited = std::env::var_os("PATH").unwrap_or_default();
+    let fallbacks = static_fallbacks();
+
+    let mut seen: HashSet<OsString> = HashSet::new();
+    let mut merged: Vec<PathBuf> = Vec::new();
+    let mut push = |p: PathBuf, seen: &mut HashSet<OsString>, merged: &mut Vec<PathBuf>| {
+        let key = p.as_os_str().to_os_string();
+        if seen.insert(key) {
+            merged.push(p);
+        }
+    };
+
+    if let Some(sp) = shell_path.as_deref() {
+        for p in std::env::split_paths(sp) {
+            push(p, &mut seen, &mut merged);
+        }
+    }
+    for p in std::env::split_paths(&inherited) {
+        push(p, &mut seen, &mut merged);
+    }
+    for p in fallbacks {
+        push(p, &mut seen, &mut merged);
+    }
+
+    match std::env::join_paths(&merged) {
+        Ok(joined) => {
+            eprintln!(
+                "[env] PATH initialized ({} entries, login-shell {})",
+                merged.len(),
+                if shell_path.is_some() { "OK" } else { "timeout/unavailable" },
+            );
+            std::env::set_var("PATH", joined);
+        }
+        Err(e) => eprintln!("[env] failed to join PATH: {}", e),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // macOS Finder / Dock launches GUI apps with a minimal PATH that omits
+    // common user bin directories. This breaks every subprocess spawn (ACP
+    // agents, npm/npx, etc.). Rebuild PATH from the user's login shell
+    // before Tauri boots so all downstream Command::new calls see it.
+    init_user_path();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
