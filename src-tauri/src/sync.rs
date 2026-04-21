@@ -49,6 +49,20 @@ impl SyncClient {
                     return Err(format!("mark_read failed: {}", resp.status()));
                 }
             }
+            "mark_unread" => {
+                let card_id = payload["card_id"].as_str().unwrap_or_default();
+                let url = format!("{}/cards/{}/unread", base_url, card_id);
+                let resp = self
+                    .client
+                    .post(&url)
+                    .bearer_auth(token)
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())?;
+                if !resp.status().is_success() {
+                    return Err(format!("mark_unread failed: {}", resp.status()));
+                }
+            }
             "add_favorite" => {
                 let url = format!("{}/favorites", base_url);
                 let resp = self

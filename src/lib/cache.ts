@@ -64,6 +64,14 @@ export function markCardRead(cardId: string): Promise<void> {
   return invoke("mark_read", { cardId });
 }
 
+export function markCardUnread(cardId: string): Promise<void> {
+  return invoke("mark_unread", { cardId });
+}
+
+export function markAllCardsRead(cardIds: string[]): Promise<void> {
+  return invoke("mark_all_read", { cardIds });
+}
+
 export function toggleFavoriteLocal(itemType: string, itemId: string, isFavorited: boolean): Promise<void> {
   return invoke("toggle_favorite", { itemType, itemId, isFavorited });
 }

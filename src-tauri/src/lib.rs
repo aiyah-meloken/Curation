@@ -257,6 +257,8 @@ pub fn run() {
             commands::get_favorites,
             commands::search_cards,
             commands::mark_read,
+            commands::mark_unread,
+            commands::mark_all_read,
             commands::toggle_favorite,
             commands::get_cached_article,
             commands::run_sync,

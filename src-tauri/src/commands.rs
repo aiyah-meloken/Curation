@@ -140,6 +140,22 @@ pub fn mark_read(state: State<'_, AppState>, card_id: String) -> Result<(), Stri
 }
 
 #[tauri::command]
+pub fn mark_unread(state: State<'_, AppState>, card_id: String) -> Result<(), String> {
+    with_db(&state, |db| db.mark_unread(&card_id))
+}
+
+#[tauri::command]
+pub fn mark_all_read(state: State<'_, AppState>, card_ids: Vec<String>) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    with_db(&state, |db| {
+        for card_id in &card_ids {
+            db.mark_read(card_id, &now)?;
+        }
+        Ok(())
+    })
+}
+
+#[tauri::command]
 pub fn toggle_favorite(
     state: State<'_, AppState>,
     item_type: String,

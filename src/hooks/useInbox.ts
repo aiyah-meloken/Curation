@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchDiscarded, markAllCardsRead, apiFetch } from "../lib/api";
+import { fetchDiscarded } from "../lib/api";
 import type { InboxItem, DiscardedItem } from "../types";
-import { getInboxCards } from "../lib/cache";
+import { getInboxCards, markCardRead, markCardUnread as markUnreadLocal, markAllCardsRead as markAllLocal } from "../lib/cache";
 import type { CachedCard } from "../lib/cache";
 
 function cachedToInbox(c: CachedCard): InboxItem {
@@ -58,11 +58,9 @@ export function useDiscarded() {
 export function useMarkCardReadSingle() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (cardId: string) => {
-      await apiFetch(`/cards/${cardId}/read`, { method: "POST" });
-    },
+    mutationFn: (cardId: string) => markCardRead(cardId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox", "local"] });
     },
   });
 }
@@ -70,11 +68,9 @@ export function useMarkCardReadSingle() {
 export function useMarkCardUnread() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (cardId: string) => {
-      await apiFetch(`/cards/${cardId}/unread`, { method: "POST" });
-    },
+    mutationFn: (cardId: string) => markUnreadLocal(cardId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox", "local"] });
     },
   });
 }
@@ -82,11 +78,9 @@ export function useMarkCardUnread() {
 export function useMarkAllRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (cardIds: string[]) => {
-      await markAllCardsRead(cardIds);
-    },
+    mutationFn: (cardIds: string[]) => markAllLocal(cardIds),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox", "local"] });
     },
   });
 }

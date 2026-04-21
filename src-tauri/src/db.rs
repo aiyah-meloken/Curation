@@ -301,6 +301,25 @@ impl CacheDb {
         Ok(())
     }
 
+    pub fn mark_unread(&self, card_id: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE cards SET read_at = NULL WHERE card_id = ?1",
+            rusqlite::params![card_id],
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO sync_queue (action, payload, created_at) VALUES ('mark_unread', ?1, ?2)",
+            rusqlite::params![
+                serde_json::json!({"card_id": card_id}).to_string(),
+                now,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub fn add_favorite(&self, item_type: &str, item_id: &str) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let now = chrono::Utc::now().to_rfc3339();
