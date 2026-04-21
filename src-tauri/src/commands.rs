@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, State};
 
-use crate::crypto;
 use crate::db::{CacheDb, CardRow, FavoriteRow, SearchResult};
 use crate::sync::SyncClient;
 
@@ -25,38 +24,33 @@ where
 }
 
 #[tauri::command]
-pub fn init_db_with_login(
+pub fn init_db_with_secret(
     state: State<'_, AppState>,
-    token: String,
-    user_id: String,
+    secret: String,
 ) -> Result<(), String> {
-    let hex_key = crypto::derive_key(&token, &user_id);
-    println!("[cache] init_db_with_login called, db exists: {}", state.db_path.exists());
+    println!("[cache] init_db_with_secret, db exists: {}", state.db_path.exists());
 
     let db = if state.db_path.exists() {
-        match CacheDb::open(&state.db_path, &hex_key) {
+        match CacheDb::open(&state.db_path, &secret) {
             Ok(db) => {
-                println!("[cache] opened existing db");
+                println!("[cache] opened existing db with server secret");
                 db
             }
             Err(e) => {
-                println!("[cache] key mismatch ({}), recreating db", e);
-                CacheDb::create(&state.db_path, &hex_key)?
+                println!("[cache] open failed ({}), recreating (one-time migration)", e);
+                let _ = std::fs::remove_file(&state.db_path);
+                CacheDb::create(&state.db_path, &secret)?
             }
         }
     } else {
         if let Some(parent) = state.db_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        CacheDb::create(&state.db_path, &hex_key)?
+        CacheDb::create(&state.db_path, &secret)?
     };
 
     let mut db_guard = state.db.lock().map_err(|e| e.to_string())?;
     *db_guard = Some(db);
-
-    let mut token_guard = state.auth_token.lock().map_err(|e| e.to_string())?;
-    *token_guard = Some(token);
-
     Ok(())
 }
 

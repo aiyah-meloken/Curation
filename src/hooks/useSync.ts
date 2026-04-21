@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
-import { runSync, initDbWithLogin, setCacheAuthToken, setApiBase } from "../lib/cache";
-import { getWsBase, getAuthToken, getApiBase } from "../lib/api";
+import { runSync, initDbWithSecret, setCacheAuthToken, setApiBase } from "../lib/cache";
+import { getWsBase, getAuthToken, getApiBase, fetchCacheSecret } from "../lib/api";
 
 export function useInitCache(isLoggedIn: boolean, userId: string | null) {
   const initialized = useRef(false);
@@ -15,10 +15,18 @@ export function useInitCache(isLoggedIn: boolean, userId: string | null) {
       const token = getAuthToken();
       if (!token) return;
 
-      // Set API base URL for Rust sync client (matches frontend's API_BASE)
       await setApiBase(getApiBase());
 
-      await initDbWithLogin(token, userId!);
+      // Fetch server-managed DB secret; stable across token rotations.
+      let secret: string;
+      try {
+        secret = await fetchCacheSecret();
+      } catch (e) {
+        console.error("[cache] failed to fetch cache-secret:", e);
+        return;
+      }
+
+      await initDbWithSecret(secret);
       await setCacheAuthToken(token);
       initialized.current = true;
       setCacheReady(true);

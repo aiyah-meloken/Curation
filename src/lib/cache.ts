@@ -39,8 +39,8 @@ export interface SearchResult {
   is_favorite: boolean;
 }
 
-export function initDbWithLogin(token: string, userId: string): Promise<void> {
-  return invoke("init_db_with_login", { token, userId });
+export function initDbWithSecret(secret: string): Promise<void> {
+  return invoke("init_db_with_secret", { secret });
 }
 
 export function setCacheAuthToken(token: string): Promise<void> {

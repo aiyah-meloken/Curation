@@ -55,6 +55,13 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   return resp;
 }
 
+export async function fetchCacheSecret(): Promise<string> {
+  const r = await apiFetch("/auth/cache-secret");
+  if (!r.ok) throw new Error(`cache-secret failed: ${r.status}`);
+  const j = await r.json();
+  return j.secret;
+}
+
 /** Absolute URL for GET /static/... with HMAC (for img src without Bearer). */
 export async function fetchSignedStaticUrl(relpath: string): Promise<string> {
   const r = await apiFetch(`/auth/static-link?relpath=${encodeURIComponent(relpath)}`);

@@ -344,7 +344,7 @@ pub fn run() {
             toggle_webview,
             trigger_extract,
             receive_article,
-            commands::init_db_with_login,
+            commands::init_db_with_secret,
             commands::set_auth_token,
             commands::set_api_base,
             commands::get_inbox_cards,
