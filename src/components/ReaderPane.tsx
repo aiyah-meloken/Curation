@@ -166,27 +166,59 @@ export function ReaderPane({
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Load card content for system prompt
+  const { data: cardContentData } = useCardContent(selectedItem?.card_id ?? null, "source");
+
   // Chat hooks (must be called before any early returns)
   const { agents, selectedAgentId, setSelectedAgentId } = useAgentDetection();
+  const selectedAgentName = agents.find((a) => a.id === selectedAgentId)?.name ?? "AI";
   const chatCardId = isHomeView ? null : (selectedItem?.card_id ?? null);
   const chat = useChat(chatCardId);
   const chatActive = chat.messages.length > 0 || chat.isStreaming;
 
-  // Auto-scroll on streaming
+  // Auto-scroll when new messages arrive (after AI finishes or user sends)
   useEffect(() => {
-    if (chat.isStreaming && scrollRef.current) {
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+  }, [chat.messages.length, chat.isStreaming]);
+
+  // Smooth scroll during streaming — throttled via rAF
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!chat.isStreaming || !chat.streamingContent) return;
+    if (rafRef.current) return; // already scheduled
+    rafRef.current = requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+      rafRef.current = null;
+    });
   }, [chat.streamingContent, chat.isStreaming]);
 
   const buildSystemPrompt = useCallback(() => {
-    let prompt = `你是 Curation 的 AI 助手，帮助用户深度理解和批判性分析资讯内容。请使用中文回复，使用 markdown 格式。`;
+    const notesPath = localStorage.getItem("notesPath") ?? "";
+    let prompt = `你正在通过 Curation 应用的 ACP 协议与用户连接。
+
+Curation 是个人 AI 资讯助理，自动抓取微信公众号文章并生成卡片摘要。
+
+可用 MCP 工具：
+- get_current_context — 当前阅读的卡片内容
+- search_cards — 全文搜索卡片库
+- get_card_content — 获取指定卡片内容
+- get_favorites — 收藏列表
+${notesPath ? `\n用户的笔记路径：${notesPath}` : ""}
+请简练回复，使用中文和 markdown。`;
+
     if (selectedItem) {
-      prompt += `\n\n用户正在阅读的卡片标题：${selectedItem.article_meta.title}`;
-      prompt += `\n来源：${selectedItem.article_meta.account}`;
+      prompt += `\n\n用户正在阅读「${selectedItem.article_meta.title}」（${selectedItem.article_meta.account}）：\n\n`;
+      prompt += cardContentData?.content ?? `（请使用 get_current_context 获取正文）`;
+    } else {
+      prompt += `\n\n用户未在阅读卡片，直接对话。`;
     }
+
     return prompt;
-  }, [selectedItem]);
+  }, [selectedItem, cardContentData]);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -199,8 +231,8 @@ export function ReaderPane({
   const handleSaveToNotes = useCallback(() => {
     if (!selectedAgentId) return;
     const notePrompt = selectedItem
-      ? `请将当前卡片内容保存到我的 Obsidian 笔记中。使用 get_current_context 工具获取卡片内容，然后写入合适的位置。`
-      : `请将我们刚才的对话要点保存到我的 Obsidian 笔记中。`;
+      ? `请将当前卡片内容保存到我的笔记中。卡片内容已在上下文中，直接使用即可。`
+      : `请将我们刚才的对话要点保存到我的笔记中。`;
     chat.sendMessage(notePrompt, selectedAgentId, buildSystemPrompt());
   }, [selectedAgentId, selectedItem, chat.sendMessage, buildSystemPrompt]);
 
@@ -232,13 +264,17 @@ export function ReaderPane({
   // Home view
   if (isHomeView) {
     return (
-      <main className="reader-pane" style={{ position: "relative" }}>
-        <div className="reader-content" ref={scrollRef} style={{ paddingBottom: 100 }}>
-          <ChatMessages
-            messages={chat.messages}
-            streamingContent={chat.streamingContent}
-            isStreaming={chat.isStreaming}
-          />
+      <main className="reader-pane" style={{ position: "relative", overflow: "hidden" }}>
+        <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
+          <div className="reader-content" style={{ paddingBottom: 140 }}>
+            <ChatMessages
+              messages={chat.messages}
+              streamingContent={chat.streamingContent}
+              isStreaming={chat.isStreaming}
+              agentName={selectedAgentName}
+              userName="你"
+            />
+          </div>
         </div>
         <ChatInput
           agents={agents}
@@ -259,11 +295,23 @@ export function ReaderPane({
   // Empty state
   if (!selectedItem && !selectedDiscardedItem) {
     return (
-      <main className="reader-pane">
-        <div className="reader-empty">
+      <main className="reader-pane" style={{ position: "relative", overflow: "hidden" }}>
+        <div className="reader-empty" style={{ flex: 1 }}>
           <div className="reader-empty-icon"><BookOpen size={64} /></div>
           <h3>请选择一篇内容阅读</h3>
         </div>
+        <ChatInput
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
+          connectionStatus={chat.connectionStatus}
+          isStreaming={chat.isStreaming}
+          onSend={handleSend}
+          onCancel={chat.cancel}
+          onClear={handleClear}
+          onSaveToNotes={handleSaveToNotes}
+          hasMessages={chat.messages.length > 0}
+        />
       </main>
     );
   }
@@ -316,7 +364,7 @@ export function ReaderPane({
   // Inbox item view
   if (selectedItem) {
     return (
-      <main className="reader-pane" style={{ position: "relative" }}>
+      <main className="reader-pane" style={{ position: "relative", overflow: "hidden" }}>
         <SourceBar
           meta={selectedItem.article_meta}
           routing={selectedItem.routing ?? undefined}
@@ -324,26 +372,30 @@ export function ReaderPane({
           onOpenDrawer={selectedItem.routing === "ai_curation" ? onOpenDrawer : undefined}
           cardId={selectedItem.card_id ?? undefined}
         />
-        <div className="reader-content animate-in" ref={scrollRef} style={{ paddingBottom: 100 }}>
-          {/* Card content (markdown) — shown for both ai_curation and original_push */}
-          {selectedItem.card_id && (
-            <CardFrame chatActive={chatActive} label={chatActive ? "AI 卡片" : undefined}>
-              <CardContentView cardId={selectedItem.card_id} />
-            </CardFrame>
-          )}
+        <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
+          <div className="reader-content animate-in" style={{ paddingBottom: 140 }}>
+            {/* Card content (markdown) — shown for both ai_curation and original_push */}
+            {selectedItem.card_id && (
+              <CardFrame chatActive={chatActive} label={undefined}>
+                <CardContentView cardId={selectedItem.card_id} />
+              </CardFrame>
+            )}
 
-          {/* Original push: show original article (rich text HTML) below the guide card */}
-          {selectedItem.routing === "original_push" && (
-            <CardFrame chatActive={chatActive} label={chatActive ? "原文" : undefined}>
-              <ArticleHtmlView articleId={selectedItem.article_id} />
-            </CardFrame>
-          )}
+            {/* Original push: show original article (rich text HTML) below the guide card */}
+            {selectedItem.routing === "original_push" && (
+              <CardFrame chatActive={chatActive} label={undefined}>
+                <ArticleHtmlView articleId={selectedItem.article_id} />
+              </CardFrame>
+            )}
 
-          <ChatMessages
-            messages={chat.messages}
-            streamingContent={chat.streamingContent}
-            isStreaming={chat.isStreaming}
-          />
+            <ChatMessages
+              messages={chat.messages}
+              streamingContent={chat.streamingContent}
+              isStreaming={chat.isStreaming}
+              agentName={selectedAgentName}
+              userName="你"
+            />
+          </div>
         </div>
         <ChatInput
           agents={agents}

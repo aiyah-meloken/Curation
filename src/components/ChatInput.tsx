@@ -18,7 +18,7 @@ interface ChatInputProps {
 const STATUS_CONFIG = {
   connected: { color: "var(--accent-green)", label: "已连接" },
   connecting: { color: "var(--accent-gold)", label: "连接中..." },
-  disconnected: { color: "var(--text-muted)", label: "未连接" },
+  disconnected: { color: "var(--accent-green)", label: "已安装" },
   error: { color: "var(--accent-red)", label: "断开" },
 } as const;
 
@@ -78,17 +78,15 @@ export function ChatInput({
         </div>
         <div className="chat-control-right">
           {hasMessages && (
-            <>
-              <button className="chat-control-btn" onClick={onSaveToNotes}>
-                <BookMarked size={13} />
-                <span>笔记</span>
-              </button>
-              <button className="chat-control-btn" onClick={onClear}>
-                <Trash2 size={13} />
-                <span>清空</span>
-              </button>
-            </>
+            <button className="chat-control-btn" onClick={onClear}>
+              <Trash2 size={13} />
+              <span>清空会话</span>
+            </button>
           )}
+          <button className="chat-control-btn" onClick={onSaveToNotes}>
+            <BookMarked size={13} />
+            <span>保存到笔记</span>
+          </button>
         </div>
       </div>
       <div className="chat-input-bar">

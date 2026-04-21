@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLayout } from "./hooks/useLayout";
 import { useInbox, useDiscarded } from "./hooks/useInbox";
 import { useAccounts } from "./hooks/useAccounts";
@@ -149,6 +149,11 @@ function AppMain({ currentUser, onLogout }: {
   const appearance = useAppearance();
   useFontShortcuts({ bump: appearance.bumpReaderSize, clear: appearance.resetReaderSize });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notesPath, setNotesPath] = useState(() => localStorage.getItem("notesPath") ?? "");
+  const handleNotesPathChange = useCallback((path: string) => {
+    setNotesPath(path);
+    localStorage.setItem("notesPath", path);
+  }, []);
 
   // View state
   const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites" | "search" | "home">("inbox");
@@ -443,6 +448,8 @@ function AppMain({ currentUser, onLogout }: {
         draft={appearance.draft}
         autoSize={appearance.autoSize}
         currentUserEmail={currentUser.email || currentUser.username}
+        notesPath={notesPath}
+        onNotesPathChange={handleNotesPathChange}
         onClose={() => setSettingsOpen(false)}
         onChange={appearance.setDraft}
         onCommit={appearance.commit}

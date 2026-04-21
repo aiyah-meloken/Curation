@@ -25,8 +25,11 @@ export function useAgentDetection() {
   useEffect(() => {
     detectAgents().then((detected) => {
       setAgents(detected);
-      if (detected.length > 0 && selectedAgentId === null) {
-        setSelectedAgentId(detected[0].id);
+      if (selectedAgentId === null) {
+        const firstAvailable = detected.find((a) => a.detected);
+        if (firstAvailable) {
+          setSelectedAgentId(firstAvailable.id);
+        }
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -50,6 +53,43 @@ export function useChat(cardId: string | null) {
   const unlistenRef = useRef<UnlistenFn | null>(null);
   const currentSessionRef = useRef<ChatSession | null>(null);
 
+  // Typing buffer: chunks arrive in bursts, we reveal chars smoothly
+  const bufferRef = useRef<string>("");        // pending text not yet shown
+  const displayedRef = useRef<string>("");     // text already revealed
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const doneRef = useRef<boolean>(false);      // true when "done" event received
+
+  const startTypingTimer = useCallback(() => {
+    if (timerRef.current) return; // already running
+    timerRef.current = setInterval(() => {
+      const pending = bufferRef.current;
+      if (pending.length === 0) {
+        // Nothing to type — if done, flush and stop
+        if (doneRef.current) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          // Final state: clear streaming, reload from DB
+          setStreamingContent("");
+          setIsStreaming(false);
+          setConnectionStatus("disconnected");
+          const currentSession = currentSessionRef.current;
+          if (currentSession) {
+            getChatMessages(currentSession.session_id).then(setMessages);
+          }
+          displayedRef.current = "";
+          doneRef.current = false;
+        }
+        return;
+      }
+      // Dynamic speed: more buffered → more chars per tick
+      const charsPerTick = Math.max(1, Math.min(8, Math.ceil(pending.length / 10)));
+      const chunk = pending.slice(0, charsPerTick);
+      bufferRef.current = pending.slice(charsPerTick);
+      displayedRef.current += chunk;
+      setStreamingContent(displayedRef.current);
+    }, 20); // 50fps
+  }, []);
+
   // Keep ref in sync with state so callbacks have fresh value
   useEffect(() => {
     currentSessionRef.current = session;
@@ -63,20 +103,33 @@ export function useChat(cardId: string | null) {
       const { event_type, content } = event.payload;
 
       if (event_type === "text_chunk") {
-        setStreamingContent((prev) => prev + content);
+        bufferRef.current += content;
         setConnectionStatus("connected");
+        startTypingTimer();
       } else if (event_type === "done") {
-        setStreamingContent("");
-        setIsStreaming(false);
-        setConnectionStatus("disconnected");
-        // Reload messages from DB so the persisted assistant turn appears
-        const currentSession = currentSessionRef.current;
-        if (currentSession) {
-          getChatMessages(currentSession.session_id).then((msgs) => {
-            if (!cancelled) setMessages(msgs);
-          });
+        // Mark done — the typing timer will flush remaining buffer then finalize
+        doneRef.current = true;
+        if (!timerRef.current) {
+          // No timer running (empty buffer) — finalize immediately
+          setStreamingContent("");
+          setIsStreaming(false);
+          setConnectionStatus("disconnected");
+          const currentSession = currentSessionRef.current;
+          if (currentSession) {
+            getChatMessages(currentSession.session_id).then((msgs) => {
+              if (!cancelled) setMessages(msgs);
+            });
+          }
+          displayedRef.current = "";
+          doneRef.current = false;
         }
       } else if (event_type === "error") {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        bufferRef.current = "";
+        displayedRef.current = "";
         setStreamingContent("");
         setIsStreaming(false);
         setConnectionStatus("error");
@@ -95,8 +148,12 @@ export function useChat(cardId: string | null) {
         unlistenRef.current();
         unlistenRef.current = null;
       }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, []);
+  }, [startTypingTimer]);
 
   // Load session + messages whenever cardId changes
   useEffect(() => {
@@ -176,6 +233,13 @@ export function useChat(cardId: string | null) {
     try {
       await cancelChatStream();
     } finally {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      bufferRef.current = "";
+      displayedRef.current = "";
+      doneRef.current = false;
       setIsStreaming(false);
       setStreamingContent("");
       setConnectionStatus("disconnected");
@@ -191,6 +255,13 @@ export function useChat(cardId: string | null) {
         // ignore
       }
 
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      bufferRef.current = "";
+      displayedRef.current = "";
+      doneRef.current = false;
       setIsStreaming(false);
       setStreamingContent("");
       setConnectionStatus("disconnected");
