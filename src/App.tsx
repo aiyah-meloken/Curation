@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLayout } from "./hooks/useLayout";
-import { useInbox, useDiscarded, useIsFirstSync } from "./hooks/useInbox";
+import { useInbox, useDiscarded, useIsFirstSync, useAnalyzingQueue } from "./hooks/useInbox";
 import { useAccounts } from "./hooks/useAccounts";
 import { useInitCache, useSyncManager } from "./hooks/useSync";
 import type { InboxItem } from "./types";
@@ -177,13 +177,25 @@ function AppMain({ currentUser, onLogout }: {
 
   // Data
   const { data: accounts = [] } = useAccounts();
-  // Always fetch full inbox (no account filter) for unread counts
-  const { data: allInboxItems } = useInbox(undefined, false);
+  // Single local read — full inbox. Account filtering is applied client-side below.
+  const { data: cachedInboxItems, isLoading: isLoadingInbox } = useInbox(undefined, false);
+  const analyzingItems = useAnalyzingQueue();
+  // Merge analyzing placeholders (card_id === null) for articles whose cards
+  // haven't been synced yet. Skip entries whose article already has a card.
+  const allInboxItems = useMemo(() => {
+    if (!cachedInboxItems) return cachedInboxItems;
+    const existingArticleIds = new Set(cachedInboxItems.map((i) => i.article_id));
+    const fresh = analyzingItems.filter((a) => !existingArticleIds.has(a.article_id));
+    return [...fresh, ...cachedInboxItems];
+  }, [cachedInboxItems, analyzingItems]);
   // Filtered inbox for list display
-  const { data: inboxItems, isLoading: isLoadingInbox } = useInbox(
-    selectedView === "inbox" ? selectedAccountId : undefined,
-    false,
-  );
+  const inboxItems = useMemo(() => {
+    if (!allInboxItems) return undefined;
+    if (selectedView !== "inbox" || selectedAccountId == null) return allInboxItems;
+    const accountName = accounts.find((a) => a.id === selectedAccountId)?.name;
+    if (!accountName) return allInboxItems;
+    return allInboxItems.filter((i) => i.article_meta.account === accountName);
+  }, [allInboxItems, selectedView, selectedAccountId, accounts]);
   const { data: discardedItems, isLoading: isLoadingDiscarded } = useDiscarded();
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
@@ -201,20 +213,23 @@ function AppMain({ currentUser, onLogout }: {
   }, [notification]);
 
   // Compute unread counts from FULL inbox (not filtered by account)
+  // Local cache stores account name (not id), so we bucket by name then map to id via accounts list.
   const unreadCounts = useMemo(() => {
     const counts: Record<number | string, number> = { total: 0 };
     if (!allInboxItems) return counts;
+    const byName: Record<string, number> = {};
     for (const item of allInboxItems) {
       if (!item.read_at) {
         counts.total = (counts.total || 0) + 1;
-        const accId = item.article_meta.account_id;
-        if (accId != null) {
-          counts[accId] = (counts[accId] || 0) + 1;
-        }
+        const name = item.article_meta.account;
+        if (name) byName[name] = (byName[name] || 0) + 1;
       }
     }
+    for (const acc of accounts) {
+      counts[acc.id] = byName[acc.name] ?? 0;
+    }
     return counts;
-  }, [allInboxItems]);
+  }, [allInboxItems, accounts]);
 
   // Find selected inbox item
   const selectedItem: InboxItem | null = useMemo(() => {
@@ -291,7 +306,7 @@ function AppMain({ currentUser, onLogout }: {
           title: f.title ?? "",
           description: f.description,
           routing: f.routing,
-          article_date: null,
+          article_date: f.article_meta?.publish_time ?? null,
           read_at: f.created_at,
           queue_status: null,
           article_meta: meta,

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchDiscarded } from "../lib/api";
+import { fetchDiscarded, fetchQueue } from "../lib/api";
 import type { InboxItem, DiscardedItem } from "../types";
 import { getInboxCards, markCardRead, markCardUnread as markUnreadLocal, markAllCardsRead as markAllLocal, searchCards } from "../lib/cache";
 import type { CachedCard, SearchResult } from "../lib/cache";
@@ -175,6 +175,52 @@ export function groupByDateBucket<T extends { article_date: string | null }>(ite
       label: labels[key],
       items: buckets[key],
     }));
+}
+
+interface AnalyzingQueueRow {
+  article_id: string;
+  article_title: string | null;
+  article_account: string | null;
+  article_publish_time: string | null;
+  status: "pending" | "running" | "done" | "failed";
+}
+
+/**
+ * Poll /queue for in-flight analysis entries. Returns InboxItem placeholders
+ * (card_id === null) so the list can show a "分析中" spinner while the agent
+ * pipeline runs — local cache only learns about the card once it's committed.
+ */
+export function useAnalyzingQueue(): InboxItem[] {
+  const { data } = useQuery<AnalyzingQueueRow[]>({
+    queryKey: ["queue", "analyzing"],
+    queryFn: async () => {
+      const rows = (await fetchQueue()) as AnalyzingQueueRow[];
+      return rows.filter((r) => r.status === "pending" || r.status === "running");
+    },
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+  return useMemo(() => {
+    if (!data) return [];
+    return data.map((q): InboxItem => ({
+      card_id: null,
+      article_id: q.article_id,
+      title: q.article_title ?? "",
+      description: null,
+      routing: null,
+      article_date: q.article_publish_time,
+      read_at: null,
+      queue_status: q.status === "pending" || q.status === "running" ? q.status : null,
+      article_meta: {
+        title: q.article_title ?? "",
+        account: q.article_account ?? "",
+        account_id: null,
+        author: null,
+        publish_time: q.article_publish_time,
+        url: "",
+      },
+    }));
+  }, [data]);
 }
 
 export function useInboxSearch(query: string) {
