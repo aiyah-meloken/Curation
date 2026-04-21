@@ -27,6 +27,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-window-state = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2"
@@ -43,4 +44,5 @@ agent-client-protocol-rmcp = "0.11"
 rmcp = { version = "0.1", features = ["server", "transport-io"] }
 uuid = { version = "1", features = ["v4"] }
 tokio = { version = "1", features = ["sync", "rt"] }
+schemars = { version = "1.0", features = ["derive"] }
 

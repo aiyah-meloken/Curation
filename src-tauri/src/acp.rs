@@ -4,15 +4,39 @@ use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::{mpsc, oneshot, Mutex};
 
+use agent_client_protocol::mcp_server::McpServer;
 use agent_client_protocol::schema::{
     ContentBlock, ContentChunk, InitializeRequest, ProtocolVersion, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate,
 };
 use agent_client_protocol::{
-    on_receive_notification, on_receive_request, Agent, Client, ConnectionTo, SessionMessage,
+    on_receive_notification, on_receive_request, tool_fn, Agent, Client, ConnectionTo,
+    SessionMessage,
 };
 use agent_client_protocol_tokio::AcpAgent;
+
+use crate::db::CacheDb;
+use crate::mcp_server::{CardContext, CurationMcpServer};
+
+// ---------------------------------------------------------------------------
+// MCP tool input types
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct EmptyInput {}
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct SearchInput {
+    /// 搜索关键词
+    query: String,
+}
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CardIdInput {
+    /// 卡片 ID
+    card_id: String,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AgentConfig {
@@ -32,27 +56,29 @@ pub struct ChatStreamEvent {
 }
 
 /// Returns the list of known agents with detection status.
+/// Detection checks the actual CLI tool; launch uses the ACP adapter (via npx where needed).
 pub fn detect_agents() -> Vec<AgentConfig> {
-    let agents = vec![
-        ("Claude Code", "claude-acp", "npx", vec![
+    // (display_name, id, detect_cmd, launch_cmd, launch_args)
+    let agents: Vec<(&str, &str, &str, &str, Vec<String>)> = vec![
+        ("Claude Code", "claude-acp", "claude", "npx", vec![
             "@agentclientprotocol/claude-agent-acp@0.30.0".to_string(),
         ]),
-        ("Codex CLI", "codex-acp", "npx", vec![
+        ("Codex CLI", "codex-acp", "codex", "npx", vec![
             "@zed-industries/codex-acp@0.11.1".to_string(),
         ]),
-        ("Gemini CLI", "gemini-acp", "gemini", vec![
+        ("Gemini CLI", "gemini-acp", "gemini", "gemini", vec![
             "--acp".to_string(),
         ]),
     ];
 
     agents
         .into_iter()
-        .map(|(name, id, cmd, args)| {
-            let detected = is_command_available(cmd);
+        .map(|(name, id, detect_cmd, launch_cmd, args)| {
+            let detected = is_command_available(detect_cmd);
             AgentConfig {
                 name: name.to_string(),
                 id: id.to_string(),
-                command: cmd.to_string(),
+                command: launch_cmd.to_string(),
                 args,
                 detected,
             }
@@ -119,6 +145,8 @@ impl AcpManager {
         session_id: &str,
         system_prompt: &str,
         app: &tauri::AppHandle,
+        db: Arc<std::sync::Mutex<Option<CacheDb>>>,
+        current_context: Arc<std::sync::Mutex<Option<CardContext>>>,
     ) -> Result<(), String> {
         // Stop any existing session
         self.stop_session().await;
@@ -145,6 +173,8 @@ impl AcpManager {
                 system_prompt_owned,
                 app_handle.clone(),
                 cmd_rx,
+                db,
+                current_context,
             )
             .await;
 
@@ -236,6 +266,8 @@ async fn run_acp_session(
     system_prompt: String,
     app: tauri::AppHandle,
     mut cmd_rx: mpsc::Receiver<SessionCommand>,
+    db: Arc<std::sync::Mutex<Option<CacheDb>>>,
+    current_context: Arc<std::sync::Mutex<Option<CardContext>>>,
 ) -> Result<(), String> {
     // We need to use Arc for shared state between the notification handler and the main loop.
     // The notification handler receives streaming chunks from the agent asynchronously.
@@ -336,11 +368,88 @@ async fn run_acp_session(
                 .block_task()
                 .await?;
 
-            // Step 2: Create a session
+            // Step 2: Build MCP server with curation tools
+            let mcp_server = {
+                let db1 = db.clone();
+                let ctx1 = current_context.clone();
+                let db2 = db.clone();
+                let ctx2 = current_context.clone();
+                let db3 = db.clone();
+                let ctx3 = current_context.clone();
+                let db4 = db.clone();
+                let ctx4 = current_context.clone();
+
+                McpServer::<Agent, _>::builder("curation".to_string())
+                    .instructions("Curation 本地数据查询工具。可以获取用户当前阅读的卡片、搜索卡片、获取卡片内容、查看收藏列表。")
+                    .tool_fn(
+                        "get_current_context",
+                        "获取用户当前正在阅读的卡片内容和来源信息",
+                        {
+                            let db = db1;
+                            let ctx = ctx1;
+                            async move |_input: EmptyInput, _cx| {
+                                let server = CurationMcpServer::new(db.clone(), ctx.clone());
+                                server.get_current_context().map_err(|e| {
+                                    agent_client_protocol::Error::internal_error().data(e)
+                                })
+                            }
+                        },
+                        tool_fn!(),
+                    )
+                    .tool_fn(
+                        "search_cards",
+                        "根据关键词搜索卡片（标题、内容）",
+                        {
+                            let db = db2;
+                            let ctx = ctx2;
+                            async move |input: SearchInput, _cx| {
+                                let server = CurationMcpServer::new(db.clone(), ctx.clone());
+                                server.search_cards(&input.query).map_err(|e| {
+                                    agent_client_protocol::Error::internal_error().data(e)
+                                })
+                            }
+                        },
+                        tool_fn!(),
+                    )
+                    .tool_fn(
+                        "get_card_content",
+                        "根据 card_id 获取单张卡片的完整内容",
+                        {
+                            let db = db3;
+                            let ctx = ctx3;
+                            async move |input: CardIdInput, _cx| {
+                                let server = CurationMcpServer::new(db.clone(), ctx.clone());
+                                server.get_card_content(&input.card_id).map_err(|e| {
+                                    agent_client_protocol::Error::internal_error().data(e)
+                                })
+                            }
+                        },
+                        tool_fn!(),
+                    )
+                    .tool_fn(
+                        "get_favorites",
+                        "获取用户收藏的卡片列表",
+                        {
+                            let db = db4;
+                            let ctx = ctx4;
+                            async move |_input: EmptyInput, _cx| {
+                                let server = CurationMcpServer::new(db.clone(), ctx.clone());
+                                server.get_favorites().map_err(|e| {
+                                    agent_client_protocol::Error::internal_error().data(e)
+                                })
+                            }
+                        },
+                        tool_fn!(),
+                    )
+                    .build()
+            };
+
+            // Step 3: Create a session with MCP server attached
             let cwd =
                 std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"));
             let mut session = cx
                 .build_session(cwd)
+                .with_mcp_server(mcp_server)?
                 .block_task()
                 .start_session()
                 .await?;

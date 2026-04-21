@@ -196,19 +196,20 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // --- Cache state ---
             let data_dir = app.path().app_data_dir().expect("failed to get app data dir");
             let db_path = data_dir.join("cache.db");
 
             let state = commands::AppState {
-                db: std::sync::Mutex::new(None),
+                db: std::sync::Arc::new(std::sync::Mutex::new(None)),
                 sync_client: sync::SyncClient::new(),
                 auth_token: std::sync::Mutex::new(None),
                 sync_client_base: std::sync::Mutex::new("http://127.0.0.1:8889".to_string()),
                 db_path,
                 acp_manager: crate::acp::AcpManager::new(),
-                current_card_context: std::sync::Mutex::new(None),
+                current_card_context: std::sync::Arc::new(std::sync::Mutex::new(None)),
             };
             app.manage(state);
 

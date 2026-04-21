@@ -120,7 +120,14 @@ pub async fn send_chat_message(
 
         state
             .acp_manager
-            .start_session(&agent_cfg, &session_id, &system_prompt, &app)
+            .start_session(
+                &agent_cfg,
+                &session_id,
+                &system_prompt,
+                &app,
+                state.db.clone(),
+                state.current_card_context.clone(),
+            )
             .await?;
     }
 

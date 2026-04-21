@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
 use crate::crypto;
@@ -7,13 +7,13 @@ use crate::db::{CacheDb, CardRow, FavoriteRow, SearchResult};
 use crate::sync::{self, SyncClient};
 
 pub struct AppState {
-    pub db: Mutex<Option<CacheDb>>,
+    pub db: Arc<Mutex<Option<CacheDb>>>,
     pub sync_client: SyncClient,
     pub auth_token: Mutex<Option<String>>,
     pub sync_client_base: Mutex<String>,
     pub db_path: PathBuf,
     pub acp_manager: crate::acp::AcpManager,
-    pub current_card_context: std::sync::Mutex<Option<crate::mcp_server::CardContext>>,
+    pub current_card_context: Arc<Mutex<Option<crate::mcp_server::CardContext>>>,
 }
 
 fn with_db<F, T>(state: &State<'_, AppState>, f: F) -> Result<T, String>
