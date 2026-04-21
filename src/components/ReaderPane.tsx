@@ -56,6 +56,7 @@ function SourceBar({
       {/* Line 1: original title + tag */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
+          {routing === "original_push" && <span style={{ color: "var(--text-muted)" }}>原文：</span>}
           {meta.title}
         </span>
         {routing && routingTag(routing)}

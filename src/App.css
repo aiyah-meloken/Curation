@@ -1024,9 +1024,9 @@ body {
   background: currentColor;
 }
 
-.tag-ai      { color: var(--accent-blue); }
-.tag-original{ color: var(--accent-green); }
-.tag-discard { color: var(--accent-red); }
+.tag-ai      { color: var(--accent-blue) !important; }
+.tag-original{ color: var(--accent-green) !important; }
+.tag-discard { color: var(--accent-red) !important; }
 
 /* ===== Reader Source Bar ===== */
 .reader-source-bar {
