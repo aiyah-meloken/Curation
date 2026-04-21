@@ -268,6 +268,21 @@ impl CacheDb {
         Ok(rows)
     }
 
+    pub fn get_card_content(&self, card_id: &str) -> Result<Option<String>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare("SELECT content_md FROM cards WHERE card_id = ?1")
+            .map_err(|e| e.to_string())?;
+        let mut rows = stmt
+            .query_map([card_id], |row| row.get::<_, Option<String>>(0))
+            .map_err(|e| e.to_string())?;
+        match rows.next() {
+            Some(Ok(content)) => Ok(content),
+            Some(Err(e)) => Err(e.to_string()),
+            None => Ok(None),
+        }
+    }
+
     pub fn get_article_content(&self, article_id: &str) -> Result<Option<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn

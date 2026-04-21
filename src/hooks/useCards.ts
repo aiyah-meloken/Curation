@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, fetchCardsByDate, fetchAggregatedCards, fetchCardContent, fetchAggregatedCardContent } from "../lib/api";
+import { getCardContent } from "../lib/cache";
 
 export interface Card {
   card_id: string;
@@ -25,6 +26,12 @@ async function loadCardList(date: string | null, tab: "aggregated" | "source"): 
 }
 
 export async function loadCardContentData(cardId: string, tab: "aggregated" | "source") {
+  if (tab === "source") {
+    const local = await getCardContent(cardId);
+    if (local != null && local.length > 0) {
+      return { content: local };
+    }
+  }
   const fetcher = tab === "aggregated" ? fetchAggregatedCardContent : fetchCardContent;
   return fetcher(cardId);
 }

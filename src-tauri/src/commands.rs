@@ -172,6 +172,14 @@ pub fn toggle_favorite(
 }
 
 #[tauri::command]
+pub fn get_card_content(
+    state: State<'_, AppState>,
+    card_id: String,
+) -> Result<Option<String>, String> {
+    with_db(&state, |db| db.get_card_content(&card_id))
+}
+
+#[tauri::command]
 pub fn get_cached_article(
     state: State<'_, AppState>,
     article_id: String,

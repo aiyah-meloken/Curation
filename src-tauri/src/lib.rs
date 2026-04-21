@@ -260,6 +260,7 @@ pub fn run() {
             commands::mark_unread,
             commands::mark_all_read,
             commands::toggle_favorite,
+            commands::get_card_content,
             commands::get_cached_article,
             commands::run_sync,
             chat_commands::detect_available_agents,

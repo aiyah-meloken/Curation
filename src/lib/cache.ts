@@ -80,6 +80,10 @@ export function getCachedArticle(articleId: string): Promise<string | null> {
   return invoke("get_cached_article", { articleId });
 }
 
+export function getCardContent(cardId: string): Promise<string | null> {
+  return invoke("get_card_content", { cardId });
+}
+
 export function runSync(): Promise<string[]> {
   return invoke("run_sync");
 }
