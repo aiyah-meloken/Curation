@@ -61,15 +61,34 @@ pub fn detect_agents() -> Vec<AgentConfig> {
 }
 
 fn is_command_available(cmd: &str) -> bool {
-    let check = if cfg!(target_os = "windows") {
+    // macOS GUI-launched apps (incl. Tauri) inherit a minimal PATH that omits
+    // user-level bin dirs where CLIs like `claude`, `node`, etc. typically live.
+    // First try the native PATH via `which`/`where`; if that misses, probe
+    // common bin directories directly.
+    let native = if cfg!(target_os = "windows") {
         Command::new("where").arg(cmd).output()
     } else {
         Command::new("which").arg(cmd).output()
     };
-    match check {
-        Ok(output) => output.status.success(),
-        Err(_) => false,
+    if let Ok(output) = native {
+        if output.status.success() {
+            return true;
+        }
     }
+
+    // Fallback: probe common install locations.
+    let home = std::env::var_os("HOME");
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(h) = &home {
+        let h = std::path::Path::new(h);
+        for sub in [".local/bin", ".cargo/bin", ".bun/bin", ".volta/bin", ".npm-global/bin"] {
+            candidates.push(h.join(sub).join(cmd));
+        }
+    }
+    for p in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"] {
+        candidates.push(std::path::PathBuf::from(p).join(cmd));
+    }
+    candidates.iter().any(|p| p.exists())
 }
 
 // ---------------------------------------------------------------------------
