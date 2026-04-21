@@ -727,4 +727,23 @@ impl CacheDb {
             .map_err(|e| e.to_string())?;
         Ok(rows)
     }
+
+    pub fn debug_list_all_sessions(&self) -> Result<Vec<ChatSession>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn
+            .prepare("SELECT session_id, card_id, agent_id, created_at, updated_at FROM chat_sessions ORDER BY updated_at DESC")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(ChatSession {
+                    session_id: row.get(0)?,
+                    card_id: row.get(1)?,
+                    agent_id: row.get(2)?,
+                    created_at: row.get(3)?,
+                    updated_at: row.get(4)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    }
 }

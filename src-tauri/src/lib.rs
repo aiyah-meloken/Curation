@@ -270,6 +270,7 @@ pub fn run() {
             chat_commands::get_chat_messages,
             chat_commands::send_chat_message,
             chat_commands::cancel_chat_stream,
+            chat_commands::debug_chat_sessions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

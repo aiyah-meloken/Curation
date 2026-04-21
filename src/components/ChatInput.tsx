@@ -58,6 +58,7 @@ export function ChatInput({
 
   return (
     <div className="chat-input-container">
+      <div className="chat-input-inner">
       <div className="chat-control-bar">
         <div className="chat-control-left">
           <select
@@ -108,6 +109,7 @@ export function ChatInput({
             <Send size={14} />
           </button>
         )}
+      </div>
       </div>
     </div>
   );

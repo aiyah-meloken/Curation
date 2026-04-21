@@ -1577,6 +1577,35 @@ body {
   margin-bottom: var(--sp-3);
 }
 
+.ts-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 var(--sp-5);
+  border-bottom: 1px solid var(--border-hairline);
+  margin-bottom: var(--sp-3);
+}
+
+.ts-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ts-tab:hover {
+  color: var(--text-secondary);
+}
+
+.ts-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+}
+
 .ts-body {
   flex: 1;
   overflow-y: auto;
@@ -2174,14 +2203,20 @@ body {
 .chat-input-container {
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(var(--reader-max-width) * 0.90);
-  max-width: 90%;
+  left: 0;
+  right: 0;
   z-index: 10;
   padding: var(--sp-3) 0;
   background: linear-gradient(transparent, var(--bg-color) 30%);
   backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chat-input-inner {
+  width: calc(var(--reader-max-width) * 0.90);
+  max-width: 90%;
 }
 
 .chat-control-bar {

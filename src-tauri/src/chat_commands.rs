@@ -88,6 +88,25 @@ pub fn get_chat_messages(
     with_db(&state, |db| db.get_chat_messages(&session_id))
 }
 
+#[tauri::command]
+pub fn debug_chat_sessions(state: State<'_, AppState>) -> Result<String, String> {
+    let guard = state.db.lock().map_err(|e| e.to_string())?;
+    let db = guard.as_ref().ok_or("database not initialized")?;
+    let sessions = db.debug_list_all_sessions()?;
+    let mut out = format!("Total sessions: {}\n", sessions.len());
+    for s in &sessions {
+        let msgs = db.get_chat_messages(&s.session_id)?;
+        out.push_str(&format!(
+            "\nSession: {} | card: {:?} | agent: {} | msgs: {}\n",
+            &s.session_id[..8], s.card_id, s.agent_id, msgs.len()
+        ));
+        for m in msgs.iter().take(2) {
+            out.push_str(&format!("  [{}] {}...\n", m.role, &m.content.chars().take(60).collect::<String>()));
+        }
+    }
+    Ok(out)
+}
+
 /// Send a user message, stream the agent reply via Tauri events, and persist both.
 ///
 /// Lock discipline: all DB access is done in brief synchronous lock windows;

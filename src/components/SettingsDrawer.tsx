@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { X, ArrowUpRight, FolderOpen } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import type { AppearanceSettings, FontBody, ThemeMode } from "../lib/appearance";
@@ -164,17 +165,19 @@ export function SettingsDrawer({
     onClose();
   };
 
+  const [tab, setTab] = useState<"appearance" | "general">("appearance");
+
   return (
     <div className="settings-drawer-overlay" onClick={handleClose}>
       <aside
         className="settings-drawer-panel ts-panel"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="外观设置"
+        aria-label="设置"
       >
         <header className="ts-header">
           <div className="ts-masthead">
-            <span className="ts-masthead-serif">外观</span>
+            <span className="ts-masthead-serif">设置</span>
             <span className="ts-masthead-rule" />
             <span className="ts-masthead-sans">SETTINGS</span>
           </div>
@@ -183,9 +186,23 @@ export function SettingsDrawer({
           </button>
         </header>
 
-        <div className="ts-colophon">排版 · 阅读 · 账号 — Edit your reading frame.</div>
+        <div className="ts-tabs">
+          <button
+            className={`ts-tab ${tab === "appearance" ? "active" : ""}`}
+            onClick={() => setTab("appearance")}
+          >
+            外观
+          </button>
+          <button
+            className={`ts-tab ${tab === "general" ? "active" : ""}`}
+            onClick={() => setTab("general")}
+          >
+            通用
+          </button>
+        </div>
 
         <div className="ts-body">
+          {tab === "appearance" && <>
           <Section roman="I" title="主题" stagger={0}>
             <div className="ts-themes">
               {THEME_OPTIONS.map((opt) => {
@@ -311,8 +328,10 @@ export function SettingsDrawer({
               )}
             </div>
           </Section>
+          </>}
 
-          <Section roman="V" title="笔记" stagger={4}>
+          {tab === "general" && <>
+          <Section roman="V" title="笔记" stagger={0}>
             <div className="ts-field">
               <div className="ts-field-label">
                 <span>笔记路径</span>
@@ -357,7 +376,7 @@ export function SettingsDrawer({
             </div>
           </Section>
 
-          <Section roman="VI" title="账号" stagger={5}>
+          <Section roman="VI" title="账号" stagger={1}>
             <div className="ts-account">
               <div className="ts-account-row">
                 <span className="ts-account-label">已登录</span>
@@ -369,6 +388,8 @@ export function SettingsDrawer({
               </button>
             </div>
           </Section>
+
+          </>}
 
           <div className="ts-imprint" aria-hidden>
             Curation · 个人资讯系统 · 由你调整，为你编排
