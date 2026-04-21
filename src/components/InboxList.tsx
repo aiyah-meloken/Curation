@@ -26,13 +26,13 @@ function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus
     );
   }
   if (isDiscarded) {
-    return <span className="inbox-tag tag-discard">丢弃</span>;
+    return <span className="inbox-tag" style={{ color: "var(--accent-red)" }}>丢弃</span>;
   }
   if (routing === "ai_curation") {
-    return <span className="inbox-tag tag-ai">AI总结</span>;
+    return <span className="inbox-tag" style={{ color: "var(--accent-blue)" }}>AI总结</span>;
   }
   if (routing === "original_push") {
-    return <span className="inbox-tag tag-original">原文</span>;
+    return <span className="inbox-tag" style={{ color: "var(--accent-green)" }}>原文</span>;
   }
   return null;
 }

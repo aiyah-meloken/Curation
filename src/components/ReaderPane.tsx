@@ -265,17 +265,19 @@ ${notesPath ? `\n用户的笔记路径：${notesPath}` : ""}
   }, [selectedItem?.card_id]);
 
   // Resolve the active item — inbox, favorites, or discarded all go through here
-  const item = selectedItem ?? (selectedDiscardedItem ? {
-    card_id: null,
-    article_id: selectedDiscardedItem.article_id,
-    title: selectedDiscardedItem.title,
-    description: selectedDiscardedItem.routing_reason,
-    routing: null as "ai_curation" | "original_push" | null,
-    article_date: selectedDiscardedItem.article_date,
-    read_at: null,
-    queue_status: null as "pending" | "running" | null,
-    article_meta: selectedDiscardedItem.article_meta,
-  } : null);
+  const item = isDiscardedView
+    ? (selectedDiscardedItem ? {
+        card_id: null,
+        article_id: selectedDiscardedItem.article_id,
+        title: selectedDiscardedItem.title,
+        description: selectedDiscardedItem.routing_reason,
+        routing: null as "ai_curation" | "original_push" | null,
+        article_date: selectedDiscardedItem.article_date,
+        read_at: null,
+        queue_status: null as "pending" | "running" | null,
+        article_meta: selectedDiscardedItem.article_meta,
+      } : null)
+    : selectedItem;
 
   // Empty state
   if (!item) {
