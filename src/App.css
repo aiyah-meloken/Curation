@@ -235,11 +235,12 @@ body {
   display: flex;
   gap: 4px;
   padding: 0 12px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .view-toggle-btn {
-  flex: 1;
-  padding: var(--sp-1) 0;
+  padding: var(--sp-1) var(--sp-2);
   font-size: var(--fs-sm);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);

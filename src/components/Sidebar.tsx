@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inbox, ChevronLeft, ChevronRight, ChevronDown, Menu, ShieldCheck, Trash2, UserMinus, UserPlus, Star, Settings, Search } from "lucide-react";
+import { Inbox, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Trash2, UserMinus, UserPlus, Star, Settings, Search } from "lucide-react";
 import { useAccounts, useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AddMenu } from "./AddMenu";
@@ -19,7 +19,6 @@ interface SidebarProps {
   onSelectDiscarded: () => void;
   onSelectFavorites: () => void;
   onSelectSearch: () => void;
-  onToggleCollapse: () => void;
   onToggleAdmin: () => void;
   onBack?: () => void;
   onForward?: () => void;
@@ -46,7 +45,6 @@ export function Sidebar({
   onSelectDiscarded,
   onSelectFavorites,
   onSelectSearch,
-  onToggleCollapse,
   onToggleAdmin,
   onBack,
   onForward,
@@ -100,7 +98,7 @@ export function Sidebar({
           <span className="sidebar-brand">
             <span className="sidebar-brand-name">Curation</span>
             {!isSidebarCollapsed && (
-              <span className="sidebar-brand-slogan">值得读完的文章，远比你以为的少</span>
+              <span className="sidebar-brand-slogan">值得读完的文章，<br />远比你以为的少</span>
             )}
           </span>
         </h2>
@@ -127,9 +125,6 @@ export function Sidebar({
               <ChevronRight size={18} />
             </button>
           )}
-          <button className="btn-icon" onClick={onToggleCollapse} title={isSidebarCollapsed ? "展开侧栏" : "收起侧栏"}>
-            <Menu size={18} />
-          </button>
         </div>
       </div>
 

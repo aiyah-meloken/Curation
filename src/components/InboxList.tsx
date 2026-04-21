@@ -218,17 +218,6 @@ export function InboxList({
     }
   }
 
-  function handleMarkAllRead() {
-    if (!items) return;
-    const unreadIds = items
-      .filter((i) => !i.read_at && i.card_id)
-      .map((i) => i.card_id as string);
-    if (unreadIds.length > 0) {
-      markAllRead.mutate(unreadIds);
-    }
-  }
-
-  const totalUnread = items?.filter((i) => !i.read_at).length ?? 0;
 
   return (
     <section className="article-list-pane" style={{ width: listWidth }}>
@@ -259,17 +248,6 @@ export function InboxList({
             未读
           </button>
         </div>
-        {!isDiscardedView && (
-          <button
-            className="inbox-group-read-btn"
-            onClick={handleMarkAllRead}
-            title="全部已读"
-            style={{ whiteSpace: "nowrap", opacity: 1, padding: "2px 6px", fontSize: "var(--fs-xs)" }}
-            disabled={totalUnread === 0}
-          >
-            <Check size={10} />
-          </button>
-        )}
       </header>
 
       {/* List content */}

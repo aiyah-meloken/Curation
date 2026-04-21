@@ -166,7 +166,7 @@ function AppMain({ currentUser, onLogout }: {
   const search = useSearch();
 
   // Layout
-  const { isSidebarCollapsed, sidebarWidth, listWidth, isResizingList, startResizeList, toggleSidebar } = useLayout();
+  const { isSidebarCollapsed, sidebarWidth, listWidth, isResizingList, startResizeList } = useLayout();
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [adminView, setAdminView] = useState<"management" | "queue" | "aggregation" | "invites" | "users">("management");
   const [notification, setNotification] = useState<string | null>(null);
@@ -370,7 +370,7 @@ function AppMain({ currentUser, onLogout }: {
         onSelectSearch={handleSelectSearch}
         favoritesCount={favoritesData?.length ?? 0}
         onNavigateToCard={handleNavigateToCard}
-        onToggleCollapse={toggleSidebar}
+
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
         userName={currentUser.email || currentUser.username}
         currentUser={currentUser}
