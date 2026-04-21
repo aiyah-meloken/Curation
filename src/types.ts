@@ -151,10 +151,12 @@ export interface QueueEntry {
   article_publish_time: string | null;
   article_account: string | null;
   serving_run_id: number | null;
-  status: "pending" | "running" | "done" | "failed";
+  status: "pending" | "running" | "done" | "failed" | "locked";
   run_id: number | null;
   routing: string | null;
   routing_reason: string | null;
+  fail_reason: string | null;
+  is_locked: boolean;
   run_count: number;
   created_at: string;
   updated_at: string;

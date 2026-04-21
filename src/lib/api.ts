@@ -137,6 +137,12 @@ export async function retryQueueEntry(articleId: string) {
   return res.json();
 }
 
+export async function dismissQueueEntry(articleId: string) {
+  const res = await apiFetch(`/queue/${articleId}`, { method: "DELETE" });
+  return res.json();
+}
+
+
 export async function fetchArticleRuns(articleId: string) {
   const res = await apiFetch(`/articles/${articleId}/runs`);
   const json = await res.json();

@@ -43,7 +43,7 @@ export function useSyncManager(isLoggedIn: boolean) {
     for (const k of rustKeys) {
       if (k === "cards" || k === "articles") {
         queryClient.invalidateQueries({ queryKey: ["inbox", "local"] });
-        queryClient.invalidateQueries({ queryKey: ["card-content"] });
+        queryClient.invalidateQueries({ queryKey: ["cardContent"] });
         queryClient.invalidateQueries({ queryKey: ["favorites", "local"] });
       } else if (k === "favorites") {
         queryClient.invalidateQueries({ queryKey: ["favorites", "local"] });

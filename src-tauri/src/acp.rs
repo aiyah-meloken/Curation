@@ -86,7 +86,7 @@ enum SessionCommand {
 
 struct ActiveSessionState {
     session_id: String,
-    agent_id: String,
+    _agent_id: String,
     cmd_tx: mpsc::Sender<SessionCommand>,
 }
 
@@ -145,7 +145,7 @@ impl AcpManager {
         let mut guard = self.active.lock().await;
         *guard = Some(ActiveSessionState {
             session_id: session_id_owned,
-            agent_id,
+            _agent_id: agent_id,
             cmd_tx,
         });
 
@@ -218,17 +218,8 @@ async fn run_acp_session(
                             content: ContentBlock::Text(text),
                             ..
                         }) => Some(StreamChunk::Text(text.text.clone())),
-                        SessionUpdate::ToolCall(tc) => {
-                            Some(StreamChunk::ToolCall(tc.title.clone()))
-                        }
-                        SessionUpdate::ToolCallUpdate(tcu) => {
-                            let title = tcu
-                                .fields
-                                .title
-                                .clone()
-                                .unwrap_or_else(|| format!("{}", tcu.tool_call_id));
-                            Some(StreamChunk::ToolCallUpdate(title))
-                        }
+                        SessionUpdate::ToolCall(_) => Some(StreamChunk::ToolCall),
+                        SessionUpdate::ToolCallUpdate(_) => Some(StreamChunk::ToolCallUpdate),
                         _ => None,
                     };
                     if let Some(c) = chunk {
@@ -326,8 +317,8 @@ async fn run_acp_session(
 
 enum StreamChunk {
     Text(String),
-    ToolCall(String),
-    ToolCallUpdate(String),
+    ToolCall,
+    ToolCallUpdate,
 }
 
 async fn handle_prompt(

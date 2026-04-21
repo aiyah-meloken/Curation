@@ -37,10 +37,12 @@ export function useFavorites() {
               ? {
                   title: card.article_title ?? card.title ?? "",
                   account: card.account ?? "",
-                  account_id: null,
+                  account_id: card.account_id,
                   author: card.author ?? null,
-                  publish_time: card.article_date ?? null,
+                  publish_time: card.publish_time ?? card.article_date ?? null,
                   url: card.url ?? "",
+                  cover_url: card.cover_url,
+                  digest: card.digest,
                 }
               : null,
           };
