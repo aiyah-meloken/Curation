@@ -100,17 +100,19 @@ impl SyncClient {
         let mut cursor: Option<String> = None;
 
         loop {
-            let mut url = format!("{}/sync?limit=500", base_url);
+            let url = format!("{}/sync", base_url);
+            let mut params: Vec<(&str, String)> = vec![("limit", "500".to_string())];
             if let Some(s) = since {
-                url.push_str(&format!("&since={}", s));
+                params.push(("since", s.to_string()));
             }
             if let Some(ref c) = cursor {
-                url.push_str(&format!("&cursor={}", c));
+                params.push(("cursor", c.clone()));
             }
 
             let resp = self
                 .client
                 .get(&url)
+                .query(&params)
                 .bearer_auth(token)
                 .send()
                 .await
