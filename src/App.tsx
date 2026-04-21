@@ -4,6 +4,8 @@ import { useInbox, useDiscarded } from "./hooks/useInbox";
 import { useAccounts } from "./hooks/useAccounts";
 import { useInitCache, useSyncManager } from "./hooks/useSync";
 import type { InboxItem } from "./types";
+import { setCurrentCardContext } from "./lib/chat";
+import type { CardContext } from "./lib/chat";
 import { FavoritesList } from './components/FavoritesList';
 import { FavoritesReader } from './components/FavoritesReader';
 import { useFavorites } from './hooks/useFavorites';
@@ -231,6 +233,26 @@ function AppMain({ currentUser, onLogout }: {
       setSelectedCardId(withCard.card_id);
     }
   }, [inboxItems, selectedCardId]);
+
+  // Set current card context on card selection for MCP
+  useEffect(() => {
+    if (!selectedItem || !selectedItem.card_id) {
+      setCurrentCardContext(null).catch(console.error);
+      return;
+    }
+    const ctx: CardContext = {
+      card_id: selectedItem.card_id,
+      title: selectedItem.article_meta.title,
+      content_md: "",
+      article_html: null,
+      account: selectedItem.article_meta.account,
+      author: selectedItem.article_meta.author ?? null,
+      article_date: selectedItem.article_date ?? null,
+      url: selectedItem.article_meta.url,
+      routing: selectedItem.routing ?? "ai_curation",
+    };
+    setCurrentCardContext(ctx).catch(console.error);
+  }, [selectedItem?.card_id]);
 
   // Find selected discarded item
   const selectedDiscardedItem = useMemo(() => {
