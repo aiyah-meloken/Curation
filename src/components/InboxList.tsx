@@ -17,7 +17,7 @@ interface InboxListProps {
   favoriteCardIds?: Set<string>;
 }
 
-function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus?: "pending" | "running" | null) {
+function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus?: "pending" | "running" | null, isDiscarded?: boolean) {
   if (queueStatus) {
     return (
       <span className="inbox-tag" style={{ background: "var(--accent-blue-dim)", color: "var(--accent-blue)", display: "inline-flex", alignItems: "center", gap: 3 }}>
@@ -26,6 +26,9 @@ function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus
       </span>
     );
   }
+  if (isDiscarded) {
+    return <span className="inbox-tag tag-discard">丢弃</span>;
+  }
   if (routing === "ai_curation") {
     return <span className="inbox-tag tag-ai">AI总结</span>;
   }
@@ -33,10 +36,6 @@ function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus
     return <span className="inbox-tag tag-original">原文</span>;
   }
   return null;
-}
-
-function discardTag() {
-  return <span className="inbox-tag tag-discard">丢弃</span>;
 }
 
 function formatTime(t: string | null) {
@@ -85,12 +84,14 @@ function InboxItemRow({
   item,
   isSelected,
   isFavorite,
+  isDiscarded,
   onSelect,
   onContextMenu,
 }: {
   item: InboxItem;
   isSelected: boolean;
   isFavorite: boolean;
+  isDiscarded?: boolean;
   onSelect: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
@@ -106,7 +107,7 @@ function InboxItemRow({
           <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
         )}
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
-        {routingTag(item.routing, item.queue_status)}
+        {routingTag(item.routing, item.queue_status, isDiscarded)}
       </div>
       {item.description && (
         <div className="inbox-item-desc">{item.description}</div>
@@ -121,33 +122,19 @@ function InboxItemRow({
   );
 }
 
-function DiscardedItemRow({
-  item,
-  isSelected,
-  onSelect,
-}: {
-  item: DiscardedItem;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <div
-      className={`inbox-item ${isSelected ? "selected" : ""}`}
-      onClick={onSelect}
-    >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-        <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
-        {discardTag()}
-      </div>
-      <div className="inbox-item-desc">{item.routing_reason}</div>
-      <div className="inbox-item-meta">
-        {item.article_meta.account}
-        {item.article_meta.publish_time && (
-          <> · {formatTime(item.article_meta.publish_time)}</>
-        )}
-      </div>
-    </div>
-  );
+/** Convert DiscardedItem to InboxItem for unified rendering */
+function discardedToInbox(d: DiscardedItem): InboxItem {
+  return {
+    card_id: null,
+    article_id: d.article_id,
+    title: d.title,
+    description: d.routing_reason,
+    routing: null,
+    article_date: d.article_date,
+    read_at: null,
+    queue_status: null,
+    article_meta: d.article_meta,
+  };
 }
 
 export function InboxList({
@@ -303,11 +290,14 @@ export function InboxList({
                 </div>
                 {isGroupOpen(group) &&
                   group.items.map((item) => (
-                    <DiscardedItemRow
+                    <InboxItemRow
                       key={item.article_id}
-                      item={item}
+                      item={discardedToInbox(item)}
                       isSelected={selectedId === item.article_id}
+                      isFavorite={false}
+                      isDiscarded
                       onSelect={() => onSelect(item.article_id, "discarded")}
+                      onContextMenu={() => {}}
                     />
                   ))}
               </div>
