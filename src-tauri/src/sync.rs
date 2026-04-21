@@ -287,7 +287,7 @@ impl SyncClient {
         cursor: Option<&str>,
     ) -> Result<serde_json::Value, String> {
         let url = format!("{}/sync", base_url);
-        let mut params: Vec<(&str, String)> = vec![("limit", "500".to_string())];
+        let mut params: Vec<(&str, String)> = vec![("limit", "50".to_string())];
         if let Some(s) = since {
             params.push(("since", s.to_string()));
         }
