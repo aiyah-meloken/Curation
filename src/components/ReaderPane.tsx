@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -8,6 +8,10 @@ import { useCardContent } from "../hooks/useCards";
 import { useArticleContent } from "../hooks/useArticles";
 import { useMarkCardReadSingle } from "../hooks/useInbox";
 import { FavoriteButton } from "./FavoriteButton";
+import { ChatInput } from "./ChatInput";
+import { ChatMessages } from "./ChatMessages";
+import { CardFrame } from "./CardFrame";
+import { useChat, useAgentDetection } from "../hooks/useChat";
 import type { InboxItem, DiscardedItem } from "../types";
 
 function routingTag(routing: "ai_curation" | "original_push") {
@@ -26,6 +30,7 @@ interface ReaderPaneProps {
   selectedItem: InboxItem | null;
   selectedDiscardedItem: DiscardedItem | null;
   isDiscardedView: boolean;
+  isHomeView?: boolean;
   onOpenDrawer: () => void;
   onSelectAccount?: (accountId: number) => void;
 }
@@ -154,10 +159,55 @@ export function ReaderPane({
   selectedItem,
   selectedDiscardedItem,
   isDiscardedView,
+  isHomeView,
   onOpenDrawer,
 }: ReaderPaneProps) {
   const markRead = useMarkCardReadSingle();
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Chat hooks (must be called before any early returns)
+  const { agents, selectedAgentId, setSelectedAgentId } = useAgentDetection();
+  const chatCardId = isHomeView ? null : (selectedItem?.card_id ?? null);
+  const chat = useChat(chatCardId);
+  const chatActive = chat.messages.length > 0 || chat.isStreaming;
+
+  // Auto-scroll on streaming
+  useEffect(() => {
+    if (chat.isStreaming && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [chat.streamingContent, chat.isStreaming]);
+
+  const buildSystemPrompt = useCallback(() => {
+    let prompt = `你是 Curation 的 AI 助手，帮助用户深度理解和批判性分析资讯内容。请使用中文回复，使用 markdown 格式。`;
+    if (selectedItem) {
+      prompt += `\n\n用户正在阅读的卡片标题：${selectedItem.article_meta.title}`;
+      prompt += `\n来源：${selectedItem.article_meta.account}`;
+    }
+    return prompt;
+  }, [selectedItem]);
+
+  const handleSend = useCallback(
+    (text: string) => {
+      if (!selectedAgentId) return;
+      chat.sendMessage(text, selectedAgentId, buildSystemPrompt());
+    },
+    [selectedAgentId, chat.sendMessage, buildSystemPrompt],
+  );
+
+  const handleSaveToNotes = useCallback(() => {
+    if (!selectedAgentId) return;
+    const notePrompt = selectedItem
+      ? `请将当前卡片内容保存到我的 Obsidian 笔记中。使用 get_current_context 工具获取卡片内容，然后写入合适的位置。`
+      : `请将我们刚才的对话要点保存到我的 Obsidian 笔记中。`;
+    chat.sendMessage(notePrompt, selectedAgentId, buildSystemPrompt());
+  }, [selectedAgentId, selectedItem, chat.sendMessage, buildSystemPrompt]);
+
+  const handleClear = useCallback(() => {
+    if (!selectedAgentId) return;
+    chat.clearSession(selectedAgentId);
+  }, [selectedAgentId, chat.clearSession]);
 
   // Auto mark-read after 2 seconds
   useEffect(() => {
@@ -178,6 +228,33 @@ export function ReaderPane({
       }
     };
   }, [selectedItem?.card_id]);
+
+  // Home view
+  if (isHomeView) {
+    return (
+      <main className="reader-pane" style={{ position: "relative" }}>
+        <div className="reader-content" ref={scrollRef} style={{ paddingBottom: 100 }}>
+          <ChatMessages
+            messages={chat.messages}
+            streamingContent={chat.streamingContent}
+            isStreaming={chat.isStreaming}
+          />
+        </div>
+        <ChatInput
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
+          connectionStatus={chat.connectionStatus}
+          isStreaming={chat.isStreaming}
+          onSend={handleSend}
+          onCancel={chat.cancel}
+          onClear={handleClear}
+          onSaveToNotes={handleSaveToNotes}
+          hasMessages={chat.messages.length > 0}
+        />
+      </main>
+    );
+  }
 
   // Empty state
   if (!selectedItem && !selectedDiscardedItem) {
@@ -239,7 +316,7 @@ export function ReaderPane({
   // Inbox item view
   if (selectedItem) {
     return (
-      <main className="reader-pane">
+      <main className="reader-pane" style={{ position: "relative" }}>
         <SourceBar
           meta={selectedItem.article_meta}
           routing={selectedItem.routing ?? undefined}
@@ -247,18 +324,39 @@ export function ReaderPane({
           onOpenDrawer={selectedItem.routing === "ai_curation" ? onOpenDrawer : undefined}
           cardId={selectedItem.card_id ?? undefined}
         />
-        <div className="reader-content animate-in">
+        <div className="reader-content animate-in" ref={scrollRef} style={{ paddingBottom: 100 }}>
           {/* Card content (markdown) — shown for both ai_curation and original_push */}
-          {selectedItem.card_id && <CardContentView cardId={selectedItem.card_id} />}
+          {selectedItem.card_id && (
+            <CardFrame chatActive={chatActive} label={chatActive ? "AI 卡片" : undefined}>
+              <CardContentView cardId={selectedItem.card_id} />
+            </CardFrame>
+          )}
 
           {/* Original push: show original article (rich text HTML) below the guide card */}
           {selectedItem.routing === "original_push" && (
-            <>
-              <hr style={{ margin: "32px 0", border: "none", height: 1, background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />
+            <CardFrame chatActive={chatActive} label={chatActive ? "原文" : undefined}>
               <ArticleHtmlView articleId={selectedItem.article_id} />
-            </>
+            </CardFrame>
           )}
+
+          <ChatMessages
+            messages={chat.messages}
+            streamingContent={chat.streamingContent}
+            isStreaming={chat.isStreaming}
+          />
         </div>
+        <ChatInput
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
+          connectionStatus={chat.connectionStatus}
+          isStreaming={chat.isStreaming}
+          onSend={handleSend}
+          onCancel={chat.cancel}
+          onClear={handleClear}
+          onSaveToNotes={handleSaveToNotes}
+          hasMessages={chat.messages.length > 0}
+        />
       </main>
     );
   }
