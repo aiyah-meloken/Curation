@@ -192,10 +192,8 @@ function AppMain({ currentUser, onLogout }: {
   const inboxItems = useMemo(() => {
     if (!allInboxItems) return undefined;
     if (selectedView !== "inbox" || selectedAccountId == null) return allInboxItems;
-    const accountName = accounts.find((a) => a.id === selectedAccountId)?.name;
-    if (!accountName) return allInboxItems;
-    return allInboxItems.filter((i) => i.article_meta.account === accountName);
-  }, [allInboxItems, selectedView, selectedAccountId, accounts]);
+    return allInboxItems.filter((i) => i.article_meta.account_id === selectedAccountId);
+  }, [allInboxItems, selectedView, selectedAccountId]);
   const { data: discardedItems, isLoading: isLoadingDiscarded } = useDiscarded();
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
@@ -213,23 +211,18 @@ function AppMain({ currentUser, onLogout }: {
   }, [notification]);
 
   // Compute unread counts from FULL inbox (not filtered by account)
-  // Local cache stores account name (not id), so we bucket by name then map to id via accounts list.
   const unreadCounts = useMemo(() => {
     const counts: Record<number | string, number> = { total: 0 };
     if (!allInboxItems) return counts;
-    const byName: Record<string, number> = {};
     for (const item of allInboxItems) {
       if (!item.read_at) {
         counts.total = (counts.total || 0) + 1;
-        const name = item.article_meta.account;
-        if (name) byName[name] = (byName[name] || 0) + 1;
+        const aid = item.article_meta.account_id;
+        if (aid != null) counts[aid] = (counts[aid] || 0) + 1;
       }
     }
-    for (const acc of accounts) {
-      counts[acc.id] = byName[acc.name] ?? 0;
-    }
     return counts;
-  }, [allInboxItems, accounts]);
+  }, [allInboxItems]);
 
   // Find selected inbox item
   const selectedItem: InboxItem | null = useMemo(() => {

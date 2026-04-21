@@ -18,7 +18,7 @@ function cachedToInbox(c: CachedCard): InboxItem {
     article_meta: {
       title: c.article_title ?? c.title ?? "",
       account: c.account ?? "",
-      account_id: null,
+      account_id: c.account_id,
       author: c.author,
       publish_time: c.publish_time ?? c.article_date,
       url: c.url ?? "",

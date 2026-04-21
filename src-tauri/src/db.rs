@@ -23,6 +23,11 @@ pub struct CardRow {
     pub read_at: Option<String>,
     pub updated_at: String,
     pub publish_time: Option<String>,
+    pub account_id: Option<i64>,
+    pub cover_url: Option<String>,
+    pub digest: Option<String>,
+    pub word_count: Option<i64>,
+    pub is_original: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,13 +107,6 @@ impl CacheDb {
         Self::open(path, hex_key)
     }
 
-    /// Re-key the database with a new encryption key.
-    pub fn rekey(&self, new_hex_key: &str) -> Result<(), String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let pragma = format!("PRAGMA rekey = \"x'{}'\";", new_hex_key);
-        conn.execute_batch(&pragma).map_err(|e| e.to_string())
-    }
-
     fn ensure_schema(conn: &Connection) -> Result<(), String> {
         conn.execute_batch(
             "
@@ -126,7 +124,12 @@ impl CacheDb {
                 url TEXT,
                 read_at TEXT,
                 updated_at TEXT NOT NULL,
-                publish_time TEXT
+                publish_time TEXT,
+                account_id INTEGER,
+                cover_url TEXT,
+                digest TEXT,
+                word_count INTEGER,
+                is_original INTEGER
             );
             CREATE TABLE IF NOT EXISTS articles (
                 article_id TEXT PRIMARY KEY,
@@ -183,6 +186,36 @@ impl CacheDb {
             .map_err(|e| e.to_string())?;
         }
 
+        // Add account_id if missing (migration for existing DBs)
+        if !conn.prepare("SELECT account_id FROM cards LIMIT 0").is_ok() {
+            conn.execute("ALTER TABLE cards ADD COLUMN account_id INTEGER", [])
+                .map_err(|e| e.to_string())?;
+        }
+
+        // Add cover_url if missing (migration for existing DBs)
+        if !conn.prepare("SELECT cover_url FROM cards LIMIT 0").is_ok() {
+            conn.execute("ALTER TABLE cards ADD COLUMN cover_url TEXT", [])
+                .map_err(|e| e.to_string())?;
+        }
+
+        // Add digest if missing (migration for existing DBs)
+        if !conn.prepare("SELECT digest FROM cards LIMIT 0").is_ok() {
+            conn.execute("ALTER TABLE cards ADD COLUMN digest TEXT", [])
+                .map_err(|e| e.to_string())?;
+        }
+
+        // Add word_count if missing (migration for existing DBs)
+        if !conn.prepare("SELECT word_count FROM cards LIMIT 0").is_ok() {
+            conn.execute("ALTER TABLE cards ADD COLUMN word_count INTEGER", [])
+                .map_err(|e| e.to_string())?;
+        }
+
+        // Add is_original if missing (migration for existing DBs)
+        if !conn.prepare("SELECT is_original FROM cards LIMIT 0").is_ok() {
+            conn.execute("ALTER TABLE cards ADD COLUMN is_original INTEGER", [])
+                .map_err(|e| e.to_string())?;
+        }
+
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS chat_sessions (
                 session_id TEXT PRIMARY KEY,
@@ -218,7 +251,8 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut sql = String::from(
             "SELECT card_id, article_id, title, article_title, content_md, description, routing,
-                    article_date, account, author, url, read_at, updated_at, publish_time
+                    article_date, account, author, url, read_at, updated_at, publish_time,
+                    account_id, cover_url, digest, word_count, is_original
              FROM cards WHERE routing IS NOT NULL",
         );
         if let Some(_) = account {
@@ -248,6 +282,11 @@ impl CacheDb {
                     read_at: row.get(11)?,
                     updated_at: row.get(12)?,
                     publish_time: row.get(13)?,
+                    account_id: row.get(14)?,
+                    cover_url: row.get(15)?,
+                    digest: row.get(16)?,
+                    word_count: row.get(17)?,
+                    is_original: row.get(18)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -270,6 +309,11 @@ impl CacheDb {
                     read_at: row.get(11)?,
                     updated_at: row.get(12)?,
                     publish_time: row.get(13)?,
+                    account_id: row.get(14)?,
+                    cover_url: row.get(15)?,
+                    digest: row.get(16)?,
+                    word_count: row.get(17)?,
+                    is_original: row.get(18)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -467,8 +511,9 @@ impl CacheDb {
             conn.execute(
                 "INSERT OR REPLACE INTO cards
                  (card_id, article_id, title, article_title, content_md, description, routing,
-                  article_date, account, author, url, read_at, updated_at, publish_time)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+                  article_date, account, author, url, read_at, updated_at, publish_time,
+                  account_id, cover_url, digest, word_count, is_original)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)",
                 rusqlite::params![
                     card_id,
                     card["article_id"].as_str().unwrap_or_default(),
@@ -484,6 +529,11 @@ impl CacheDb {
                     card["read_at"].as_str(),
                     card["updated_at"].as_str().unwrap_or_default(),
                     card["publish_time"].as_str(),
+                    card["account_id"].as_i64(),
+                    card["cover_url"].as_str(),
+                    card["digest"].as_str(),
+                    card["word_count"].as_i64(),
+                    card["is_original"].as_bool().map(|b| if b { 1i64 } else { 0i64 }),
                 ],
             )
             .map_err(|e| e.to_string())?;
@@ -737,22 +787,4 @@ impl CacheDb {
         Ok(rows)
     }
 
-    pub fn debug_list_all_sessions(&self) -> Result<Vec<ChatSession>, String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let mut stmt = conn
-            .prepare("SELECT session_id, card_id, agent_id, created_at, updated_at FROM chat_sessions ORDER BY updated_at DESC")
-            .map_err(|e| e.to_string())?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok(ChatSession {
-                    session_id: row.get(0)?,
-                    card_id: row.get(1)?,
-                    agent_id: row.get(2)?,
-                    created_at: row.get(3)?,
-                    updated_at: row.get(4)?,
-                })
-            })
-            .map_err(|e| e.to_string())?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
-    }
 }

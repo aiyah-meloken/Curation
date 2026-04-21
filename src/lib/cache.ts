@@ -15,6 +15,11 @@ export interface CachedCard {
   read_at: string | null;
   updated_at: string;
   publish_time: string | null;
+  account_id: number | null;
+  cover_url: string | null;
+  digest: string | null;
+  word_count: number | null;
+  is_original: boolean | null;
 }
 
 export interface CachedFavorite {
@@ -32,10 +37,6 @@ export interface SearchResult {
   article_date: string | null;
   highlight: string;
   is_favorite: boolean;
-}
-
-export function openDbFromKeychain(): Promise<boolean> {
-  return invoke("open_db_from_keychain");
 }
 
 export function initDbWithLogin(token: string, userId: string): Promise<void> {
