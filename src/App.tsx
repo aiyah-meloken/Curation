@@ -173,7 +173,7 @@ function AppMain({ currentUser, onLogout }: {
   const [appVersion, setAppVersion] = useState<string>("");
 
   // Cache & sync — use authing_sub as userId for key derivation
-  useInitCache(true, currentUser?.authing_sub ?? currentUser?.id?.toString() ?? null);
+  const { cacheReady } = useInitCache(true, currentUser?.authing_sub ?? currentUser?.id?.toString() ?? null);
   useSyncManager(true);
 
   // Data
@@ -305,11 +305,6 @@ function AppMain({ currentUser, onLogout }: {
     setSelectedFavorite(null);
   }
 
-  function handleSelectHome() {
-    setSelectedView("home");
-    setSelectedCardId(null);
-  }
-
   function handleSelectFavoriteItem(item: FavoriteItem) {
     setSelectedFavorite(item);
   }
@@ -373,7 +368,6 @@ function AppMain({ currentUser, onLogout }: {
         onSelectDiscarded={handleSelectDiscarded}
         onSelectFavorites={handleSelectFavorites}
         onSelectSearch={handleSelectSearch}
-        onSelectHome={handleSelectHome}
         favoritesCount={favoritesData?.length ?? 0}
         onNavigateToCard={handleNavigateToCard}
         onToggleCollapse={toggleSidebar}
@@ -438,6 +432,7 @@ function AppMain({ currentUser, onLogout }: {
           selectedDiscardedItem={selectedDiscardedItem}
           isDiscardedView={isDiscardedView}
           isHomeView={selectedView === "home"}
+          cacheReady={cacheReady}
           onOpenDrawer={() => setIsDrawerOpen(true)}
         />
       )}

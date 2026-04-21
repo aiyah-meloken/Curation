@@ -1,10 +1,11 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { runSync, openDbFromKeychain, initDbWithLogin, setCacheAuthToken, setApiBase } from "../lib/cache";
 import { getWsBase, getAuthToken, getApiBase } from "../lib/api";
 
 export function useInitCache(isLoggedIn: boolean, userId: string | null) {
   const initialized = useRef(false);
+  const [cacheReady, setCacheReady] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn || !userId || initialized.current) return;
@@ -23,12 +24,13 @@ export function useInitCache(isLoggedIn: boolean, userId: string | null) {
         await initDbWithLogin(token, userId!);
       }
       initialized.current = true;
+      setCacheReady(true);
     }
 
     init().catch(console.error);
   }, [isLoggedIn, userId]);
 
-  return initialized;
+  return { initialized, cacheReady };
 }
 
 export function useSyncManager(isLoggedIn: boolean) {

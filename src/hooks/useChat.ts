@@ -42,7 +42,7 @@ export function useAgentDetection() {
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
-export function useChat(cardId: string | null) {
+export function useChat(cardId: string | null, ready: boolean = true) {
   const [session, setSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingContent, setStreamingContent] = useState<string>("");
@@ -155,8 +155,9 @@ export function useChat(cardId: string | null) {
     };
   }, [startTypingTimer]);
 
-  // Load session + messages whenever cardId changes
+  // Load session + messages whenever cardId changes (wait for DB to be ready)
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
 
     async function loadSession() {
@@ -189,7 +190,7 @@ export function useChat(cardId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [cardId]);
+  }, [cardId, ready]);
 
   const sendMessage = useCallback(
     async (text: string, agentId: string, systemPrompt: string) => {

@@ -31,6 +31,7 @@ interface ReaderPaneProps {
   selectedDiscardedItem: DiscardedItem | null;
   isDiscardedView: boolean;
   isHomeView?: boolean;
+  cacheReady?: boolean;
   onOpenDrawer: () => void;
   onSelectAccount?: (accountId: number) => void;
 }
@@ -160,6 +161,7 @@ export function ReaderPane({
   selectedDiscardedItem,
   isDiscardedView,
   isHomeView,
+  cacheReady,
   onOpenDrawer,
 }: ReaderPaneProps) {
   const markRead = useMarkCardReadSingle();
@@ -173,7 +175,7 @@ export function ReaderPane({
   const { agents, selectedAgentId, setSelectedAgentId } = useAgentDetection();
   const selectedAgentName = agents.find((a) => a.id === selectedAgentId)?.name ?? "AI";
   const chatCardId = isHomeView ? null : (selectedItem?.card_id ?? null);
-  const chat = useChat(chatCardId);
+  const chat = useChat(chatCardId, cacheReady);
   const chatActive = chat.messages.length > 0 || chat.isStreaming;
 
   // Auto-scroll when new messages arrive (after AI finishes or user sends)
@@ -262,56 +264,14 @@ ${notesPath ? `\n用户的笔记路径：${notesPath}` : ""}
   }, [selectedItem?.card_id]);
 
   // Home view
-  if (isHomeView) {
-    return (
-      <main className="reader-pane" style={{ position: "relative", overflow: "hidden" }}>
-        <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
-          <div className="reader-content" style={{ paddingBottom: 140 }}>
-            <ChatMessages
-              messages={chat.messages}
-              streamingContent={chat.streamingContent}
-              isStreaming={chat.isStreaming}
-              agentName={selectedAgentName}
-              userName="你"
-            />
-          </div>
-        </div>
-        <ChatInput
-          agents={agents}
-          selectedAgentId={selectedAgentId}
-          onSelectAgent={setSelectedAgentId}
-          connectionStatus={chat.connectionStatus}
-          isStreaming={chat.isStreaming}
-          onSend={handleSend}
-          onCancel={chat.cancel}
-          onClear={handleClear}
-          onSaveToNotes={handleSaveToNotes}
-          hasMessages={chat.messages.length > 0}
-        />
-      </main>
-    );
-  }
-
   // Empty state
   if (!selectedItem && !selectedDiscardedItem) {
     return (
-      <main className="reader-pane" style={{ position: "relative", overflow: "hidden" }}>
-        <div className="reader-empty" style={{ flex: 1 }}>
+      <main className="reader-pane">
+        <div className="reader-empty">
           <div className="reader-empty-icon"><BookOpen size={64} /></div>
           <h3>请选择一篇内容阅读</h3>
         </div>
-        <ChatInput
-          agents={agents}
-          selectedAgentId={selectedAgentId}
-          onSelectAgent={setSelectedAgentId}
-          connectionStatus={chat.connectionStatus}
-          isStreaming={chat.isStreaming}
-          onSend={handleSend}
-          onCancel={chat.cancel}
-          onClear={handleClear}
-          onSaveToNotes={handleSaveToNotes}
-          hasMessages={chat.messages.length > 0}
-        />
       </main>
     );
   }
