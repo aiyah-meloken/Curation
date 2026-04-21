@@ -186,34 +186,59 @@ impl CacheDb {
             .map_err(|e| e.to_string())?;
         }
 
-        // Add account_id if missing (migration for existing DBs)
-        if !conn.prepare("SELECT account_id FROM cards LIMIT 0").is_ok() {
-            conn.execute("ALTER TABLE cards ADD COLUMN account_id INTEGER", [])
-                .map_err(|e| e.to_string())?;
+        // Additive migrations for the 5 article fields added mid-project.
+        // If any of these are still missing locally, add the column AND reset
+        // the sync cursor so the next sync pulls the full dataset (server-side
+        // /sync is cursor-filtered by updated_at; untouched rows otherwise
+        // never backfill the new columns).
+        let mut reset_cursor = false;
+        for (name, ddl) in [
+            ("account_id", "ALTER TABLE cards ADD COLUMN account_id INTEGER"),
+            ("cover_url", "ALTER TABLE cards ADD COLUMN cover_url TEXT"),
+            ("digest", "ALTER TABLE cards ADD COLUMN digest TEXT"),
+            ("word_count", "ALTER TABLE cards ADD COLUMN word_count INTEGER"),
+            ("is_original", "ALTER TABLE cards ADD COLUMN is_original INTEGER"),
+        ] {
+            let probe = format!("SELECT {} FROM cards LIMIT 0", name);
+            if !conn.prepare(&probe).is_ok() {
+                conn.execute(ddl, []).map_err(|e| e.to_string())?;
+                reset_cursor = true;
+            }
+        }
+        if reset_cursor {
+            conn.execute("DELETE FROM sync_state WHERE key = 'last_sync_ts'", [])
+                .ok();
         }
 
-        // Add cover_url if missing (migration for existing DBs)
-        if !conn.prepare("SELECT cover_url FROM cards LIMIT 0").is_ok() {
-            conn.execute("ALTER TABLE cards ADD COLUMN cover_url TEXT", [])
-                .map_err(|e| e.to_string())?;
-        }
-
-        // Add digest if missing (migration for existing DBs)
-        if !conn.prepare("SELECT digest FROM cards LIMIT 0").is_ok() {
-            conn.execute("ALTER TABLE cards ADD COLUMN digest TEXT", [])
-                .map_err(|e| e.to_string())?;
-        }
-
-        // Add word_count if missing (migration for existing DBs)
-        if !conn.prepare("SELECT word_count FROM cards LIMIT 0").is_ok() {
-            conn.execute("ALTER TABLE cards ADD COLUMN word_count INTEGER", [])
-                .map_err(|e| e.to_string())?;
-        }
-
-        // Add is_original if missing (migration for existing DBs)
-        if !conn.prepare("SELECT is_original FROM cards LIMIT 0").is_ok() {
-            conn.execute("ALTER TABLE cards ADD COLUMN is_original INTEGER", [])
-                .map_err(|e| e.to_string())?;
+        // One-shot backfill for existing installs: some users had the columns
+        // added in an earlier migration run but cursor never reset, so legacy
+        // rows still have NULL cover_url/digest/etc. Detect and force a single
+        // full re-pull using a marker in sync_state.
+        const BACKFILL_MARKER: &str = "backfill_article_fields_v1";
+        let already_done: bool = conn
+            .query_row(
+                "SELECT 1 FROM sync_state WHERE key = ?1",
+                [BACKFILL_MARKER],
+                |r| r.get::<_, i64>(0),
+            )
+            .is_ok();
+        if !already_done {
+            // Are there any rows that *could* benefit (cards exist, cover_url is null)?
+            let stale: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM cards WHERE cover_url IS NULL",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap_or(0);
+            if stale > 0 {
+                conn.execute("DELETE FROM sync_state WHERE key = 'last_sync_ts'", []).ok();
+            }
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
+                [BACKFILL_MARKER],
+            )
+            .ok();
         }
 
         conn.execute_batch(
