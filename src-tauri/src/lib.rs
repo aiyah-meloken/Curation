@@ -197,13 +197,12 @@ pub fn run() {
             // --- Cache state ---
             let data_dir = app.path().app_data_dir().expect("failed to get app data dir");
             let db_path = data_dir.join("cache.db");
-            let api_base = std::env::var("CURATION_API_BASE")
-                .unwrap_or_else(|_| "http://127.0.0.1:8889".to_string());
 
             let state = commands::AppState {
                 db: std::sync::Mutex::new(None),
-                sync_client: sync::SyncClient::new(&api_base),
+                sync_client: sync::SyncClient::new(),
                 auth_token: std::sync::Mutex::new(None),
+                sync_client_base: std::sync::Mutex::new("http://127.0.0.1:8889".to_string()),
                 db_path,
             };
             app.manage(state);
@@ -249,6 +248,7 @@ pub fn run() {
             commands::open_db_from_keychain,
             commands::init_db_with_login,
             commands::set_auth_token,
+            commands::set_api_base,
             commands::get_inbox_cards,
             commands::get_favorites,
             commands::search_cards,

@@ -29,6 +29,7 @@ export interface SearchResult {
   account: string | null;
   article_date: string | null;
   highlight: string;
+  is_favorite: boolean;
 }
 
 export function openDbFromKeychain(): Promise<boolean> {
@@ -41,6 +42,10 @@ export function initDbWithLogin(token: string, userId: string): Promise<void> {
 
 export function setCacheAuthToken(token: string): Promise<void> {
   return invoke("set_auth_token", { token });
+}
+
+export function setApiBase(apiBase: string): Promise<void> {
+  return invoke("set_api_base", { apiBase });
 }
 
 export function getInboxCards(account?: string | null, unreadOnly?: boolean): Promise<CachedCard[]> {

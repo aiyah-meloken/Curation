@@ -39,6 +39,7 @@ pub struct SearchResult {
     pub account: Option<String>,
     pub article_date: Option<String>,
     pub highlight: String,
+    pub is_favorite: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -299,19 +300,26 @@ impl CacheDb {
     }
 
     pub fn search_cards(&self, query: &str) -> Result<Vec<SearchResult>, String> {
+        // Sanitize FTS5 query: escape special chars, wrap in double quotes for phrase match
+        let sanitized = query.replace('"', "\"\"");
+        let fts_query = format!("\"{}\"", sanitized);
+
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
             .prepare(
                 "SELECT c.card_id, c.title, c.article_id, c.account, c.article_date,
-                        snippet(cards_fts, 1, '<mark>', '</mark>', '...', 32)
+                        snippet(cards_fts, 1, '<mark>', '</mark>', '...', 32),
+                        CASE WHEN fav.item_id IS NOT NULL THEN 1 ELSE 0 END as is_fav
                  FROM cards_fts f
                  JOIN cards c ON c.rowid = f.rowid
+                 LEFT JOIN favorites fav ON fav.item_type = 'card' AND fav.item_id = c.card_id
                  WHERE cards_fts MATCH ?1
-                 ORDER BY rank",
+                 ORDER BY is_fav DESC, rank
+                 LIMIT 50",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
-            .query_map([query], |row| {
+            .query_map([&fts_query], |row| {
                 Ok(SearchResult {
                     card_id: row.get(0)?,
                     title: row.get(1)?,
@@ -319,6 +327,7 @@ impl CacheDb {
                     account: row.get(3)?,
                     article_date: row.get(4)?,
                     highlight: row.get(5)?,
+                    is_favorite: row.get::<_, i32>(6)? != 0,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -333,6 +342,7 @@ impl CacheDb {
 
     pub fn upsert_cards(&self, cards: &[serde_json::Value]) -> Result<usize, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
         let mut count = 0usize;
         for card in cards {
             let card_id = card["card_id"].as_str().unwrap_or_default();
@@ -387,6 +397,7 @@ impl CacheDb {
             }
             count += 1;
         }
+        conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
         Ok(count)
     }
 

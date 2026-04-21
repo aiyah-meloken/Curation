@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { runSync, openDbFromKeychain, initDbWithLogin, setCacheAuthToken } from "../lib/cache";
-import { getWsBase, getAuthToken } from "../lib/api";
+import { runSync, openDbFromKeychain, initDbWithLogin, setCacheAuthToken, setApiBase } from "../lib/cache";
+import { getWsBase, getAuthToken, getApiBase } from "../lib/api";
 
 export function useInitCache(isLoggedIn: boolean, userId: string | null) {
   const initialized = useRef(false);
@@ -12,6 +12,9 @@ export function useInitCache(isLoggedIn: boolean, userId: string | null) {
     async function init() {
       const token = getAuthToken();
       if (!token) return;
+
+      // Set API base URL for Rust sync client (matches frontend's API_BASE)
+      await setApiBase(getApiBase());
 
       const opened = await openDbFromKeychain().catch(() => false);
       if (opened) {
@@ -31,6 +34,7 @@ export function useInitCache(isLoggedIn: boolean, userId: string | null) {
 export function useSyncManager(isLoggedIn: boolean) {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMessageTime = useRef(Date.now());
   const syncInProgress = useRef(false);
 
@@ -49,9 +53,8 @@ export function useSyncManager(isLoggedIn: boolean) {
     }
   }, [queryClient]);
 
-  // WebSocket connection
-  useEffect(() => {
-    if (!isLoggedIn) return;
+  // WebSocket connection with auto-reconnect
+  const connectWs = useCallback(() => {
     const token = getAuthToken();
     if (!token) return;
 
@@ -70,15 +73,32 @@ export function useSyncManager(isLoggedIn: boolean) {
     };
 
     ws.onclose = () => {
-      // Will reconnect on next effect cycle
-      if (wsRef.current === ws) wsRef.current = null;
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+        // Auto-reconnect after 5 seconds
+        reconnectTimer.current = setTimeout(connectWs, 5000);
+      }
     };
 
-    return () => {
-      ws.close();
-      wsRef.current = null;
+    ws.onerror = () => {
+      // onclose will fire after onerror, triggering reconnect
     };
-  }, [isLoggedIn, triggerSync]);
+  }, [triggerSync]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    connectWs();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+    };
+  }, [isLoggedIn, connectWs]);
 
   // Heartbeat: sync every 5 min if no WS messages
   useEffect(() => {
@@ -95,7 +115,7 @@ export function useSyncManager(isLoggedIn: boolean) {
   // Initial sync on mount
   useEffect(() => {
     if (!isLoggedIn) return;
-    const timer = setTimeout(triggerSync, 1000);
+    const timer = setTimeout(triggerSync, 2000);
     return () => clearTimeout(timer);
   }, [isLoggedIn, triggerSync]);
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Star } from "lucide-react";
 import type { SearchResult } from "../lib/cache";
 
 interface SearchListProps {
@@ -83,7 +83,10 @@ export function SearchList({
               className={`inbox-item ${selectedCardId === item.card_id ? "selected" : ""}`}
               onClick={() => onSelect(item.card_id)}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 4 }}>
+                {item.is_favorite && (
+                  <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 2 }} />
+                )}
                 <span className="inbox-item-title" style={{ flex: 1 }}>
                   {item.title ?? "(无标题)"}
                 </span>

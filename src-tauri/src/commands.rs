@@ -10,6 +10,7 @@ pub struct AppState {
     pub db: Mutex<Option<CacheDb>>,
     pub sync_client: SyncClient,
     pub auth_token: Mutex<Option<String>>,
+    pub sync_client_base: Mutex<String>,
     pub db_path: PathBuf,
 }
 
@@ -85,6 +86,13 @@ pub fn set_auth_token(state: State<'_, AppState>, token: String) -> Result<(), S
 }
 
 #[tauri::command]
+pub fn set_api_base(state: State<'_, AppState>, api_base: String) -> Result<(), String> {
+    let mut guard = state.sync_client_base.lock().map_err(|e| e.to_string())?;
+    *guard = api_base;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_inbox_cards(
     state: State<'_, AppState>,
     account: Option<String>,
@@ -140,7 +148,7 @@ pub fn get_cached_article(
 
 #[tauri::command]
 pub async fn run_sync(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    // Extract token (brief lock)
+    // Extract token and base URL (brief locks)
     let token = {
         state
             .auth_token
@@ -148,6 +156,13 @@ pub async fn run_sync(state: State<'_, AppState>) -> Result<Vec<String>, String>
             .map_err(|e| e.to_string())?
             .clone()
             .ok_or("not authenticated")?
+    };
+    let base_url = {
+        state
+            .sync_client_base
+            .lock()
+            .map_err(|e| e.to_string())?
+            .clone()
     };
 
     // Read sync timestamp (brief lock)
@@ -159,7 +174,7 @@ pub async fn run_sync(state: State<'_, AppState>) -> Result<Vec<String>, String>
     // Push queued items to server (async, no db lock held)
     let push_results = state
         .sync_client
-        .push_sync_queue(&queue_items, &token)
+        .push_sync_queue(&base_url, &queue_items, &token)
         .await;
 
     // Apply push results to db (brief lock)
@@ -177,7 +192,7 @@ pub async fn run_sync(state: State<'_, AppState>) -> Result<Vec<String>, String>
     // Pull remote changes (async, no db lock held)
     let pull_result = state
         .sync_client
-        .pull_data(&token, sync_ts.as_deref())
+        .pull_data(&base_url, &token, sync_ts.as_deref())
         .await?;
 
     // Apply pull results to db (brief lock)

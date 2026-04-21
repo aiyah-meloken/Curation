@@ -3,44 +3,41 @@ use std::collections::HashSet;
 
 pub struct SyncClient {
     client: reqwest::Client,
-    base_url: String,
 }
 
 impl SyncClient {
-    pub fn new(base_url: &str) -> Self {
+    pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .no_proxy()
             .timeout(std::time::Duration::from_secs(60))
             .build()
             .expect("failed to build reqwest client");
-        Self {
-            client,
-            base_url: base_url.trim_end_matches('/').to_string(),
-        }
+        Self { client }
     }
 
     /// Push pending local changes to the server.
     pub async fn push_sync_queue(
         &self,
+        base_url: &str,
         items: &[SyncQueueItem],
         token: &str,
     ) -> Vec<(i64, Result<(), String>)> {
         let mut results = Vec::new();
         for item in items {
-            let res = self.push_one(item, token).await;
+            let res = self.push_one(base_url, item, token).await;
             results.push((item.id, res));
         }
         results
     }
 
-    async fn push_one(&self, item: &SyncQueueItem, token: &str) -> Result<(), String> {
+    async fn push_one(&self, base_url: &str, item: &SyncQueueItem, token: &str) -> Result<(), String> {
         let payload: serde_json::Value =
             serde_json::from_str(&item.payload).map_err(|e| e.to_string())?;
 
         match item.action.as_str() {
             "mark_read" => {
                 let card_id = payload["card_id"].as_str().unwrap_or_default();
-                let url = format!("{}/cards/{}/read", self.base_url, card_id);
+                let url = format!("{}/cards/{}/read", base_url, card_id);
                 let resp = self
                     .client
                     .post(&url)
@@ -53,7 +50,7 @@ impl SyncClient {
                 }
             }
             "add_favorite" => {
-                let url = format!("{}/favorites", self.base_url);
+                let url = format!("{}/favorites", base_url);
                 let resp = self
                     .client
                     .post(&url)
@@ -69,7 +66,7 @@ impl SyncClient {
             "remove_favorite" => {
                 let item_type = payload["item_type"].as_str().unwrap_or_default();
                 let item_id = payload["item_id"].as_str().unwrap_or_default();
-                let url = format!("{}/favorites/{}/{}", self.base_url, item_type, item_id);
+                let url = format!("{}/favorites/{}/{}", base_url, item_type, item_id);
                 let resp = self
                     .client
                     .delete(&url)
@@ -92,6 +89,7 @@ impl SyncClient {
     /// Returns the response pages as (cards, articles, favorites, new_sync_ts).
     pub async fn pull_data(
         &self,
+        base_url: &str,
         token: &str,
         since: Option<&str>,
     ) -> Result<PullResult, String> {
@@ -102,7 +100,7 @@ impl SyncClient {
         let mut cursor: Option<String> = None;
 
         loop {
-            let mut url = format!("{}/sync?limit=500", self.base_url);
+            let mut url = format!("{}/sync?limit=500", base_url);
             if let Some(s) = since {
                 url.push_str(&format!("&since={}", s));
             }
@@ -137,9 +135,16 @@ impl SyncClient {
                 latest_ts = Some(ts.to_string());
             }
 
-            match body["next_cursor"].as_str() {
-                Some(c) if !c.is_empty() => cursor = Some(c.to_string()),
-                _ => break,
+            if body["has_more"].as_bool().unwrap_or(false) {
+                if let Some(c) = body["cursor"].as_i64() {
+                    cursor = Some(c.to_string());
+                } else if let Some(c) = body["cursor"].as_str() {
+                    cursor = Some(c.to_string());
+                } else {
+                    break;
+                }
+            } else {
+                break;
             }
         }
 
