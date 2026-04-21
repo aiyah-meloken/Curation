@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Inbox, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Trash2, UserPlus, Star, Settings } from "lucide-react";
+import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { useAccounts, useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AddMenu } from "./AddMenu";
@@ -65,6 +66,7 @@ export function Sidebar({
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false);
   const [isAccountListOpen, setIsAccountListOpen] = useState(true);
   const [isTempListOpen, setIsTempListOpen] = useState(true);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   // Use passed accounts or fetched ones
   const allAccounts = accounts.length > 0 ? accounts : fetchedAccounts;
@@ -188,9 +190,13 @@ export function Sidebar({
               onClick={() => onSelectAccount(acc.id)}
               onContextMenu={(e) => {
                 e.preventDefault();
-                if (confirm(`取消订阅「${acc.name}」？`)) {
-                  handleUnsubscribe(e as any, acc.id);
-                }
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  items: [
+                    { label: "取消订阅", danger: true, onClick: () => handleUnsubscribe(e as any, acc.id) },
+                  ],
+                });
               }}
               title={isSidebarCollapsed ? acc.name : ""}
               style={{ paddingLeft: isSidebarCollapsed ? 18 : 32 }}
@@ -349,6 +355,14 @@ export function Sidebar({
         onRefresh={() => { queryClient.invalidateQueries({ queryKey: ["accounts"] }); queryClient.invalidateQueries({ queryKey: ["inbox"] }); }}
         onNavigateToCard={onNavigateToCard}
       />
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </aside>
   );
 }

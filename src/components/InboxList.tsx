@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Check, ChevronDown, ChevronRight, Loader2, Star } from "lucide-react";
 import type { InboxItem, DiscardedItem } from "../types";
 import { groupByDateBucket } from "../hooks/useInbox";
 import type { DateGroup } from "../hooks/useInbox";
 import { useMarkAllRead, useMarkCardUnread } from "../hooks/useInbox";
+import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 
 interface InboxListProps {
   items: InboxItem[] | undefined;
@@ -85,25 +86,20 @@ function InboxItemRow({
   isSelected,
   isFavorite,
   onSelect,
-  onMarkUnread,
+  onContextMenu,
 }: {
   item: InboxItem;
   isSelected: boolean;
   isFavorite: boolean;
   onSelect: () => void;
-  onMarkUnread: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const isAnalyzing = !!item.queue_status;
   return (
     <div
       className={`inbox-item ${isSelected ? "selected" : ""} ${!isAnalyzing && item.read_at ? "read" : ""}`}
       onClick={onSelect}
-      onContextMenu={(e) => {
-        if (item.read_at && item.card_id) {
-          e.preventDefault();
-          onMarkUnread();
-        }
-      }}
+      onContextMenu={onContextMenu}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         {isFavorite && (
@@ -168,6 +164,18 @@ export function InboxList({
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const markAllRead = useMarkAllRead();
   const markUnread = useMarkCardUnread();
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+
+  const showItemContextMenu = useCallback((e: React.MouseEvent, item: InboxItem) => {
+    e.preventDefault();
+    const menuItems: ContextMenuItem[] = [];
+    if (item.read_at && item.card_id) {
+      menuItems.push({ label: "标为未读", onClick: () => markUnread.mutate(item.card_id!) });
+    }
+    if (menuItems.length > 0) {
+      setContextMenu({ x: e.clientX, y: e.clientY, items: menuItems });
+    }
+  }, [markUnread]);
 
   // Date groups for inbox items
   const groups = useMemo(() => {
@@ -335,9 +343,7 @@ export function InboxList({
                       onSelect={() =>
                         onSelect(item.card_id ?? item.article_id, "card")
                       }
-                      onMarkUnread={() => {
-                        if (item.card_id) markUnread.mutate(item.card_id);
-                      }}
+                      onContextMenu={(e) => showItemContextMenu(e, item)}
                     />
                   ))}
               </div>
@@ -345,6 +351,14 @@ export function InboxList({
           )
         )}
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </section>
   );
 }
