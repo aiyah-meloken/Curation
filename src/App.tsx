@@ -6,7 +6,7 @@ import { useInitCache, useSyncManager } from "./hooks/useSync";
 import type { InboxItem } from "./types";
 import { setCurrentCardContext } from "./lib/chat";
 import type { CardContext } from "./lib/chat";
-import { FavoritesList } from './components/FavoritesList';
+
 
 import { useFavorites } from './hooks/useFavorites';
 import type { FavoriteItem } from './types';
@@ -272,6 +272,34 @@ function AppMain({ currentUser, onLogout }: {
   // The item to show in ReaderPane — works for both inbox and favorites
   const activeReaderItem = selectedView === "favorites" ? favoriteAsInboxItem : selectedItem;
 
+  // Convert all favorites to InboxItem[] for unified list rendering
+  const favoritesAsInboxItems: InboxItem[] = useMemo(() => {
+    if (!favoritesData) return [];
+    return favoritesData
+      .filter((f) => f.item_type === "card")
+      .map((f): InboxItem => {
+        const meta = f.article_meta ?? {
+          title: f.article_title ?? f.title ?? "",
+          account: f.article_account ?? "",
+          account_id: 0,
+          author: null,
+          publish_time: null,
+          url: "",
+        };
+        return {
+          card_id: f.item_id,
+          article_id: f.article_id ?? "",
+          title: f.title ?? "",
+          description: f.description,
+          routing: f.routing,
+          article_date: null,
+          read_at: f.created_at,
+          queue_status: null,
+          article_meta: meta,
+        };
+      });
+  }, [favoritesData]);
+
   // Set current card context on card selection for MCP
   useEffect(() => {
     const item = activeReaderItem;
@@ -418,20 +446,21 @@ function AppMain({ currentUser, onLogout }: {
           onSelect={(cardId) => { setSelectedCardId(cardId); setSelectedDiscardedId(null); }}
           listWidth={listWidth}
         />
-      ) : selectedView === "favorites" ? (
-        <FavoritesList
-          selectedId={selectedFavorite ? `${selectedFavorite.item_type}:${selectedFavorite.item_id}` : null}
-          onSelect={handleSelectFavoriteItem}
-          listWidth={listWidth}
-        />
       ) : (
         <InboxList
-          items={isDiscardedView ? undefined : inboxItems}
+          items={isDiscardedView ? undefined : selectedView === "favorites" ? favoritesAsInboxItems : inboxItems}
           discardedItems={isDiscardedView ? discardedItems : undefined}
           isDiscardedView={isDiscardedView}
-          selectedId={currentSelectedId}
-          onSelect={handleListSelect}
-          isLoading={isDiscardedView ? isLoadingDiscarded : isLoadingInbox}
+          selectedId={selectedView === "favorites"
+            ? (selectedFavorite?.item_id ?? null)
+            : currentSelectedId}
+          onSelect={selectedView === "favorites"
+            ? (id: string, _type: "card" | "discarded") => {
+                const fav = (favoritesData ?? []).find((f) => f.item_id === id);
+                if (fav) handleSelectFavoriteItem(fav);
+              }
+            : handleListSelect}
+          isLoading={isDiscardedView ? isLoadingDiscarded : selectedView === "favorites" ? false : isLoadingInbox}
           listWidth={listWidth}
           favoriteCardIds={new Set(
             (favoritesData ?? [])

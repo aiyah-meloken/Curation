@@ -50,6 +50,18 @@ export function useMarkCardReadSingle() {
   });
 }
 
+export function useMarkCardUnread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (cardId: string) => {
+      await apiFetch(`/cards/${cardId}/unread`, { method: "POST" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+    },
+  });
+}
+
 export function useMarkAllRead() {
   const queryClient = useQueryClient();
   return useMutation({

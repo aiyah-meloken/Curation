@@ -109,6 +109,10 @@ export async function fetchDiscarded() {
   return resp.json();
 }
 
+export async function markCardUnread(cardId: string) {
+  await apiFetch(`/cards/${cardId}/unread`, { method: "POST" });
+}
+
 export async function markAllCardsRead(cardIds: string[]) {
   await apiFetch("/cards/mark-all-read", {
     method: "POST",

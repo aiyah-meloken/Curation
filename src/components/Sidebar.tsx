@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inbox, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Trash2, UserMinus, UserPlus, Star, Settings } from "lucide-react";
+import { Inbox, ChevronLeft, ChevronRight, ChevronDown, ShieldCheck, Trash2, UserPlus, Star, Settings } from "lucide-react";
 import { useAccounts, useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AddMenu } from "./AddMenu";
@@ -186,16 +186,14 @@ export function Sidebar({
               key={acc.id}
               className={`account-item ${selectedView === "inbox" && selectedAccountId === acc.id ? "active" : ""}`}
               onClick={() => onSelectAccount(acc.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (confirm(`取消订阅「${acc.name}」？`)) {
+                  handleUnsubscribe(e as any, acc.id);
+                }
+              }}
               title={isSidebarCollapsed ? acc.name : ""}
-              style={{ paddingLeft: isSidebarCollapsed ? 18 : 32, position: "relative" }}
-              onMouseEnter={(e) => {
-                const btn = e.currentTarget.querySelector(".account-action-btn") as HTMLElement | null;
-                if (btn) btn.style.opacity = "1";
-              }}
-              onMouseLeave={(e) => {
-                const btn = e.currentTarget.querySelector(".account-action-btn") as HTMLElement | null;
-                if (btn) btn.style.opacity = "0";
-              }}
+              style={{ paddingLeft: isSidebarCollapsed ? 18 : 32 }}
             >
               <img
                 src={acc.avatar_url || "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07xvMibqLuWicX7Y16H1xP81v6B0Sraia9zK0dYniamHwJxiaGvH6v97K8K1icYibib9eA/0"}
@@ -210,19 +208,6 @@ export function Sidebar({
                 </div>
               )}
               {count > 0 && <span className="unread-badge">{count}</span>}
-              {!isSidebarCollapsed && (
-                <button
-                  className="btn-icon account-action-btn"
-                  title="取消订阅"
-                  onClick={(e) => handleUnsubscribe(e, acc.id)}
-                  style={{
-                    opacity: 0, transition: "opacity 0.15s",
-                    padding: 3, flexShrink: 0, background: "none",
-                  }}
-                >
-                  <UserMinus size={13} style={{ color: "var(--accent-red)" }} />
-                </button>
-              )}
             </div>
           );
         })}

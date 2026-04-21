@@ -3,7 +3,7 @@ import { Check, ChevronDown, ChevronRight, Loader2, Star } from "lucide-react";
 import type { InboxItem, DiscardedItem } from "../types";
 import { groupByDateBucket } from "../hooks/useInbox";
 import type { DateGroup } from "../hooks/useInbox";
-import { useMarkAllRead } from "../hooks/useInbox";
+import { useMarkAllRead, useMarkCardUnread } from "../hooks/useInbox";
 
 interface InboxListProps {
   items: InboxItem[] | undefined;
@@ -48,13 +48,16 @@ function InboxGroupHeader({
   isOpen,
   onToggle,
   onMarkAllRead,
+  onMarkAllUnread,
 }: {
   group: DateGroup;
   isOpen: boolean;
   onToggle: () => void;
   onMarkAllRead: () => void;
+  onMarkAllUnread: () => void;
 }) {
   const unreadCount = group.items.filter((i) => !i.read_at).length;
+  const allRead = unreadCount === 0;
 
   return (
     <div className="inbox-group-header" onClick={onToggle}>
@@ -68,12 +71,10 @@ function InboxGroupHeader({
         className="inbox-group-read-btn"
         onClick={(e) => {
           e.stopPropagation();
-          onMarkAllRead();
+          allRead ? onMarkAllUnread() : onMarkAllRead();
         }}
-        title="全部已读"
-        disabled={unreadCount === 0}
       >
-        <Check size={12} /> 全部已读
+        <Check size={12} /> {allRead ? "全部未读" : "全部已读"}
       </button>
     </div>
   );
@@ -84,17 +85,25 @@ function InboxItemRow({
   isSelected,
   isFavorite,
   onSelect,
+  onMarkUnread,
 }: {
   item: InboxItem;
   isSelected: boolean;
   isFavorite: boolean;
   onSelect: () => void;
+  onMarkUnread: () => void;
 }) {
   const isAnalyzing = !!item.queue_status;
   return (
     <div
       className={`inbox-item ${isSelected ? "selected" : ""} ${!isAnalyzing && item.read_at ? "read" : ""}`}
       onClick={onSelect}
+      onContextMenu={(e) => {
+        if (item.read_at && item.card_id) {
+          e.preventDefault();
+          onMarkUnread();
+        }
+      }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         {isFavorite && (
@@ -158,6 +167,7 @@ export function InboxList({
   const [search, setSearch] = useState("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const markAllRead = useMarkAllRead();
+  const markUnread = useMarkCardUnread();
 
   // Date groups for inbox items
   const groups = useMemo(() => {
@@ -219,6 +229,15 @@ export function InboxList({
       .map((i) => i.card_id as string);
     if (unreadIds.length > 0) {
       markAllRead.mutate(unreadIds);
+    }
+  }
+
+  function handleMarkGroupUnread(group: DateGroup) {
+    const readIds = group.items
+      .filter((i) => i.read_at && i.card_id)
+      .map((i) => i.card_id as string);
+    for (const id of readIds) {
+      markUnread.mutate(id);
     }
   }
 
@@ -300,6 +319,7 @@ export function InboxList({
                   isOpen={isGroupOpen(group)}
                   onToggle={() => toggleGroup(group.key)}
                   onMarkAllRead={() => handleMarkGroupRead(group)}
+                  onMarkAllUnread={() => handleMarkGroupUnread(group)}
                 />
                 {isGroupOpen(group) &&
                   group.items.map((item) => (
@@ -315,6 +335,9 @@ export function InboxList({
                       onSelect={() =>
                         onSelect(item.card_id ?? item.article_id, "card")
                       }
+                      onMarkUnread={() => {
+                        if (item.card_id) markUnread.mutate(item.card_id);
+                      }}
                     />
                   ))}
               </div>
