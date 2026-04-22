@@ -13,7 +13,7 @@ export const authingClient = new Authing({
   appId,
   domain,
   redirectUri,
-  scope: "openid profile email phone",
+  scope: "openid profile email phone offline_access username roles external_id extended_fields address",
 });
 
 // Tauri WKWebView may clear sessionStorage across origin navigations during redirect flow.
