@@ -172,7 +172,9 @@ function AppMain({ currentUser, onLogout }: {
 
   // Cache & sync — use authing_sub as userId for key derivation
   const { cacheReady } = useInitCache(true, currentUser?.authing_sub ?? currentUser?.id?.toString() ?? null);
-  const { syncing } = useSyncManager(true);
+  // Gate sync/WS on cache being ready — prevents "not authenticated" errors
+  // on cold startup after auto-update when Rust side hasn't received the token yet
+  const { syncing } = useSyncManager(cacheReady);
   const isFirstSync = useIsFirstSync(syncing);
 
   // Data
