@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useReducer,
 } from "react";
-import { setAuthToken } from "./api";
+import { setAuthToken, setRefreshToken } from "./api";
 
 export interface AppUser {
   id: number;
@@ -18,17 +18,22 @@ export interface AppUser {
 export type AuthState =
   | { status: "loading" }
   | { status: "unauthenticated" }
-  | { status: "authenticated"; user: AppUser; token: string };
+  | { status: "authenticated"; user: AppUser; accessToken: string; refreshToken: string };
 
 type Action =
-  | { type: "LOGIN"; user: AppUser; token: string }
+  | { type: "LOGIN"; user: AppUser; accessToken: string; refreshToken: string }
   | { type: "LOGOUT" }
   | { type: "LOADED_UNAUTHENTICATED" };
 
 function reducer(_state: AuthState, action: Action): AuthState {
   switch (action.type) {
     case "LOGIN":
-      return { status: "authenticated", user: action.user, token: action.token };
+      return {
+        status: "authenticated",
+        user: action.user,
+        accessToken: action.accessToken,
+        refreshToken: action.refreshToken,
+      };
     case "LOGOUT":
       return { status: "unauthenticated" };
     case "LOADED_UNAUTHENTICATED":
@@ -40,7 +45,7 @@ const SESSION_KEY = "curation_auth";
 
 interface AuthContextValue {
   state: AuthState;
-  login: (token: string, user: AppUser) => void;
+  login: (accessToken: string, refreshToken: string, user: AppUser) => void;
   logout: () => void;
 }
 
@@ -50,17 +55,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { status: "loading" });
 
   useEffect(() => {
-    // Restore session from localStorage
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
-        const { token, user } = JSON.parse(raw);
-        setAuthToken(token);
-        dispatch({ type: "LOGIN", user, token });
-        return;
+        const parsed = JSON.parse(raw) as {
+          accessToken: string;
+          refreshToken: string;
+          user: AppUser;
+        };
+        if (parsed.accessToken && parsed.refreshToken && parsed.user) {
+          setAuthToken(parsed.accessToken);
+          setRefreshToken(parsed.refreshToken);
+          dispatch({
+            type: "LOGIN",
+            user: parsed.user,
+            accessToken: parsed.accessToken,
+            refreshToken: parsed.refreshToken,
+          });
+          return;
+        }
       }
     } catch {
-      // ignore
+      // fall through
     }
     dispatch({ type: "LOADED_UNAUTHENTICATED" });
   }, []);
@@ -69,20 +85,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handler = () => {
       localStorage.removeItem(SESSION_KEY);
       setAuthToken(null);
+      setRefreshToken(null);
       dispatch({ type: "LOGOUT" });
     };
     window.addEventListener("auth:expired", handler);
     return () => window.removeEventListener("auth:expired", handler);
   }, []);
 
-  const login = useCallback((token: string, user: AppUser) => {
-    setAuthToken(token);
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ token, user }));
-    dispatch({ type: "LOGIN", user, token });
-  }, []);
+  const login = useCallback(
+    (accessToken: string, refreshToken: string, user: AppUser) => {
+      setAuthToken(accessToken);
+      setRefreshToken(refreshToken);
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({ accessToken, refreshToken, user }),
+      );
+      dispatch({ type: "LOGIN", user, accessToken, refreshToken });
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     setAuthToken(null);
+    setRefreshToken(null);
     localStorage.removeItem(SESSION_KEY);
     dispatch({ type: "LOGOUT" });
   }, []);
