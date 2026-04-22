@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
+import { UserDrawer } from "./UserDrawer";
 
 interface AppUser {
   id: number;
@@ -21,6 +22,7 @@ export function UserManagementPanel() {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [drawerUser, setDrawerUser] = useState<AppUser | null>(null);
 
   async function fetchUsers() {
     setLoading(true);
@@ -96,7 +98,9 @@ export function UserManagementPanel() {
           </thead>
           <tbody>
             {sorted.map((u) => (
-              <tr key={u.id} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
+              <tr key={u.id}
+                  onClick={() => setDrawerUser(u)}
+                  style={{ borderBottom: "1px solid var(--bg-panel)", cursor: "pointer" }}>
                 <td style={{ ...td, display: "flex", alignItems: "center", gap: 8 }}>
                   {u.picture ? (
                     <img
@@ -120,7 +124,7 @@ export function UserManagementPanel() {
                 <td style={{ ...td, color: u.role === "admin" ? "var(--accent-gold-hi)" : "var(--text-muted)", fontSize: 12 }}>
                   {u.role}
                 </td>
-                <td style={td}>
+                <td style={td} onClick={e => e.stopPropagation()}>
                   <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                     <input
                       type="checkbox"
@@ -142,6 +146,10 @@ export function UserManagementPanel() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {drawerUser && (
+        <UserDrawer user={drawerUser} onClose={() => setDrawerUser(null)} />
       )}
     </div>
   );
