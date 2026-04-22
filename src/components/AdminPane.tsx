@@ -1,7 +1,5 @@
 import { ShieldCheck } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAccounts } from "../hooks/useAccounts";
-import { AdminManagementPanel } from "./AdminManagementPanel";
+import { AdminSubscriptionPanel } from "./AdminSubscriptionPanel";
 import { ArticleQueuePanel } from "./ArticleQueuePanel";
 import AggregationQueuePanel from "./AggregationQueuePanel";
 import { InviteManagementPanel } from "./InviteManagementPanel";
@@ -19,9 +17,6 @@ interface AdminPaneProps {
 export function AdminPane({
   adminView, onAdminViewChange, currentUser,
 }: AdminPaneProps) {
-  const { data: accounts = [] } = useAccounts();
-  const qc = useQueryClient();
-
   return (
     <>
       {/* Admin toolbar with tabs */}
@@ -91,7 +86,7 @@ export function AdminPane({
       {/* Tab content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {adminView === "management" ? (
-          <AdminManagementPanel accounts={accounts} onRefresh={() => qc.invalidateQueries()} />
+          <AdminSubscriptionPanel />
         ) : adminView === "queue" ? (
           <ArticleQueuePanel />
         ) : adminView === "aggregation" ? (
