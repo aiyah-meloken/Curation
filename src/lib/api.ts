@@ -21,6 +21,8 @@ function computeWsBase(): string {
   return "ws://127.0.0.1:8889";
 }
 
+import { refreshAccessToken } from "./refreshAuth";
+
 export const API_BASE = computeApiBase();
 export const WS_BASE = computeWsBase();
 
@@ -33,6 +35,7 @@ export function getWsBase(): string {
 }
 
 let _token: string | null = null;
+let _refreshToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
   _token = token;
@@ -42,17 +45,34 @@ export function getAuthToken(): string | null {
   return _token;
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export function setRefreshToken(token: string | null) {
+  _refreshToken = token;
+}
+
+export function getRefreshToken(): string | null {
+  return _refreshToken;
+}
+
+async function sendWithToken(path: string, init: RequestInit): Promise<Response> {
   const headers = new Headers(init.headers as HeadersInit | undefined);
   if (_token) {
     headers.set("Authorization", `Bearer ${_token}`);
   }
-  const resp = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  if (resp.status === 401) {
-    setAuthToken(null);
-    window.dispatchEvent(new Event("auth:expired"));
+  return fetch(`${API_BASE}${path}`, { ...init, headers });
+}
+
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  let resp = await sendWithToken(path, init);
+  if (resp.status !== 401) return resp;
+
+  // Try refresh once.
+  const fresh = await refreshAccessToken();
+  if (!fresh) {
+    // refreshAccessToken already dispatched auth:expired and cleared storage.
+    return resp;
   }
-  return resp;
+  _token = fresh;
+  return sendWithToken(path, init);
 }
 
 export async function fetchCacheSecret(): Promise<string> {
