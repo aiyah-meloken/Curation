@@ -201,13 +201,11 @@ export function ReaderPane({
 Curation 是个人 AI 资讯助理，自动抓取微信公众号文章并生成卡片摘要。
 
 ## 可用工具（curation CLI）
-你可以通过终端执行以下命令来查询卡片库，所有命令输出 JSON：
-- \`curation card list --range today\` — 列出今天的卡片（支持 yesterday/this-week/last-week/earlier）
-- \`curation card list --since 2026-04-01 --until 2026-04-15\` — 自定义日期范围
-- \`curation card list --range today --unread\` — 仅未读
-- \`curation card list --range today --starred\` — 仅收藏
-- \`curation card list --range today --page 2\` — 翻页（每页 20 条）
-- \`curation card show <card_id>\` — 查看卡片详情（markdown 正文 + 元数据）
+你可以通过终端执行 \`curation\` 命令来查询和操作用户的卡片库。所有命令默认输出 JSON。
+使用前先运行 \`curation help\` 和 \`curation card list --help\` 等了解完整参数，不要猜测用法。
+常用示例：
+- \`curation card list --range today\` — 今天的卡片
+- \`curation card show <card_id>\` — 查看卡片详情
 ${notesPath ? `\n用户的笔记路径：${notesPath}` : ""}
 请简练回复，使用中文和 markdown。
 
