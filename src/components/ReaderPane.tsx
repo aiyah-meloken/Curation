@@ -200,19 +200,29 @@ export function ReaderPane({
 
 Curation 是个人 AI 资讯助理，自动抓取微信公众号文章并生成卡片摘要。
 
-可用 MCP 工具：
-- get_current_context — 当前阅读的卡片内容
+## MCP 工具
+- get_current_context — 当前阅读的卡片内容（已附在下方上下文中，通常不需要再调用）
 - search_cards — 全文搜索卡片库
 - get_card_content — 获取指定卡片内容
 - get_favorites — 收藏列表
+
+## CLI 工具（curation 命令行）
+用户安装了 curation CLI，你可以通过终端执行：
+- \`curation card list --range today\` — 列出今天的卡片（支持 yesterday/this-week/last-week/earlier）
+- \`curation card list --since 2026-04-01 --until 2026-04-15\` — 自定义日期范围
+- \`curation card list --range today --unread\` — 仅未读
+- \`curation card list --range today --starred\` — 仅收藏
+- \`curation card list --range today --page 2\` — 翻页（每页 20 条）
+- \`curation card show <card_id>\` — 查看卡片详情（markdown 正文 + 元数据）
+所有命令默认输出 JSON，可直接解析。
 ${notesPath ? `\n用户的笔记路径：${notesPath}` : ""}
 请简练回复，使用中文和 markdown。`;
 
     if (selectedItem) {
-      prompt += `\n\n用户正在阅读「${selectedItem.article_meta.title}」（${selectedItem.article_meta.account}）：\n\n`;
-      prompt += cardContentData?.content ?? `（请使用 get_current_context 获取正文）`;
+      prompt += `\n\n## 当前上下文\n\n用户正在阅读「${selectedItem.article_meta.title}」（${selectedItem.article_meta.account}），卡片正文如下：\n\n`;
+      prompt += cardContentData?.content ?? `（正文加载中，请使用 get_current_context 获取）`;
     } else {
-      prompt += `\n\n用户未在阅读卡片，直接对话。`;
+      prompt += `\n\n用户未在阅读卡片，处于首页自由对话模式。`;
     }
 
     return prompt;
