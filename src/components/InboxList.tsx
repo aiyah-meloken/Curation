@@ -6,6 +6,8 @@ import type { DateGroup } from "../hooks/useInbox";
 import { useMarkAllRead, useMarkCardUnread } from "../hooks/useInbox";
 import type { SearchResult } from "../lib/cache";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { useCardAnnotationsBatch } from "../hooks/useFeedback";
+import { useAuth } from "../lib/authStore";
 
 interface InboxListProps {
   items: InboxItem[] | undefined;
@@ -21,7 +23,7 @@ interface InboxListProps {
 function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus?: "pending" | "running" | null, isDiscarded?: boolean) {
   if (queueStatus) {
     return (
-      <span className="inbox-tag" style={{ background: "var(--accent-blue-dim)", color: "var(--accent-blue)", display: "inline-flex", alignItems: "center", gap: 3 }}>
+      <span className="inbox-tag" style={{ background: "var(--accent-gold-dim)", color: "var(--accent-gold)", display: "inline-flex", alignItems: "center", gap: 3 }}>
         <Loader2 size={10} className="animate-spin" />
         分析中
       </span>
@@ -86,6 +88,7 @@ function InboxItemRow({
   isSelected,
   isFavorite,
   isDiscarded,
+  annotationCount,
   onSelect,
   onContextMenu,
 }: {
@@ -93,6 +96,7 @@ function InboxItemRow({
   isSelected: boolean;
   isFavorite: boolean;
   isDiscarded?: boolean;
+  annotationCount?: number;
   onSelect: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
@@ -109,6 +113,11 @@ function InboxItemRow({
         )}
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
         {routingTag(item.routing, item.queue_status, isDiscarded)}
+        {annotationCount !== undefined && annotationCount > 0 && (
+          <span className="inbox-tag" style={{ color: "var(--text-muted)" }}>
+            📌 {annotationCount}
+          </span>
+        )}
       </div>
       {item.description && (
         <div className="inbox-item-desc">{item.description}</div>
@@ -184,6 +193,13 @@ export function InboxList({
     }
     return groupByDateBucket(filtered);
   }, [items, showUnreadOnly]);
+
+  const { state: authState } = useAuth();
+  const isAdmin = authState.status === "authenticated" && authState.user.role === "admin";
+  const visibleCardIds = (items ?? [])
+    .map((i) => i.card_id)
+    .filter((id): id is string => !!id);
+  const { data: annotationsByCard = {} } = useCardAnnotationsBatch(visibleCardIds, isAdmin);
 
   // Collapse state: default open for today/yesterday, conditionally for others
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -279,6 +295,7 @@ export function InboxList({
                   isSelected={selectedId === h.card_id}
                   isFavorite={h.is_favorite || favoriteCardIds.has(h.card_id)}
                   isDiscarded={false}
+                  annotationCount={isAdmin && h.card_id ? (annotationsByCard[h.card_id]?.length ?? 0) : 0}
                   onSelect={() => onSelect(h.card_id, "card")}
                   onContextMenu={(e) => e.preventDefault()}
                 />
@@ -315,6 +332,7 @@ export function InboxList({
                       }
                       isFavorite={!!item.card_id && favoriteCardIds.has(item.card_id)}
                       isDiscarded={isDiscardedView}
+                      annotationCount={isAdmin && item.card_id ? (annotationsByCard[item.card_id]?.length ?? 0) : 0}
                       onSelect={() =>
                         onSelect(item.card_id ?? item.article_id, isDiscardedView ? "discarded" : "card")
                       }
