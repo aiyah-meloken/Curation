@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { useCardVotes, useSetVote } from "../hooks/useFeedback";
+import { useTargetVote, useSetVote } from "../hooks/useFeedback";
+import type { FeedbackTarget } from "../lib/api";
 
 const DEFAULT_PROMPT = "觉得这张卡片怎么样？";
 const THANK_YOU = "感谢你的反馈";
 
-export function CardVoteBar({ cardId }: { cardId: string }) {
-  const { data: votes } = useCardVotes([cardId]);
+export function CardVoteBar({ cardId, articleId }: { cardId?: string | null; articleId?: string | null }) {
+  const target: FeedbackTarget = { cardId: cardId ?? null, articleId: cardId ? null : articleId ?? null };
+  const { data: current } = useTargetVote(target);
   const setVote = useSetVote();
-  const current = votes?.[cardId] ?? null;
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
 
   useEffect(() => {
@@ -18,8 +19,10 @@ export function CardVoteBar({ cardId }: { cardId: string }) {
     }
   }, [prompt]);
 
+  if (!target.cardId && !target.articleId) return null;
+
   const click = (vote: 1 | -1) => {
-    setVote.mutate({ cardId, vote, current });
+    setVote.mutate({ target, vote, current: current ?? null });
     setPrompt(THANK_YOU);
   };
 
@@ -50,18 +53,10 @@ export function CardVoteBar({ cardId }: { cardId: string }) {
     >
       <span style={{ color: "var(--text-muted)", fontSize: "0.68rem", lineHeight: 1.3 }}>{prompt}</span>
       <div style={{ display: "flex", gap: 4 }}>
-        <button
-          onClick={() => click(1)}
-          style={btn(1, current === 1)}
-          aria-label="点赞"
-        >
+        <button onClick={() => click(1)} style={btn(1, current === 1)} aria-label="点赞">
           <ThumbsUp size={14} />
         </button>
-        <button
-          onClick={() => click(-1)}
-          style={btn(-1, current === -1)}
-          aria-label="点踩"
-        >
+        <button onClick={() => click(-1)} style={btn(-1, current === -1)} aria-label="点踩">
           <ThumbsDown size={14} />
         </button>
       </div>

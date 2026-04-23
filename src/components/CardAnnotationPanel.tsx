@@ -2,17 +2,18 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import {
   useAddAnnotation,
-  useCardAnnotationsSingle,
+  useAnnotationsSingle,
   useDeleteAnnotation,
 } from "../hooks/useFeedback";
+import type { FeedbackTarget } from "../lib/api";
 
 function formatTs(iso: string | null) {
   if (!iso) return "";
   return iso.replace("T", " ").slice(0, 16);
 }
 
-export function CardAnnotationPanel({ cardId }: { cardId: string }) {
-  const { data = [] } = useCardAnnotationsSingle(cardId, true);
+export function CardAnnotationPanel({ target }: { target: FeedbackTarget }) {
+  const { data = [] } = useAnnotationsSingle(target, true);
   const add = useAddAnnotation();
   const del = useDeleteAnnotation();
   const [label, setLabel] = useState("");
@@ -23,7 +24,7 @@ export function CardAnnotationPanel({ cardId }: { cardId: string }) {
   const submit = () => {
     if (!canSubmit) return;
     add.mutate(
-      { cardId, label: label.trim(), note: note.trim() || undefined },
+      { target, label: label.trim(), note: note.trim() || undefined },
       {
         onSuccess: () => {
           setLabel("");

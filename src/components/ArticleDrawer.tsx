@@ -70,8 +70,8 @@ export function ArticleDrawer({
             {articleId && (
               <FavoriteButton itemType="article" itemId={articleId} />
             )}
-            {isAdmin && item.card_id && (
-              <AdminAnnotationFlag cardId={item.card_id} />
+            {isAdmin && (item.card_id || item.article_id) && (
+              <AdminAnnotationFlag cardId={item.card_id} articleId={item.article_id} />
             )}
             {siblingCards.length > 1 && (
               <div style={{ position: "relative" }}>

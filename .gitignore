@@ -9,3 +9,4 @@ server/.env
 *.pyc
 .superpowers/
 .claude/
+auth-verification.json

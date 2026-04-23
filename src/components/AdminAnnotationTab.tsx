@@ -124,7 +124,7 @@ export function AdminAnnotationTab() {
         ) : (
           data.map((c) => (
             <div
-              key={c.card_id}
+              key={`${c.item_type}:${c.card_id ?? c.article_id}`}
               onClick={() => {
                 setPreviewArticleId(c.article_id);
                 setPreviewRouting(c.routing);

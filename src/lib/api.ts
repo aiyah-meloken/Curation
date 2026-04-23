@@ -216,9 +216,14 @@ export async function fetchRunFile(runId: number, filepath: string) {
 
 // ==================== Feedback ====================
 
+export interface FeedbackTarget {
+  cardId?: string | null;
+  articleId?: string | null;
+}
+
 export interface AnnotationRow {
   id: number;
-  card_id: string;
+  card_id: string | null;
   article_id: string;
   run_id: string | null;
   label: string;
@@ -227,61 +232,104 @@ export interface AnnotationRow {
   created_at: string | null;
 }
 
-export interface AdminCardRow {
-  card_id: string;
+export interface AdminItemRow {
+  item_type: "card" | "article";
+  card_id: string | null;
   article_id: string;
   title: string;
-  description: string | null;
   routing: string | null;
   article_date: string | null;
   annotation_count: number;
   upvote_count: number;
   downvote_count: number;
 }
+// Back-compat alias (callers migrating can use either name).
+export type AdminCardRow = AdminItemRow;
 
-export async function fetchVotes(cardIds: string[]): Promise<Record<string, 1 | -1>> {
-  if (cardIds.length === 0) return {};
-  const resp = await apiFetch(`/feedback/vote?card_ids=${cardIds.join(",")}`);
+export async function fetchVotes(
+  cardIds: string[],
+  articleIds: string[] = [],
+): Promise<{ cards: Record<string, 1 | -1>; articles: Record<string, 1 | -1> }> {
+  if (cardIds.length === 0 && articleIds.length === 0) {
+    return { cards: {}, articles: {} };
+  }
+  const usp = new URLSearchParams();
+  if (cardIds.length) usp.set("card_ids", cardIds.join(","));
+  if (articleIds.length) usp.set("article_ids", articleIds.join(","));
+  const resp = await apiFetch(`/feedback/vote?${usp.toString()}`);
   if (!resp.ok) throw new Error(`fetchVotes ${resp.status}`);
   const body = await resp.json();
-  return body.votes ?? {};
+  return { cards: body.votes ?? {}, articles: body.article_votes ?? {} };
 }
 
-export async function putVote(cardId: string, vote: 1 | -1): Promise<{ card_id: string; vote: 1 | -1 | null }> {
+function _targetBody(target: FeedbackTarget) {
+  const out: Record<string, string> = {};
+  if (target.cardId) out.card_id = target.cardId;
+  if (target.articleId) out.article_id = target.articleId;
+  return out;
+}
+
+export async function putVote(
+  target: FeedbackTarget,
+  vote: 1 | -1,
+): Promise<{ card_id: string | null; article_id: string | null; vote: 1 | -1 | null }> {
   const resp = await apiFetch(`/feedback/vote`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ card_id: cardId, vote }),
+    body: JSON.stringify({ ..._targetBody(target), vote }),
   });
   if (!resp.ok) throw new Error(`putVote ${resp.status}`);
   return resp.json();
 }
 
-export async function deleteVote(cardId: string): Promise<void> {
-  const resp = await apiFetch(`/feedback/vote/${encodeURIComponent(cardId)}`, { method: "DELETE" });
-  if (!resp.ok) throw new Error(`deleteVote ${resp.status}`);
+export async function deleteVote(target: FeedbackTarget): Promise<void> {
+  if (target.cardId) {
+    const resp = await apiFetch(`/feedback/vote/${encodeURIComponent(target.cardId)}`, { method: "DELETE" });
+    if (!resp.ok) throw new Error(`deleteVote ${resp.status}`);
+    return;
+  }
+  if (target.articleId) {
+    const resp = await apiFetch(`/feedback/vote?article_id=${encodeURIComponent(target.articleId)}`, { method: "DELETE" });
+    if (!resp.ok) throw new Error(`deleteVote ${resp.status}`);
+  }
 }
 
-export async function fetchAnnotationsSingle(cardId: string): Promise<AnnotationRow[]> {
-  const resp = await apiFetch(`/feedback/annotations?card_id=${encodeURIComponent(cardId)}`);
+export async function fetchAnnotationsSingle(target: FeedbackTarget): Promise<AnnotationRow[]> {
+  const usp = new URLSearchParams();
+  if (target.cardId) usp.set("card_id", target.cardId);
+  else if (target.articleId) usp.set("article_id", target.articleId);
+  else return [];
+  const resp = await apiFetch(`/feedback/annotations?${usp.toString()}`);
   if (!resp.ok) throw new Error(`fetchAnnotationsSingle ${resp.status}`);
   const body = await resp.json();
   return body.annotations ?? [];
 }
 
-export async function fetchAnnotationsBatch(cardIds: string[]): Promise<Record<string, AnnotationRow[]>> {
-  if (cardIds.length === 0) return {};
-  const resp = await apiFetch(`/feedback/annotations?card_ids=${cardIds.join(",")}`);
+export async function fetchAnnotationsBatch(
+  cardIds: string[],
+  articleIds: string[] = [],
+): Promise<{ cards: Record<string, AnnotationRow[]>; articles: Record<string, AnnotationRow[]> }> {
+  if (cardIds.length === 0 && articleIds.length === 0) {
+    return { cards: {}, articles: {} };
+  }
+  const usp = new URLSearchParams();
+  if (cardIds.length) usp.set("card_ids", cardIds.join(","));
+  if (articleIds.length) usp.set("article_ids", articleIds.join(","));
+  const resp = await apiFetch(`/feedback/annotations?${usp.toString()}`);
   if (!resp.ok) throw new Error(`fetchAnnotationsBatch ${resp.status}`);
   const body = await resp.json();
-  return body.annotations ?? {};
+  return { cards: body.annotations ?? {}, articles: body.article_annotations ?? {} };
 }
 
-export async function addAnnotation(cardId: string, label: string, note?: string): Promise<AnnotationRow> {
+export async function addAnnotation(
+  target: FeedbackTarget,
+  label: string,
+  note?: string,
+): Promise<AnnotationRow> {
   const resp = await apiFetch(`/feedback/annotations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ card_id: cardId, label, note }),
+    body: JSON.stringify({ ..._targetBody(target), label, note }),
   });
   if (!resp.ok) throw new Error(`addAnnotation ${resp.status}`);
   return resp.json();
@@ -299,7 +347,7 @@ export async function fetchAdminCards(params: {
   order?: "recent" | "downvotes" | "annotations";
   limit?: number;
   offset?: number;
-}): Promise<AdminCardRow[]> {
+}): Promise<AdminItemRow[]> {
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null) usp.set(k, String(v));

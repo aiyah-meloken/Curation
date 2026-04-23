@@ -2,12 +2,21 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Flag, ShieldCheck, X } from "lucide-react";
 import { CardAnnotationPanel } from "./CardAnnotationPanel";
-import { useCardAnnotationsSingle } from "../hooks/useFeedback";
+import { useAnnotationsSingle } from "../hooks/useFeedback";
+import type { FeedbackTarget } from "../lib/api";
 
-export function AdminAnnotationFlag({ cardId }: { cardId: string }) {
+export function AdminAnnotationFlag({
+  cardId,
+  articleId,
+}: {
+  cardId?: string | null;
+  articleId?: string | null;
+}) {
+  const target: FeedbackTarget = { cardId: cardId ?? null, articleId: cardId ? null : articleId ?? null };
   const [open, setOpen] = useState(false);
-  const { data = [] } = useCardAnnotationsSingle(cardId, true);
+  const { data = [] } = useAnnotationsSingle(target, true);
   const count = data.length;
+  if (!target.cardId && !target.articleId) return null;
   const hasAnnotations = count > 0;
 
   return (
@@ -51,12 +60,12 @@ export function AdminAnnotationFlag({ cardId }: { cardId: string }) {
           </span>
         )}
       </button>
-      {open && renderModal(cardId, () => setOpen(false))}
+      {open && renderModal(target, () => setOpen(false))}
     </>
   );
 }
 
-function renderModal(cardId: string, onClose: () => void) {
+function renderModal(target: FeedbackTarget, onClose: () => void) {
   // Try to center relative to the reader pane; fall back to viewport (body).
   const container =
     (document.querySelector(".reader-pane") as HTMLElement | null) ??
@@ -115,7 +124,7 @@ function renderModal(cardId: string, onClose: () => void) {
             <X size={18} />
           </button>
         </div>
-        <CardAnnotationPanel cardId={cardId} />
+        <CardAnnotationPanel target={target} />
       </div>
     </div>
   );

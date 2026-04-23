@@ -346,7 +346,7 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
         onSaveToNotes={handleSaveToNotes}
         hasMessages={chat.messages.length > 0}
       />
-      {item.card_id && (
+      {(item.card_id || item.article_id) && (
         <div
           style={{
             position: "absolute",
@@ -362,11 +362,11 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
         >
           {isAdmin && (
             <div style={{ pointerEvents: "auto" }}>
-              <AdminAnnotationFlag cardId={item.card_id} />
+              <AdminAnnotationFlag cardId={item.card_id} articleId={item.article_id} />
             </div>
           )}
           <div style={{ pointerEvents: "auto" }}>
-            <CardVoteBar cardId={item.card_id} />
+            <CardVoteBar cardId={item.card_id} articleId={item.article_id} />
           </div>
         </div>
       )}
