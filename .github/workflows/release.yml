@@ -121,7 +121,7 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
-          BASE_URL="https://github.com/aiyah-meloken/Curation/releases/download/${TAG}"
+          BASE_URL="https://github.com/curation-x3/Curation/releases/download/${TAG}"
 
           # List all assets in the release
           ASSETS=$(gh release view "$TAG" --repo ${{ github.repository }} --json assets -q '[.assets[].name]')

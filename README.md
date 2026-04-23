@@ -19,6 +19,6 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture, key files, and design docs
 
 ## Related Repos
 
-- [curation-server](https://github.com/aiyah-meloken/curation-server) — Orchestration server (FastAPI)
-- [curation-agent](https://github.com/aiyah-meloken/curation-agent) — AI analysis pipeline
-- [curation-cli](https://github.com/aiyah-meloken/curation-cli) — Terminal client
+- [curation-server](https://github.com/curation-x3/curation-server) — Orchestration server (FastAPI)
+- [curation-agent](https://github.com/curation-x3/curation-agent) — AI analysis pipeline
+- [curation-cli](https://github.com/curation-x3/curation-cli) — Terminal client
