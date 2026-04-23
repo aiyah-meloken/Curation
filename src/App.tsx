@@ -155,7 +155,7 @@ function AppMain({ currentUser, onLogout }: {
 
   // View state
   const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites" | "search" | "home">("inbox");
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [selectedBiz, setSelectedBiz] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedDiscardedId, setSelectedDiscardedId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -195,9 +195,9 @@ function AppMain({ currentUser, onLogout }: {
   // Filtered inbox for list display
   const inboxItems = useMemo(() => {
     if (!allInboxItems) return undefined;
-    if (selectedView !== "inbox" || selectedAccountId == null) return allInboxItems;
-    return allInboxItems.filter((i) => i.article_meta.account_id === selectedAccountId);
-  }, [allInboxItems, selectedView, selectedAccountId]);
+    if (selectedView !== "inbox" || selectedBiz == null) return allInboxItems;
+    return allInboxItems.filter((i) => i.article_meta.biz === selectedBiz);
+  }, [allInboxItems, selectedView, selectedBiz]);
   const { data: discardedItems, isLoading: isLoadingDiscarded } = useDiscarded();
 
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
@@ -214,15 +214,15 @@ function AppMain({ currentUser, onLogout }: {
     return () => clearTimeout(id);
   }, [notification]);
 
-  // Compute unread counts from FULL inbox (not filtered by account)
+  // Compute unread counts from FULL inbox (not filtered by biz)
   const unreadCounts = useMemo(() => {
-    const counts: Record<number | string, number> = { total: 0 };
+    const counts: Record<string, number> = { total: 0 };
     if (!allInboxItems) return counts;
     for (const item of allInboxItems) {
       if (!item.read_at) {
         counts.total = (counts.total || 0) + 1;
-        const aid = item.article_meta.account_id;
-        if (aid != null) counts[aid] = (counts[aid] || 0) + 1;
+        const biz = item.article_meta.biz;
+        if (biz) counts[biz] = (counts[biz] || 0) + 1;
       }
     }
     return counts;
@@ -262,7 +262,7 @@ function AppMain({ currentUser, onLogout }: {
     const meta = selectedFavorite.article_meta ?? {
       title: selectedFavorite.article_title ?? selectedFavorite.title ?? "",
       account: selectedFavorite.article_account ?? "",
-      account_id: 0,
+      biz: null,
       author: null,
       publish_time: null,
       url: "",
@@ -292,7 +292,7 @@ function AppMain({ currentUser, onLogout }: {
         const meta = f.article_meta ?? {
           title: f.article_title ?? f.title ?? "",
           account: f.article_account ?? "",
-          account_id: 0,
+          biz: null,
           author: null,
           publish_time: null,
           url: "",
@@ -320,14 +320,14 @@ function AppMain({ currentUser, onLogout }: {
   // Handlers
   function handleSelectInbox() {
     setSelectedView("inbox");
-    setSelectedAccountId(null);
+    setSelectedBiz(null);
     setSelectedCardId(null);
     setSelectedDiscardedId(null);
   }
 
-  function handleSelectAccount(accountId: number) {
+  function handleSelectAccount(biz: string) {
     setSelectedView("inbox");
-    setSelectedAccountId(accountId);
+    setSelectedBiz(biz);
     setSelectedCardId(null);
   }
 
@@ -372,7 +372,7 @@ function AppMain({ currentUser, onLogout }: {
 
   function handleNavigateToCard(cardId: string) {
     setSelectedView("inbox");
-    setSelectedAccountId(null);
+    setSelectedBiz(null);
     setSelectedCardId(cardId);
     setSelectedDiscardedId(null);
     setIsAdminMode(false);
@@ -405,7 +405,7 @@ function AppMain({ currentUser, onLogout }: {
       <Sidebar
         accounts={accounts}
         selectedView={selectedView}
-        selectedAccountId={selectedAccountId}
+        selectedBiz={selectedBiz}
         unreadCounts={unreadCounts}
         isSidebarCollapsed={isSidebarCollapsed}
         isAdminMode={isAdminMode}

@@ -11,12 +11,12 @@ import type { Account } from "../types";
 interface SidebarProps {
   accounts: Account[];
   selectedView: "inbox" | "discarded" | "favorites" | "search" | "home";
-  selectedAccountId: number | null;
-  unreadCounts: Record<number | string, number>;
+  selectedBiz: string | null;
+  unreadCounts: Record<string, number>;
   isSidebarCollapsed: boolean;
   isAdminMode: boolean;
   onSelectInbox: () => void;
-  onSelectAccount: (accountId: number) => void;
+  onSelectAccount: (biz: string) => void;
   onSelectDiscarded: () => void;
   onSelectFavorites: () => void;
   onToggleAdmin: () => void;
@@ -31,7 +31,7 @@ interface SidebarProps {
 export function Sidebar({
   accounts,
   selectedView,
-  selectedAccountId,
+  selectedBiz,
   unreadCounts,
   isSidebarCollapsed,
   isAdminMode,
@@ -101,7 +101,7 @@ export function Sidebar({
       <div className="account-list">
         {/* Inbox: all */}
         <div
-          className={`account-item ${selectedView === "inbox" && selectedAccountId === null ? "active" : ""}`}
+          className={`account-item ${selectedView === "inbox" && selectedBiz === null ? "active" : ""}`}
           onClick={onSelectInbox}
           title="收件箱"
         >
@@ -153,12 +153,12 @@ export function Sidebar({
           </div>
         )}
         {isAccountListOpen && subscribedAccounts.map((acc) => {
-          const count = unreadCounts[acc.id] ?? 0;
+          const count = unreadCounts[acc.biz] ?? 0;
           return (
             <div
               key={acc.id}
-              className={`account-item ${selectedView === "inbox" && selectedAccountId === acc.id ? "active" : ""}`}
-              onClick={() => onSelectAccount(acc.id)}
+              className={`account-item ${selectedView === "inbox" && selectedBiz === acc.biz ? "active" : ""}`}
+              onClick={() => onSelectAccount(acc.biz)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenu({
@@ -208,12 +208,12 @@ export function Sidebar({
           </div>
         )}
         {isTempListOpen && temporaryAccounts.map((acc) => {
-          const count = unreadCounts[acc.id] ?? 0;
+          const count = unreadCounts[acc.biz] ?? 0;
           return (
             <div
               key={acc.id}
-              className={`account-item ${selectedView === "inbox" && selectedAccountId === acc.id ? "active" : ""}`}
-              onClick={() => onSelectAccount(acc.id)}
+              className={`account-item ${selectedView === "inbox" && selectedBiz === acc.biz ? "active" : ""}`}
+              onClick={() => onSelectAccount(acc.biz)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenu({

@@ -75,13 +75,13 @@ export async function fetchArticleContent(articleId: string): Promise<ArticleCon
  * Single source of truth: fetches all articles once, derives filtered view via `select`.
  * Switching accounts is instant — no refetch, just a re-run of the selector.
  */
-export function useArticles(accountId: number | null) {
+export function useArticles(biz: string | null) {
   const filterByAccount = useCallback(
     (data: Article[]) =>
-      accountId != null && accountId !== -1
-        ? data.filter(a => a.account_id === accountId)
+      biz != null && biz !== ""
+        ? data.filter(a => a.biz === biz)
         : data,
-    [accountId],
+    [biz],
   );
 
   return useQuery({

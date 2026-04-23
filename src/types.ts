@@ -26,11 +26,11 @@ export interface Article {
   rawMarkdown?: string;
   html_path?: string;
   markdown_path?: string;
-  account_id?: number;
+  biz?: string | null;
   serving_run_id?: number | null;
   content_source?: "analysis" | "raw" | "empty" | "not_loaded" | "enqueued" | "error";
   cards?: { card_id: string; title: string; content: string; unpushed?: string | any[] }[];
-  article_meta?: { title: string; url: string; publish_time: string; author: string; account?: string; account_id?: number; article_id?: string };
+  article_meta?: { title: string; url: string; publish_time: string; author: string; account?: string; biz?: string | null; article_id?: string };
   rawHtml?: string;
   contentFormat?: "html" | "markdown";
   word_count?: number;
@@ -116,7 +116,7 @@ export interface AggregationStrategy {
 export interface ArticleMeta {
   title: string;
   account: string;
-  account_id: number | null;
+  biz: string | null;
   author: string | null;
   publish_time: string | null;
   url: string;

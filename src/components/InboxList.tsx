@@ -137,7 +137,7 @@ function searchResultToInbox(h: SearchResult): InboxItem {
     article_meta: {
       title: h.title ?? "",
       account: h.account ?? "",
-      account_id: null,
+      biz: null,
       author: null,
       publish_time: null,
       url: "",

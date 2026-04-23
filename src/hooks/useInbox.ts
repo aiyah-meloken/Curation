@@ -19,7 +19,7 @@ function cachedToInbox(c: CachedCard): InboxItem {
     article_meta: {
       title: c.article_title ?? c.title ?? "",
       account: c.account ?? "",
-      account_id: c.account_id,
+      biz: c.biz ?? null,
       author: c.author,
       publish_time: c.publish_time ?? c.article_date,
       url: c.url ?? "",
@@ -35,9 +35,9 @@ export interface DateGroup<T = InboxItem> {
   items: T[];
 }
 
-export function useInbox(accountId?: number | null, unreadOnly?: boolean, enabled = true) {
+export function useInbox(biz?: string | null, unreadOnly?: boolean, enabled = true) {
   return useQuery<InboxItem[]>({
-    queryKey: ["inbox", "local", accountId ?? "all", unreadOnly ?? false],
+    queryKey: ["inbox", "local", biz ?? "all", unreadOnly ?? false],
     queryFn: async () => {
       const rows = await getInboxCards(null, unreadOnly ?? false);
       return rows.map(cachedToInbox);
@@ -218,7 +218,7 @@ export function useAnalyzingQueue(): InboxItem[] {
       article_meta: {
         title: q.article_title ?? "",
         account: q.article_account ?? "",
-        account_id: null,
+        biz: null,
         author: null,
         publish_time: q.article_publish_time,
         url: "",
@@ -237,8 +237,8 @@ export function useInboxSearch(query: string) {
   });
 }
 
-export function useGroupedInbox(accountId?: number | null, unreadOnly?: boolean) {
-  const { data: items, ...rest } = useInbox(accountId, unreadOnly);
+export function useGroupedInbox(biz?: string | null, unreadOnly?: boolean) {
+  const { data: items, ...rest } = useInbox(biz, unreadOnly);
   const groups = useMemo(() => (items ? groupByDateBucket(items) : []), [items]);
   return { groups, items, ...rest };
 }

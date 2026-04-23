@@ -16,6 +16,7 @@ export interface CachedCard {
   updated_at: string;
   publish_time: string | null;
   account_id: number | null;
+  biz: string | null;
   cover_url: string | null;
   digest: string | null;
   word_count: number | null;
