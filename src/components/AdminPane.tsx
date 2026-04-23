@@ -4,8 +4,9 @@ import { ArticleQueuePanel } from "./ArticleQueuePanel";
 import AggregationQueuePanel from "./AggregationQueuePanel";
 import { InviteManagementPanel } from "./InviteManagementPanel";
 import { UserManagementPanel } from "./UserManagementPanel";
+import { AdminAnnotationTab } from "./AdminAnnotationTab";
 
-type AdminView = "management" | "queue" | "aggregation" | "invites" | "users";
+type AdminView = "management" | "queue" | "aggregation" | "invites" | "users" | "annotations";
 
 interface AdminPaneProps {
   adminView: AdminView;
@@ -77,6 +78,16 @@ export function AdminPane({
               >
                 用户管理
               </button>
+              <button
+                onClick={() => onAdminViewChange("annotations")}
+                style={{
+                  fontSize: '0.75rem', padding: '3px 10px', borderRadius: 5, border: 'none', cursor: 'pointer',
+                  background: adminView === "annotations" ? 'var(--accent-gold)' : 'var(--bg-panel)',
+                  color: adminView === "annotations" ? '#1a1208' : 'var(--text-muted)',
+                }}
+              >
+                质量标注
+              </button>
             </>
           )}
         </div>
@@ -93,6 +104,8 @@ export function AdminPane({
           <AggregationQueuePanel />
         ) : adminView === "invites" ? (
           <InviteManagementPanel />
+        ) : adminView === "annotations" ? (
+          <AdminAnnotationTab />
         ) : (
           <UserManagementPanel />
         )}
