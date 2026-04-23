@@ -33,7 +33,7 @@ export function ArticleDrawer({
 }: ArticleDrawerProps) {
   const articleId = item?.article_id ?? null;
   const { data: articleData, isLoading } = useArticleContent(articleId);
-  const authState = useAuth();
+  const { state: authState } = useAuth();
   const isAdmin = authState.status === "authenticated" && authState.user.role === "admin";
 
   // Close on Escape
