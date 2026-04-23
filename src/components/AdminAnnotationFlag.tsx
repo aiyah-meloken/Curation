@@ -3,33 +3,11 @@ import { Flag, ShieldCheck, X } from "lucide-react";
 import { CardAnnotationPanel } from "./CardAnnotationPanel";
 import { useCardAnnotationsSingle } from "../hooks/useFeedback";
 
-type Variant = "floating" | "inline";
-
-export function AdminAnnotationFlag({
-  cardId,
-  variant = "floating",
-}: {
-  cardId: string;
-  variant?: Variant;
-}) {
+export function AdminAnnotationFlag({ cardId }: { cardId: string }) {
   const [open, setOpen] = useState(false);
   const { data = [] } = useCardAnnotationsSingle(cardId, true);
   const count = data.length;
   const hasAnnotations = count > 0;
-
-  const triggerStyle: React.CSSProperties =
-    variant === "floating"
-      ? {
-          position: "absolute",
-          right: 20,
-          bottom: 20,
-          zIndex: 50,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-        }
-      : {
-          display: "inline-flex",
-          marginTop: 12,
-        };
 
   return (
     <>
@@ -38,18 +16,18 @@ export function AdminAnnotationFlag({
         aria-label="管理员标注"
         title={hasAnnotations ? `${count} 条管理员标注` : "添加管理员标注"}
         style={{
-          ...triggerStyle,
           alignItems: "center",
           gap: 6,
           padding: "6px 12px",
           borderRadius: 999,
-          background: hasAnnotations ? "var(--accent-gold-dim)" : "var(--bg-raised)",
+          background: hasAnnotations ? "var(--accent-gold-dim)" : "var(--bg-panel)",
           color: hasAnnotations ? "var(--accent-gold)" : "var(--text-muted)",
           border: "1px solid var(--border)",
           cursor: "pointer",
           fontSize: "0.78rem",
           lineHeight: 1.4,
           display: "inline-flex",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
         }}
       >
         <Flag size={14} />

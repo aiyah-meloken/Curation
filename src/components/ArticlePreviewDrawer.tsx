@@ -55,7 +55,9 @@ function CardMarkdownView({ articleId }: { articleId: string }) {
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
             {stripFrontmatter(card.content)}
           </ReactMarkdown>
-          <AdminAnnotationFlag cardId={card.card_id} variant="inline" />
+          <div style={{ marginTop: 12 }}>
+            <AdminAnnotationFlag cardId={card.card_id} />
+          </div>
         </div>
       ))}
     </div>

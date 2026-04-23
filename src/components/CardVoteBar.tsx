@@ -35,8 +35,19 @@ export function CardVoteBar({ cardId }: { cardId: string }) {
   });
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-      <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{prompt}</span>
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "6px 12px",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border)",
+        borderRadius: 999,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+      }}
+    >
+      <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{prompt}</span>
       <button
         onClick={() => click(1)}
         style={btn(1, current === 1)}

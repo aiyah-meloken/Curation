@@ -78,9 +78,6 @@ function SourceBar({
           {cardId && (
             <FavoriteButton itemType="card" itemId={cardId} />
           )}
-          {cardId && (
-            <CardVoteBar cardId={cardId} />
-          )}
           {routing === "ai_curation" && onOpenDrawer && (
             <button
               onClick={onOpenDrawer}
@@ -341,7 +338,30 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
         onSaveToNotes={handleSaveToNotes}
         hasMessages={chat.messages.length > 0}
       />
-      {item.card_id && isAdmin && <AdminAnnotationFlag cardId={item.card_id} />}
+      {item.card_id && (
+        <div
+          style={{
+            position: "absolute",
+            right: 20,
+            bottom: 100,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 8,
+            zIndex: 50,
+            pointerEvents: "none",
+          }}
+        >
+          {isAdmin && (
+            <div style={{ pointerEvents: "auto" }}>
+              <AdminAnnotationFlag cardId={item.card_id} />
+            </div>
+          )}
+          <div style={{ pointerEvents: "auto" }}>
+            <CardVoteBar cardId={item.card_id} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
