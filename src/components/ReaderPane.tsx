@@ -8,6 +8,7 @@ import { useCardContent } from "../hooks/useCards";
 import { useArticleContent } from "../hooks/useArticles";
 import { useMarkCardReadSingle } from "../hooks/useInbox";
 import { FavoriteButton } from "./FavoriteButton";
+import { CardVoteBar } from "./CardVoteBar";
 import { ChatInput } from "./ChatInput";
 import { ChatMessages } from "./ChatMessages";
 import { CardFrame } from "./CardFrame";
@@ -74,6 +75,9 @@ function SourceBar({
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           {cardId && (
             <FavoriteButton itemType="card" itemId={cardId} />
+          )}
+          {cardId && (
+            <CardVoteBar cardId={cardId} />
           )}
           {routing === "ai_curation" && onOpenDrawer && (
             <button
