@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Flag, ShieldCheck, X } from "lucide-react";
 import { CardAnnotationPanel } from "./CardAnnotationPanel";
 import { useCardAnnotationsSingle } from "../hooks/useFeedback";
@@ -50,62 +51,78 @@ export function AdminAnnotationFlag({ cardId }: { cardId: string }) {
           </span>
         )}
       </button>
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 200,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--bg-panel)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              width: "min(640px, 92vw)",
-              maxHeight: "80vh",
-              padding: "16px 20px",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "auto",
-              boxShadow: "0 12px 36px rgba(0,0,0,0.45)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 10, gap: 10 }}>
-              <ShieldCheck size={18} style={{ color: "var(--accent-gold)", flexShrink: 0, marginTop: 2 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: "var(--fs-base)" }}>管理员标注</div>
-                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
-                  仅管理员可见 · 用于持续数据集构建
-                </div>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="关闭"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--text-muted)",
-                  padding: 4,
-                  display: "flex",
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <CardAnnotationPanel cardId={cardId} />
-          </div>
-        </div>
-      )}
+      {open && renderModal(cardId, () => setOpen(false))}
     </>
   );
+}
+
+function renderModal(cardId: string, onClose: () => void) {
+  // Try to center relative to the reader pane; fall back to viewport (body).
+  const container =
+    (document.querySelector(".reader-pane") as HTMLElement | null) ??
+    (document.querySelector(".article-preview-drawer") as HTMLElement | null) ??
+    document.body;
+
+  const overlay = (
+    <div
+      onClick={onClose}
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 200,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--bg-panel)",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          width: "min(560px, 90%)",
+          maxHeight: "80%",
+          padding: "16px 20px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "auto",
+          boxShadow: "0 12px 36px rgba(0,0,0,0.45)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 10, gap: 10 }}>
+          <ShieldCheck size={18} style={{ color: "var(--accent-gold)", flexShrink: 0, marginTop: 2 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: "var(--fs-base)" }}>管理员标注</div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
+              仅管理员可见 · 用于持续数据集构建
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="关闭"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-muted)",
+              padding: 4,
+              display: "flex",
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <CardAnnotationPanel cardId={cardId} />
+      </div>
+    </div>
+  );
+
+  // If container lacks `position`, make it relative so the overlay inset works.
+  if (container !== document.body && getComputedStyle(container).position === "static") {
+    container.style.position = "relative";
+  }
+  return createPortal(overlay, container);
 }

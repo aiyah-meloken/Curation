@@ -343,11 +343,11 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
           style={{
             position: "absolute",
             right: 20,
-            bottom: 100,
+            bottom: 20,
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",
-            gap: 8,
+            gap: 6,
             zIndex: 50,
             pointerEvents: "none",
           }}
