@@ -350,8 +350,10 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
         <div
           style={{
             position: "absolute",
-            right: 20,
-            bottom: 20,
+            right: 16,
+            // ChatInput is ~80px tall with its own 12px top padding; leave an
+            // extra 8px gap so the vote pill never overlaps it.
+            bottom: "calc(var(--sp-3, 12px) + 80px + 8px)",
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",
