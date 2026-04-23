@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { X, ExternalLink } from "lucide-react";
 import { useArticleContent } from "../hooks/useArticles";
 import { FavoriteButton } from "./FavoriteButton";
+import { AdminAnnotationFlag } from "./AdminAnnotationFlag";
+import { useAuth } from "../lib/authStore";
 import type { InboxItem } from "../types";
 
 async function openInAppWindow(url: string) {
@@ -31,6 +33,8 @@ export function ArticleDrawer({
 }: ArticleDrawerProps) {
   const articleId = item?.article_id ?? null;
   const { data: articleData, isLoading } = useArticleContent(articleId);
+  const authState = useAuth();
+  const isAdmin = authState.status === "authenticated" && authState.user.role === "admin";
 
   // Close on Escape
   useEffect(() => {
@@ -65,6 +69,9 @@ export function ArticleDrawer({
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {articleId && (
               <FavoriteButton itemType="article" itemId={articleId} />
+            )}
+            {isAdmin && item.card_id && (
+              <AdminAnnotationFlag cardId={item.card_id} />
             )}
             {siblingCards.length > 1 && (
               <div style={{ position: "relative" }}>
