@@ -1,30 +1,24 @@
-# Curation
+# Curation App
 
-A desktop application built with **Tauri + React + TypeScript + Vite**.
+Desktop app for the Curation personal AI news platform. Built with Tauri + React + TypeScript.
 
-## Tech Stack
-
-- [Tauri](https://tauri.app/) — native desktop shell
-- [React](https://react.dev/) — UI framework
-- [TypeScript](https://www.typescriptlang.org/) — type-safe JavaScript
-- [Vite](https://vite.dev/) — build tool & dev server
-
-## Installation
+## Quick Start
 
 ```bash
-# Install dependencies
 npm install
 
-# Copy environment config and fill in your values
 cp .env.example .env
-```
+# Fill in values (see comments in .env.example)
 
-## Usage
-
-```bash
-# Start development server
 npm run tauri dev
-
-# Build for production
-npm run tauri build
 ```
+
+## Architecture
+
+See [CLAUDE.md](CLAUDE.md) for detailed architecture, key files, and design docs.
+
+## Related Repos
+
+- [curation-server](https://github.com/aiyah-meloken/curation-server) — Orchestration server (FastAPI)
+- [curation-agent](https://github.com/aiyah-meloken/curation-agent) — AI analysis pipeline
+- [curation-cli](https://github.com/aiyah-meloken/curation-cli) — Terminal client
