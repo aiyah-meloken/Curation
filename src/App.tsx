@@ -29,6 +29,7 @@ import { useAppearance } from "./hooks/useAppearance";
 import { useFontShortcuts } from "./hooks/useFontShortcuts";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { startAcpListener } from "./lib/acp/listener";
+import { getAcpMaxAlive, setAcpMaxAlive } from "./lib/chat";
 import "./App.css";
 
 // Boot info
@@ -202,8 +203,12 @@ function AppMain({ currentUser, onLogout }: {
   useEffect(() => { getVersion().then(setAppVersion).catch(() => {}); }, []);
 
   // Start ACP runtime event listener once (survives card switches).
+  // Also re-apply saved max_alive so the backend reflects the persisted setting.
   useEffect(() => {
     startAcpListener().catch(() => {});
+    getAcpMaxAlive()
+      .then((n) => setAcpMaxAlive(n))
+      .catch(() => {});
   }, []);
 
   // Reset admin view when leaving admin mode

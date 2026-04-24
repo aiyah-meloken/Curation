@@ -6,6 +6,7 @@ import type { DateGroup } from "../hooks/useInbox";
 import { useMarkAllRead, useMarkCardUnread } from "../hooks/useInbox";
 import type { SearchResult } from "../lib/cache";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { AcpRunningDot } from "./AcpRunningDot";
 
 interface InboxListProps {
   items: InboxItem[] | undefined;
@@ -107,6 +108,7 @@ function InboxItemRow({
         {isFavorite && (
           <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
         )}
+        <AcpRunningDot cardId={item.card_id ?? null} className="mt-[4px]" />
         <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
         {routingTag(item.routing, item.queue_status, isDiscarded)}
       </div>

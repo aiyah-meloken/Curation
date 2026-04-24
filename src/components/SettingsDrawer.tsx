@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ArrowUpRight, FolderOpen } from "lucide-react";
 import { openFolderPicker } from "../lib/platform/dialog";
 import { TauriOnly } from "./platform/TauriOnly";
+import { getAcpMaxAlive, setAcpMaxAlive } from "../lib/chat";
 import type { AppearanceSettings, FontBody, ThemeMode } from "../lib/appearance";
 import {
   READER_SIZE_DEFAULT,
@@ -369,7 +370,13 @@ export function SettingsDrawer({
             </Section>
           </TauriOnly>
 
-          <Section roman="VI" title="账号" stagger={1}>
+          <TauriOnly>
+            <Section roman="VI" title="Agent" stagger={1}>
+              <AcpMaxAliveField />
+            </Section>
+          </TauriOnly>
+
+          <Section roman="VII" title="账号" stagger={2}>
             <div className="ts-account">
               <div className="ts-account-row">
                 <span className="ts-account-label">已登录</span>
@@ -400,6 +407,62 @@ export function SettingsDrawer({
           </button>
         </footer>
       </aside>
+    </div>
+  );
+}
+
+function AcpMaxAliveField() {
+  const [value, setValue] = useState<number>(3);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    getAcpMaxAlive()
+      .then((n) => {
+        setValue(n);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const update = async (next: number) => {
+    const clamped = Math.max(1, Math.min(5, next));
+    setValue(clamped);
+    try {
+      await setAcpMaxAlive(clamped);
+    } catch {
+      // revert on failure
+      const current = await getAcpMaxAlive().catch(() => value);
+      setValue(current);
+    }
+  };
+
+  return (
+    <div className="ts-field">
+      <div className="ts-field-label">
+        <span>最多并行会话</span>
+        <span className="ts-field-hint">1–5，超出后自动回收已结束的空闲会话</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          className="ts-footer-btn"
+          style={{ padding: "4px 10px", fontSize: "var(--fs-sm)" }}
+          onClick={() => update(value - 1)}
+          disabled={!loaded || value <= 1}
+        >
+          −
+        </button>
+        <span style={{ minWidth: 32, textAlign: "center", fontFamily: "var(--font-mono)" }}>
+          {value}
+        </span>
+        <button
+          className="ts-footer-btn"
+          style={{ padding: "4px 10px", fontSize: "var(--fs-sm)" }}
+          onClick={() => update(value + 1)}
+          disabled={!loaded || value >= 5}
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }

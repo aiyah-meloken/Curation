@@ -14,6 +14,7 @@ import { AdminAnnotationFlag } from "./AdminAnnotationFlag";
 import { ChatInput } from "./ChatInput";
 import { ChatMessages } from "./ChatMessages";
 import { CardFrame } from "./CardFrame";
+import { AcpRunningDot } from "./AcpRunningDot";
 import { TauriOnly } from "./platform/TauriOnly";
 import { useChat, useAgentDetection } from "../hooks/useChat";
 import type { InboxItem, DiscardedItem } from "../types";
@@ -62,7 +63,8 @@ function SourceBar({
     <div className="reader-source-bar">
       {/* Line 1: original title + tag */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-        <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1 }}>
+        <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+          <AcpRunningDot cardId={cardId ?? null} />
           <span style={{ color: "var(--text-muted)" }}>原文标题：</span>
           {meta.title}
         </span>
