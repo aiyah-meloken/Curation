@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const LAYOUT_RATIO_SIDEBAR = 1.4;
+const LAYOUT_RATIO_SIDEBAR = 1.2;
 const LAYOUT_RATIO_LIST = 1.8;
 const LAYOUT_RATIO_READER = 4;
 const LAYOUT_RATIO_SUM = LAYOUT_RATIO_SIDEBAR + LAYOUT_RATIO_LIST + LAYOUT_RATIO_READER;
