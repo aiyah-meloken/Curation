@@ -350,7 +350,10 @@ export function SettingsDrawer({
                   className="ts-footer-btn primary"
                   style={{ padding: "5px 12px", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: 4 }}
                   onClick={async () => {
-                    const selected = await openFolderPicker({ title: "选择笔记文件夹" });
+                    const selected = await openFolderPicker({
+                      title: "选择笔记文件夹",
+                      defaultPath: notesPath || undefined,
+                    });
                     if (selected) {
                       onNotesPathChange(selected);
                     }
