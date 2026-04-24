@@ -86,7 +86,7 @@ export function useToggleFavorite() {
       itemType: "card" | "article";
       itemId: string;
       isFavorited: boolean;
-    }) => toggleFavoriteLocal(itemType, itemId, !isFavorited),
+    }) => toggleFavoriteLocal(itemType, itemId, isFavorited),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["favorites", "local"] });
     },
