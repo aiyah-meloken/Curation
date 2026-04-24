@@ -162,7 +162,7 @@ function AppMain({ currentUser, onLogout }: {
   const search = useSearch();
 
   // Layout
-  const { isSidebarCollapsed, sidebarWidth, listWidth, isResizingList, startResizeList } = useLayout();
+  const { isSidebarCollapsed, sidebarWidth, listWidth, isResizingSidebar, isResizingList, startResizeSidebar, startResizeList } = useLayout();
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [adminView, setAdminView] = useState<"management" | "queue" | "aggregation" | "invites" | "users" | "annotations">("management");
   const [notification, setNotification] = useState<string | null>(null);
@@ -422,6 +422,14 @@ function AppMain({ currentUser, onLogout }: {
         sidebarWidth={sidebarWidth}
         onOpenSettings={() => setSettingsOpen(true)}
       />
+
+      {/* Sidebar resizer */}
+      {!isSidebarCollapsed && (
+        <div
+          className={`resizer ${isResizingSidebar ? "resizing" : ""}`}
+          onMouseDown={startResizeSidebar}
+        />
+      )}
 
       {/* Pane 2: List */}
       {selectedView === "search" ? (
