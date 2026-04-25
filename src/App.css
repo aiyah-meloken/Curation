@@ -2010,7 +2010,7 @@ body {
 
 .chat-input-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   background: var(--bg-panel);
   border: 1px solid var(--border-strong, var(--border-color));
   border-radius: 20px;
@@ -2029,7 +2029,8 @@ body {
   font-family: var(--font-body);
   resize: none;
   line-height: var(--lh-body, 1.75);
-  max-height: 120px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .chat-send-btn {

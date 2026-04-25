@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -172,6 +172,9 @@ export function ReaderPane({
   const markRead = useMarkCardReadSingle();
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Tracks ChatInput container height so floating UI (vote pill, admin
+  // annotation flag) can sit just above it as the textarea grows.
+  const [chatInputHeight, setChatInputHeight] = useState(80);
 
   // Load card content for system prompt
   const { data: cardContentData } = useCardContent(selectedItem?.card_id ?? null, "source");
@@ -366,6 +369,7 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
           onClear={handleClear}
           onSaveToNotes={handleSaveToNotes}
           hasMessages={chat.messages.length > 0}
+          onHeightChange={setChatInputHeight}
         />
       </TauriOnly>
       {(item.card_id || item.article_id) && (
@@ -373,9 +377,9 @@ ${cardContentData?.content ?? "（正文加载中）"}`;
           style={{
             position: "absolute",
             right: 16,
-            // ChatInput is ~80px tall with its own 12px top padding; leave an
-            // extra 8px gap so the vote pill never overlaps it.
-            bottom: "calc(var(--sp-3, 12px) + 80px + 8px)",
+            // Sit just above the ChatInput container, regardless of how
+            // tall it grows when the textarea expands.
+            bottom: chatInputHeight + 8,
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",

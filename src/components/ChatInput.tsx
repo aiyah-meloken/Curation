@@ -1,6 +1,8 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useLayoutEffect, useEffect } from "react";
 import { Send, Square, Trash2, BookMarked } from "lucide-react";
 import type { AgentConfig } from "../lib/chat";
+
+const TEXTAREA_MAX_HEIGHT = 200;
 
 interface ChatInputProps {
   agents: AgentConfig[];
@@ -13,6 +15,7 @@ interface ChatInputProps {
   onClear: () => void;
   onSaveToNotes: () => void;
   hasMessages: boolean;
+  onHeightChange?: (height: number) => void;
 }
 
 const STATUS_CONFIG = {
@@ -35,10 +38,34 @@ export function ChatInput({
   onClear,
   onSaveToNotes,
   hasMessages,
+  onHeightChange,
 }: ChatInputProps) {
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
+
+  // Auto-grow the textarea: shrink to one line, then expand to fit content
+  // up to TEXTAREA_MAX_HEIGHT (after which the textarea scrolls internally).
+  useLayoutEffect(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+  }, [text]);
+
+  // Report container height upward so floating UI (vote pill, admin flag)
+  // can sit just above the input as it grows.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !onHeightChange) return;
+    onHeightChange(el.offsetHeight);
+    const ro = new ResizeObserver(() => {
+      onHeightChange(el.offsetHeight);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [onHeightChange]);
 
   const handleSubmit = useCallback(() => {
     const trimmed = text.trim();
@@ -63,7 +90,7 @@ export function ChatInput({
     : STATUS_CONFIG[connectionStatus];
 
   return (
-    <div className="chat-input-container">
+    <div className="chat-input-container" ref={containerRef}>
       <div className="chat-input-inner">
       <div className="chat-control-bar">
         <div className="chat-control-left">
