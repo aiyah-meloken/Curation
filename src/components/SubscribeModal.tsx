@@ -79,6 +79,8 @@ export function SubscribeModal({ open, onClose, onSuccess, targetUserIds }: Prop
       setResults(resp.results || []);
       qc.invalidateQueries({ queryKey: ["accounts"] });
       qc.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["inbox", "local"] });
+      qc.invalidateQueries({ queryKey: ["queue", "analyzing"] });
       const allOk = (resp.results || []).every((r: any) => r.status === "ok");
       if (resp.status === "ok" && allOk) {
         setSelected(new Map());

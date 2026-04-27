@@ -138,8 +138,10 @@ export function saveCachedDiscoverableAccounts(
 }
 
 export function runSync(): Promise<string[]> {
-  // Web has no local cache to refresh; just invalidate React Query keys
-  // by returning an empty "touched keys" list. The WebSocket push path
-  // will tell us when to refetch specific queries.
-  return Promise.resolve([]);
+  // Web has no local cache to populate, but the caller (useSyncManager)
+  // uses this return value to decide which TanStack Query keys to
+  // invalidate. Returning "cards" maps to ["inbox","local"] +
+  // ["cardContent"] + ["favorites","local"] — the queries that should
+  // refetch when the server pushes sync_available over WebSocket.
+  return Promise.resolve(["cards"]);
 }
