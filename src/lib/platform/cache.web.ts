@@ -24,7 +24,34 @@ export async function getInboxCards(
   const res = await apiFetch(`/inbox${qs ? `?${qs}` : ""}`);
   if (!res.ok) throw new Error(`GET /inbox failed: ${res.status}`);
   const data = await res.json();
-  return data.items ?? [];
+  // Server's /inbox returns nested { article_meta: { account, biz, ... } }
+  // while CachedCard (mirroring /sync + local SQLite) is flat. Flatten here.
+  const items: any[] = data.items ?? [];
+  return items.map((it: any): CachedCard => {
+    const am = it.article_meta ?? {};
+    return {
+      card_id: it.card_id,
+      article_id: it.article_id,
+      title: it.title ?? null,
+      article_title: am.title ?? null,
+      content_md: null,
+      description: it.description ?? null,
+      routing: it.routing ?? null,
+      article_date: it.article_date ?? null,
+      account: am.account ?? null,
+      author: am.author ?? null,
+      url: am.url ?? null,
+      read_at: it.read_at ?? null,
+      updated_at: "",
+      publish_time: am.publish_time ?? null,
+      account_id: null,
+      biz: am.biz ?? null,
+      cover_url: am.cover_url ?? null,
+      digest: am.digest ?? null,
+      word_count: null,
+      is_original: null,
+    };
+  });
 }
 
 export async function getFavorites(): Promise<CachedFavorite[]> {
