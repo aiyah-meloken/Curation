@@ -130,6 +130,10 @@ export interface InboxItem {
   title: string;
   description: string | null;
   routing: "ai_curation" | "original_push" | null;
+  // For original_push: "普通" (= reading_guide / 阅前) or "D5" (= post_read / 阅后).
+  // For ai_curation: a template name (event / paper / tool / ...).
+  // null for legacy cards inserted before the agent populated this field.
+  subtype: string | null;
   article_date: string | null;
   read_at: string | null;
   queue_status: "pending" | "running" | null;

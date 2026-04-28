@@ -133,6 +133,7 @@ function searchResultToInbox(h: SearchResult): InboxItem {
     title: h.title ?? "",
     description: h.highlight,
     routing: null,
+    subtype: null,
     article_date: h.article_date,
     read_at: null,
     queue_status: null,

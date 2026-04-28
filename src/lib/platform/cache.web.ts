@@ -38,6 +38,7 @@ export async function getInboxCards(
       content_md: null,
       description: it.description ?? null,
       routing: it.routing ?? null,
+      subtype: it.subtype ?? null,
       article_date: it.article_date ?? null,
       account: am.account ?? null,
       author: am.author ?? null,

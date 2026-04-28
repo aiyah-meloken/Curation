@@ -16,6 +16,7 @@ pub struct CardRow {
     pub content_md: Option<String>,
     pub description: Option<String>,
     pub routing: Option<String>,
+    pub subtype: Option<String>,
     pub article_date: Option<String>,
     pub account: Option<String>,
     pub author: Option<String>,
@@ -131,6 +132,7 @@ impl CacheDb {
                 content_md TEXT,
                 description TEXT,
                 routing TEXT,
+                subtype TEXT,
                 article_date TEXT,
                 account TEXT,
                 author TEXT,
@@ -232,6 +234,7 @@ impl CacheDb {
             ("digest", "ALTER TABLE cards ADD COLUMN digest TEXT"),
             ("word_count", "ALTER TABLE cards ADD COLUMN word_count INTEGER"),
             ("is_original", "ALTER TABLE cards ADD COLUMN is_original INTEGER"),
+            ("subtype", "ALTER TABLE cards ADD COLUMN subtype TEXT"),
         ] {
             let probe = format!("SELECT {} FROM cards LIMIT 0", name);
             if !conn.prepare(&probe).is_ok() {
@@ -316,7 +319,7 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut sql = String::from(
             "SELECT card_id, article_id, title, article_title, content_md, description, routing,
-                    article_date, account, author, url, read_at, updated_at, publish_time,
+                    subtype, article_date, account, author, url, read_at, updated_at, publish_time,
                     account_id, biz, cover_url, digest, word_count, is_original
              FROM cards WHERE routing IS NOT NULL",
         );
@@ -340,19 +343,20 @@ impl CacheDb {
                     content_md: row.get(4)?,
                     description: row.get(5)?,
                     routing: row.get(6)?,
-                    article_date: row.get(7)?,
-                    account: row.get(8)?,
-                    author: row.get(9)?,
-                    url: row.get(10)?,
-                    read_at: row.get(11)?,
-                    updated_at: row.get(12)?,
-                    publish_time: row.get(13)?,
-                    account_id: row.get(14)?,
-                    biz: row.get(15)?,
-                    cover_url: row.get(16)?,
-                    digest: row.get(17)?,
-                    word_count: row.get(18)?,
-                    is_original: row.get(19)?,
+                    subtype: row.get(7)?,
+                    article_date: row.get(8)?,
+                    account: row.get(9)?,
+                    author: row.get(10)?,
+                    url: row.get(11)?,
+                    read_at: row.get(12)?,
+                    updated_at: row.get(13)?,
+                    publish_time: row.get(14)?,
+                    account_id: row.get(15)?,
+                    biz: row.get(16)?,
+                    cover_url: row.get(17)?,
+                    digest: row.get(18)?,
+                    word_count: row.get(19)?,
+                    is_original: row.get(20)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -368,19 +372,20 @@ impl CacheDb {
                     content_md: row.get(4)?,
                     description: row.get(5)?,
                     routing: row.get(6)?,
-                    article_date: row.get(7)?,
-                    account: row.get(8)?,
-                    author: row.get(9)?,
-                    url: row.get(10)?,
-                    read_at: row.get(11)?,
-                    updated_at: row.get(12)?,
-                    publish_time: row.get(13)?,
-                    account_id: row.get(14)?,
-                    biz: row.get(15)?,
-                    cover_url: row.get(16)?,
-                    digest: row.get(17)?,
-                    word_count: row.get(18)?,
-                    is_original: row.get(19)?,
+                    subtype: row.get(7)?,
+                    article_date: row.get(8)?,
+                    account: row.get(9)?,
+                    author: row.get(10)?,
+                    url: row.get(11)?,
+                    read_at: row.get(12)?,
+                    updated_at: row.get(13)?,
+                    publish_time: row.get(14)?,
+                    account_id: row.get(15)?,
+                    biz: row.get(16)?,
+                    cover_url: row.get(17)?,
+                    digest: row.get(18)?,
+                    word_count: row.get(19)?,
+                    is_original: row.get(20)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -691,9 +696,9 @@ impl CacheDb {
             conn.execute(
                 "INSERT OR REPLACE INTO cards
                  (card_id, article_id, title, article_title, content_md, description, routing,
-                  article_date, account, author, url, read_at, updated_at, publish_time,
+                  subtype, article_date, account, author, url, read_at, updated_at, publish_time,
                   account_id, biz, cover_url, digest, word_count, is_original)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)",
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21)",
                 rusqlite::params![
                     card_id,
                     card["article_id"].as_str().unwrap_or_default(),
@@ -702,6 +707,7 @@ impl CacheDb {
                     card["content_md"].as_str(),
                     card["description"].as_str(),
                     card["routing"].as_str(),
+                    card["subtype"].as_str(),
                     card["article_date"].as_str(),
                     card["account"].as_str(),
                     card["author"].as_str(),

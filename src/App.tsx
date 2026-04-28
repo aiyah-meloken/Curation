@@ -282,6 +282,7 @@ function AppMain({ currentUser, onLogout }: {
       title: selectedFavorite.title ?? "",
       description: selectedFavorite.description,
       routing: selectedFavorite.routing,
+      subtype: null,
       article_date: null,
       read_at: selectedFavorite.created_at, // favorites are "read"
       queue_status: null,
@@ -312,6 +313,7 @@ function AppMain({ currentUser, onLogout }: {
           title: f.title ?? "",
           description: f.description,
           routing: f.routing,
+          subtype: null,
           article_date: f.article_meta?.publish_time ?? null,
           read_at: f.created_at,
           queue_status: null,
@@ -464,6 +466,7 @@ function AppMain({ currentUser, onLogout }: {
                   title: d.title,
                   description: null,
                   routing: null,
+                  subtype: null,
                   article_date: d.article_date,
                   read_at: null,
                   queue_status: null,
