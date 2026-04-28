@@ -241,8 +241,12 @@ export function ReaderPane({
       else cardKindLabel = "原文推送辅助卡";
     }
 
-    // Article markdown — soft cap at 12k chars to keep prompt size sane.
-    const ARTICLE_CHAR_LIMIT = 12000;
+    // Article markdown — soft cap at 40k chars. Sized off the prod dataset:
+    // longest original_push article is 34.8k, p99 across everything is ~19k,
+    // so 40k covers 100% of original_push (where the reader actually reads
+    // the original) and >99.9% of ai_curation. ~60-70k tokens worst case,
+    // comfortable for Claude/Codex/Gemini long-context agents.
+    const ARTICLE_CHAR_LIMIT = 40000;
     const articleRaw = promptArticleData?.rawMarkdown ?? "";
     const articleTruncated = articleRaw.length > ARTICLE_CHAR_LIMIT;
     const articleBody = articleTruncated
