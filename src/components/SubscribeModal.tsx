@@ -19,7 +19,10 @@ export function SubscribeModal({ open, onClose, onSuccess, targetUserIds }: Prop
   const [selected, setSelected] = useState<Map<string, PendingItem>>(new Map());
   const [submitting, setSubmitting] = useState(false);
   const [results, setResults] = useState<any[] | null>(null);
+  const [resolvingName, setResolvingName] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const qc = useQueryClient();
+  const discoverableKey = ["accounts", "discoverable", targetUserIds?.[0] ?? "self"] as const;
 
   const firstTarget = targetUserIds?.[0];
   const { data: discoverable = [], isLoading } = useDiscoverableAccounts(firstTarget, open);
@@ -50,16 +53,47 @@ export function SubscribeModal({ open, onClose, onSuccess, targetUserIds }: Prop
     });
   };
 
-  const addByName = () => {
+  const addByName = async () => {
     const name = search.trim();
-    if (!name) return;
-    const key = `name:${name}`;
-    setSelected(prev => {
-      const next = new Map(prev);
-      if (!next.has(key)) next.set(key, { name, label: name });
-      return next;
-    });
-    setSearch("");
+    if (!name || resolvingName) return;
+    setResolvingName(true);
+    setLookupError(null);
+    try {
+      const resp = await apiFetch("/bizes/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!resp.ok) {
+        const detail = await resp.json().catch(() => ({}));
+        throw new Error(detail?.detail || `lookup failed: ${resp.status}`);
+      }
+      const data: DiscoverableAccount = (await resp.json()).data;
+
+      // Inject into the discoverable cache so it shows up in the list and is
+      // handled by the same toggle/render path as any pre-existing biz.
+      qc.setQueryData<DiscoverableAccount[]>(discoverableKey, (prev) => {
+        const list = prev ?? [];
+        if (list.some((a) => a.biz === data.biz)) return list;
+        return [data, ...list];
+      });
+
+      // Clear the search so the user immediately sees the full list (with
+      // the new entry already at the top, selected) — same UX as picking
+      // any other biz from the list.
+      setSearch("");
+      // Auto-select.
+      const key = `biz:${data.biz}`;
+      setSelected((prev) => {
+        const next = new Map(prev);
+        if (!next.has(key)) next.set(key, { biz: data.biz, label: data.name });
+        return next;
+      });
+    } catch (e) {
+      setLookupError(e instanceof Error ? e.message : "lookup failed");
+    } finally {
+      setResolvingName(false);
+    }
   };
 
   const submit = async () => {
@@ -174,11 +208,22 @@ export function SubscribeModal({ open, onClose, onSuccess, targetUserIds }: Prop
               })}
               {search.trim() && !hasExactMatch && (
                 <div
-                  onClick={addByName}
+                  onClick={resolvingName ? undefined : addByName}
                   style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
-                           cursor: "pointer", color: "var(--accent-blue)", fontSize: "0.82rem" }}
+                           cursor: resolvingName ? "default" : "pointer",
+                           color: "var(--accent-blue)", fontSize: "0.82rem",
+                           opacity: resolvingName ? 0.6 : 1 }}
                 >
-                  <Plus size={14} /> 添加新公众号『{search.trim()}』
+                  {resolvingName
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <Plus size={14} />}
+                  添加新公众号『{search.trim()}』
+                </div>
+              )}
+              {lookupError && (
+                <div style={{ padding: "8px 12px", color: "var(--accent-red)",
+                              fontSize: "0.78rem" }}>
+                  {lookupError}
                 </div>
               )}
               {!isLoading && filtered.length === 0 && !search.trim() && (

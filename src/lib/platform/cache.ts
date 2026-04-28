@@ -10,6 +10,7 @@ export const setCacheAuthToken = impl.setCacheAuthToken;
 export const setApiBase = impl.setApiBase;
 export const getInboxCards = impl.getInboxCards;
 export const getFavorites = impl.getFavorites;
+export const loadFavoriteItems = impl.loadFavoriteItems;
 export const searchCards = impl.searchCards;
 export const markCardRead = impl.markCardRead;
 export const markCardUnread = impl.markCardUnread;

@@ -1,4 +1,5 @@
 import type { CachedCard, CachedFavorite, SearchResult, CachedAccount } from "../cache";
+import type { FavoriteItem } from "../../types";
 import { apiFetch } from "../api";
 
 export function initDbWithSecret(_secret: string): Promise<void> {
@@ -55,10 +56,44 @@ export async function getInboxCards(
 }
 
 export async function getFavorites(): Promise<CachedFavorite[]> {
+  // Kept for API symmetry with the Tauri impl. Web's /favorites already
+  // returns the rich, joined shape — see loadFavoriteItems below for the
+  // path actually used by the UI.
   const res = await apiFetch(`/favorites`);
   if (!res.ok) throw new Error(`GET /favorites failed: ${res.status}`);
   const data = await res.json();
-  return data.items ?? [];
+  const items: any[] = data.items ?? [];
+  return items.map((it) => ({
+    item_type: it.item_type,
+    item_id: it.item_id,
+    created_at: it.created_at,
+    synced: 1,
+  }));
+}
+
+export async function loadFavoriteItems(): Promise<FavoriteItem[]> {
+  // Web: server's GET /favorites already joins articles/cards and returns
+  // the display shape directly. Don't re-join against /inbox — that drops
+  // metadata for any favorited card the inbox filter currently excludes.
+  const res = await apiFetch(`/favorites`);
+  if (!res.ok) throw new Error(`GET /favorites failed: ${res.status}`);
+  const data = await res.json();
+  const items: any[] = data.items ?? [];
+  const sorted = [...items].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  return sorted.map((it): FavoriteItem => ({
+    item_type: it.item_type,
+    item_id: it.item_id,
+    created_at: it.created_at,
+    title: it.title ?? null,
+    description: it.description ?? null,
+    routing: (it.routing as FavoriteItem["routing"]) ?? null,
+    article_id: it.article_id ?? null,
+    article_title: it.article_title ?? null,
+    article_account: it.article_account ?? null,
+    article_meta: it.article_meta ?? null,
+  }));
 }
 
 export function searchCards(_query: string): Promise<SearchResult[]> {
@@ -96,7 +131,11 @@ export async function toggleFavoriteLocal(
   itemId: string,
   isFavorited: boolean,
 ): Promise<void> {
-  const endpoint = isFavorited ? `/favorites/batch` : `/favorites/batch-delete`;
+  // `isFavorited` is the CURRENT state (matches Tauri convention in
+  // src-tauri/src/commands.rs::toggle_favorite). Toggling means flipping it:
+  //   already favorited → remove   (batch-delete)
+  //   not favorited     → add      (batch)
+  const endpoint = isFavorited ? `/favorites/batch-delete` : `/favorites/batch`;
   const res = await apiFetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

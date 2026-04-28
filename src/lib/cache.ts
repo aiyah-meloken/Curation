@@ -57,6 +57,7 @@ export {
   setApiBase,
   getInboxCards,
   getFavorites,
+  loadFavoriteItems,
   searchCards,
   markCardRead,
   markCardUnread,
