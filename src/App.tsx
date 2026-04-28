@@ -29,6 +29,7 @@ import { useAppearance } from "./hooks/useAppearance";
 import { useFontShortcuts } from "./hooks/useFontShortcuts";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { startAcpListener } from "./lib/acp/listener";
+import { useCardStatusStore, isInboxUnread } from "./lib/acp/cardStatusStore";
 import { getAcpMaxAlive, setAcpMaxAlive } from "./lib/chat";
 import "./App.css";
 
@@ -223,19 +224,21 @@ function AppMain({ currentUser, onLogout }: {
     return () => clearTimeout(id);
   }, [notification]);
 
-  // Compute unread counts from FULL inbox (not filtered by biz)
+  // Compute unread counts from FULL inbox (not filtered by biz).
+  // "Unread" = !read_at OR an unviewed ACP chat reply (see isInboxUnread).
+  const acpByCard = useCardStatusStore((s) => s.byCard);
   const unreadCounts = useMemo(() => {
     const counts: Record<string, number> = { total: 0 };
     if (!allInboxItems) return counts;
     for (const item of allInboxItems) {
-      if (!item.read_at) {
+      if (isInboxUnread(item, acpByCard)) {
         counts.total = (counts.total || 0) + 1;
         const biz = item.article_meta.biz;
         if (biz) counts[biz] = (counts[biz] || 0) + 1;
       }
     }
     return counts;
-  }, [allInboxItems]);
+  }, [allInboxItems, acpByCard]);
 
   // Find selected inbox item
   const selectedItem: InboxItem | null = useMemo(() => {

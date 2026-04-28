@@ -7,6 +7,11 @@ import { useMarkAllRead, useMarkCardUnread } from "../hooks/useInbox";
 import type { SearchResult } from "../lib/cache";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { AcpRunningDot } from "./AcpRunningDot";
+import {
+  useCardStatusStore,
+  isInboxUnread,
+  type CardStatus,
+} from "../lib/acp/cardStatusStore";
 
 interface InboxListProps {
   items: InboxItem[] | undefined;
@@ -58,7 +63,8 @@ function InboxGroupHeader({
   onMarkAllRead: () => void;
   onMarkAllUnread: () => void;
 }) {
-  const unreadCount = group.items.filter((i) => !i.read_at).length;
+  const acpByCard = useCardStatusStore((s) => s.byCard);
+  const unreadCount = group.items.filter((i) => isInboxUnread(i, acpByCard)).length;
   const allRead = unreadCount === 0;
 
   return (
@@ -98,9 +104,15 @@ function InboxItemRow({
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const isAnalyzing = !!item.queue_status;
+  // Mirror the inbox-list "unread" predicate: an unviewed ACP reply pulls
+  // the card visually back to the unread style even if read_at is set.
+  const acpStatus = useCardStatusStore((s) =>
+    item.card_id ? s.byCard[item.card_id] : undefined,
+  );
+  const visuallyRead = !isAnalyzing && !!item.read_at && acpStatus !== "unread";
   return (
     <div
-      className={`inbox-item ${isSelected ? "selected" : ""} ${!isAnalyzing && item.read_at ? "read" : ""}`}
+      className={`inbox-item ${isSelected ? "selected" : ""} ${visuallyRead ? "read" : ""}`}
       onClick={onSelect}
       onContextMenu={onContextMenu}
     >
@@ -162,6 +174,10 @@ export function InboxList({
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const markAllRead = useMarkAllRead();
   const markUnread = useMarkCardUnread();
+  // ACP-aware unread state: a card stays in the 未读 list if either the
+  // card itself is unread OR a chat reply hasn't been viewed.
+  const acpByCard = useCardStatusStore((s) => s.byCard);
+  const setAcpStatus = useCardStatusStore((s) => s.setStatus);
   const deferredSearch = useDeferredValue(search);
   const isSearching = deferredSearch.trim().length >= 2;
   const { data: searchHits } = useInboxSearch(isSearching ? deferredSearch : "");
@@ -183,10 +199,10 @@ export function InboxList({
     if (!items) return [];
     let filtered = items;
     if (showUnreadOnly) {
-      filtered = filtered.filter((i) => !i.read_at);
+      filtered = filtered.filter((i) => isInboxUnread(i, acpByCard));
     }
     return groupByDateBucket(filtered);
-  }, [items, showUnreadOnly]);
+  }, [items, showUnreadOnly, acpByCard]);
 
   // Collapse state: default open for today/yesterday, conditionally for others
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -197,7 +213,7 @@ export function InboxList({
     if (group.key === "today" || group.key === "yesterday") return true;
     if (group.key === "thisWeek" || group.key === "lastWeek") {
       if ("items" in group && group.items.length > 0 && "read_at" in group.items[0]) {
-        return (group.items as InboxItem[]).some((i) => !i.read_at);
+        return (group.items as InboxItem[]).some((i) => isInboxUnread(i, acpByCard));
       }
       return true;
     }
@@ -209,11 +225,19 @@ export function InboxList({
   }
 
   function handleMarkGroupRead(group: DateGroup) {
+    // Server-side mark-read for cards whose `read_at` is null.
     const unreadIds = group.items
       .filter((i) => !i.read_at && i.card_id)
       .map((i) => i.card_id as string);
     if (unreadIds.length > 0) {
       markAllRead.mutate(unreadIds);
+    }
+    // Client-side: also clear any ACP-unread chat replies in this group, so
+    // cards that surfaced because of an unviewed reply leave the 未读 list.
+    for (const item of group.items) {
+      if (item.card_id && acpByCard[item.card_id] === "unread") {
+        setAcpStatus(item.card_id, "read" as CardStatus);
+      }
     }
   }
 

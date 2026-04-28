@@ -35,6 +35,24 @@ export function useCardStatus(cardId: string | null): CardStatus | null {
   return useCardStatusStore((s) => (cardId ? s.byCard[cardId] ?? null : null));
 }
 
+// Inbox-level "unread" predicate.
+//
+// A card surfaces in the 未读 list / counts when EITHER:
+//   1) it has never been opened (`read_at` is null), OR
+//   2) the card was opened but a chat reply arrived afterwards that the user
+//      hasn't viewed yet (ACP card status === "unread").
+//
+// The second case keeps the user from missing async agent replies on cards
+// they've already marked-as-read.
+export function isInboxUnread(
+  item: { read_at: string | null; card_id: string | null },
+  acpByCard: Record<string, CardStatus>,
+): boolean {
+  if (!item.read_at) return true;
+  if (item.card_id && acpByCard[item.card_id] === "unread") return true;
+  return false;
+}
+
 // When a card's last live runtime entry disappears (session evicted or ended),
 // transition its status to "closed" — unless it's currently "error", which
 // persists so the user keeps seeing the red dot.
