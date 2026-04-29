@@ -1,0 +1,35 @@
+/* Atlas (今日舆图) — Native palette and typography.
+ * Independent of curation-app's tokens.css; this is the cartographic
+ * vellum aesthetic, not the dark UI of the main inbox. */
+
+:root {
+  /* ===== Cartographic palette ===== */
+  --atlas-paper:    #e9dfc4;   /* parchment ground */
+  --atlas-paper-2:  #ddcfa8;   /* continent fill (one shade darker) */
+  --atlas-vellum:   #f1e8ce;   /* tags, popovers, cartouche backing */
+  --atlas-ocean:    #b9c5b3;   /* sea base (mostly hidden by wave pattern) */
+
+  --atlas-ink:      #2a2014;   /* primary ink: coastlines, compass, titles */
+  --atlas-ink-2:    #5a4222;   /* secondary ink: region dashes, body text */
+  --atlas-ink-faint: #8a7a52;  /* faded ink: read state, sparse labels */
+
+  --atlas-rust:     #a3711a;   /* settlement city (hot card) fill */
+  --atlas-rust-hi:  #c69248;   /* hover for hot */
+  --atlas-crimson:  #7a2a18;   /* trade route dashes */
+  --atlas-vermillion: #b8492a; /* accents: drop cap, ornament */
+
+  /* ===== Type ===== */
+  --atlas-display:  "Trajan Pro", "Cinzel", "Charter", Georgia, serif;
+  --atlas-serif:    "Charter", "Hoefler Text", "Bitstream Charter", Georgia, "Noto Serif SC", serif;
+  --atlas-mono:     "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --atlas-hand:     "Snell Roundhand", "Charter", cursive;
+
+  /* ===== Spacing / sizing ===== */
+  --atlas-cartouche-pad: 14px 24px 16px;
+  --atlas-popover-width: 280px;
+
+  /* ===== Shadows ===== */
+  --atlas-shadow-pinned:   4px 5px 0 rgba(42, 32, 20, 0.20);
+  --atlas-shadow-vellum:   0 1px 0 var(--atlas-ink-2);
+  --atlas-shadow-drawer:   -16px 0 32px rgba(42, 32, 20, 0.20);
+}

@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Radar №.06 — Botanical Plate</title>
+<style>
+:root {
+  --paper:    #ece2c8;
+  --paper-2:  #e0d5b6;
+  --foxing:   rgba(120,80,30,.10);
+  --bark:     #5a4a2a;
+  --bark-2:   #7a5a32;
+  --leaf:     #6b8d4a;
+  --leaf-2:   #4a6a32;
+  --leaf-fade: #a89a76;
+  --berry:    #a6452a;
+  --berry-2:  #7a2a18;
+  --ink:      #2a2014;
+  --ink-2:    #5a4a2a;
+  --muted:    #8a7a52;
+  --serif:    "Charter", "Hoefler Text", Georgia, "Noto Serif SC", serif;
+  --display:  "Cinzel", "Trajan Pro", "Charter", serif;
+  --hand:     "Snell Roundhand", "Charter", cursive;
+  --mono:     "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  overflow: hidden;
+  /* Aged paper foxing */
+  background-image:
+    radial-gradient(ellipse at 12% 18%, var(--foxing), transparent 35%),
+    radial-gradient(ellipse at 85% 70%, var(--foxing), transparent 30%),
+    radial-gradient(ellipse at 60% 30%, rgba(120,80,30,.05), transparent 40%),
+    repeating-linear-gradient(0deg, rgba(90,66,34,.012) 0 1px, transparent 1px 4px);
+}
+
+/* Plate frame — like a herbarium sheet with a thin double border */
+.plate-frame {
+  position: absolute;
+  inset: 28px;
+  border: 1px solid var(--ink);
+  outline: 1px solid var(--ink);
+  outline-offset: 4px;
+  pointer-events: none;
+}
+
+/* Header cartouche */
+.cartouche {
+  position: absolute;
+  top: 56px; left: 50%; transform: translateX(-50%);
+  text-align: center;
+  z-index: 5;
+}
+.cartouche .super {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 11px;
+  letter-spacing: 0.45em;
+  color: var(--bark);
+  text-transform: uppercase;
+}
+.cartouche h1 {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 30px;
+  margin: 4px 0 0;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.cartouche h1 em {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--berry);
+}
+.cartouche .sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+
+/* Specimen number bottom-right */
+.specimen-no {
+  position: absolute;
+  bottom: 56px; right: 56px;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  color: var(--ink-2);
+  text-align: right;
+}
+.specimen-no .label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.36em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-style: normal;
+}
+
+/* Pinned label (lower-left, like herbarium sheet) */
+.pinned-label {
+  position: absolute;
+  bottom: 56px; left: 56px;
+  width: 280px;
+  background: #f4ead0;
+  border: 1px solid var(--ink-2);
+  padding: 12px 16px;
+  font-family: var(--serif);
+  font-size: 12px;
+  color: var(--ink-2);
+  box-shadow: 2px 2px 0 rgba(90,66,34,.15);
+  transform: rotate(-1.5deg);
+  z-index: 5;
+}
+.pinned-label::before {
+  content: '⌗';
+  position: absolute; top: -6px; left: 14px;
+  background: var(--paper);
+  padding: 0 4px;
+  font-size: 14px;
+  color: var(--berry-2);
+}
+.pinned-label .h {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin-bottom: 6px;
+  border-bottom: 1px dotted var(--muted);
+  padding-bottom: 4px;
+}
+.pinned-label .legend-row {
+  display: flex; align-items: center; gap: 10px;
+  margin: 4px 0;
+}
+
+svg.plate { width: 100%; height: 100%; display: block; }
+
+/* Stems / branches */
+.trunk {
+  fill: none;
+  stroke: var(--bark);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.trunk.thin {
+  stroke-width: 1;
+}
+.trunk.faint {
+  stroke: var(--bark-2);
+  stroke-width: 0.7;
+  opacity: .7;
+}
+
+/* Leaves (regular cards) */
+.leaf {
+  fill: var(--leaf);
+  stroke: var(--leaf-2);
+  stroke-width: 0.5;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.leaf:hover { transform: scale(1.18); transform-origin: center; }
+.leaf.read {
+  fill: #b9a868;
+  stroke: var(--leaf-fade);
+  opacity: .55;
+}
+.leaf-vein {
+  stroke: var(--leaf-2);
+  stroke-width: 0.4;
+  fill: none;
+  opacity: .55;
+}
+
+/* Fruits / berries (聚合 cards) */
+.berry {
+  fill: var(--berry);
+  stroke: var(--berry-2);
+  stroke-width: 0.6;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.berry:hover { transform: scale(1.15); transform-origin: center; }
+.berry-stem {
+  stroke: var(--bark);
+  stroke-width: 0.6;
+  fill: none;
+}
+.berry-highlight {
+  fill: rgba(255,255,255,.35);
+  pointer-events: none;
+}
+
+/* Flowers (medium aggregate) */
+.petal {
+  fill: var(--berry);
+  fill-opacity: .85;
+  stroke: var(--berry-2);
+  stroke-width: 0.4;
+}
+.flower-center {
+  fill: #d4a45c;
+  stroke: var(--berry-2);
+  stroke-width: 0.4;
+}
+
+/* Tendrils (shared entities) — connecting branches */
+.tendril {
+  stroke: var(--leaf-2);
+  stroke-width: 0.7;
+  fill: none;
+  stroke-dasharray: 1 3;
+  opacity: .55;
+}
+
+/* Latin-style labels (genus/species) */
+.species-label {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 14px;
+  fill: var(--ink);
+  letter-spacing: 0.04em;
+}
+.species-label.faint {
+  fill: var(--muted);
+  opacity: .7;
+  font-size: 12px;
+}
+.subgenus-label {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 11px;
+  fill: var(--ink-2);
+}
+.subgenus-label.faint {
+  fill: var(--muted);
+  opacity: .65;
+}
+
+/* Bare branch label (sparse domains — empty herbarium folders) */
+.empty-folder-label {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  fill: var(--muted);
+  opacity: .55;
+  text-transform: uppercase;
+}
+
+/* Popover, drawer — same approach as others */
+.popover {
+  position: absolute; width: 280px;
+  background: #f4ead0;
+  border: 1.5px solid var(--ink);
+  padding: 14px 16px;
+  font-family: var(--serif);
+  display: none; z-index: 30;
+  box-shadow: 4px 4px 0 rgba(90,66,34,.18);
+  transform: rotate(-0.5deg);
+}
+.popover.show { display: block; }
+.popover .crest {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  color: var(--berry); text-transform: uppercase; margin-bottom: 6px;
+}
+.popover .name {
+  font-family: var(--display); font-style: italic; font-weight: 400;
+  font-size: 17px; margin: 0 0 6px; line-height: 1.25;
+}
+.popover .latin {
+  font-family: var(--serif); font-style: italic; font-size: 11px;
+  color: var(--bark); margin-bottom: 6px;
+}
+.popover .desc { font-size: 12.5px; color: var(--ink-2); line-height: 1.6; margin: 0 0 10px; }
+.popover .meta {
+  font-style: italic; font-size: 11px; color: var(--bark);
+  border-top: 1px dotted var(--muted); padding-top: 8px;
+  display: flex; justify-content: space-between;
+}
+.popover .mark-read {
+  width: 100%; margin-top: 12px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase;
+  background: var(--ink); color: var(--paper);
+  border: none; padding: 9px 0; cursor: pointer;
+}
+.popover .mark-read:hover { background: var(--berry); }
+
+.drawer-scrim { position: fixed; inset: 0; background: rgba(58,42,20,.4); display: none; z-index: 40; }
+.drawer-scrim.show { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 60vw; min-width: 600px; background: var(--paper); border-left: 2px double var(--ink); padding: 40px 56px; overflow: auto; transform: translateX(100%); transition: transform .32s cubic-bezier(.16,1,.3,1); z-index: 41; }
+.drawer.show { transform: translateX(0); }
+.drawer .close { position: absolute; top: 28px; right: 32px; width: 32px; height: 32px; border: 1px solid var(--ink); background: transparent; font-size: 16px; cursor: pointer; }
+.drawer .source-line { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; color: var(--berry); text-transform: uppercase; }
+.drawer h2 { font-family: var(--display); font-style: italic; font-weight: 400; font-size: 32px; margin: 8px 0 4px; }
+.drawer .latin-sub { font-family: var(--serif); font-style: italic; color: var(--bark); font-size: 14px; margin-bottom: 10px; }
+.drawer .byline { font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 13px; margin-bottom: 28px; border-bottom: 1px solid var(--ink); padding-bottom: 14px; }
+.drawer p { font-size: 16px; line-height: 1.8; margin: 0 0 14px; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="plate-frame"></div>
+
+<div class="cartouche">
+  <div class="super">— Hortus Curationis —</div>
+  <h1>Specimen <em>·</em> nº III · IV · MMXXVI</h1>
+  <div class="sub">Botanical plate of one day's harvest, drawn from the field.</div>
+</div>
+
+<svg class="plate" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+
+  <!-- ======= Plant 1: AI 模型 (largest plant, left side) ======= -->
+  <!-- Main stem rises from bottom-left -->
+  <g class="trunk">
+    <path d="M 280,820 Q 290,720 310,620 Q 340,500 380,400 Q 410,330 440,290"/>
+    <!-- Sub-branch: 预训练 (top branch with 1 berry + 3 leaves) -->
+    <path d="M 410,330 Q 380,280 360,230 Q 350,200 360,170"/>
+    <!-- Sub-branch: 推理 (mid branch) -->
+    <path d="M 380,400 Q 430,380 470,365"/>
+    <!-- Sub-branch: 视觉 (lower branch) -->
+    <path d="M 340,500 Q 380,510 420,500"/>
+  </g>
+
+  <!-- AI 模型 main label -->
+  <text class="species-label" x="160" y="780" transform="rotate(-2 160 780)">Modelorum officinalis</text>
+  <text class="subgenus-label" x="160" y="800" transform="rotate(-2 160 800)">— "AI 模型" —</text>
+
+  <!-- 预训练 sub-label -->
+  <text class="subgenus-label" x="365" y="155">subg. Pretrain</text>
+
+  <!-- BERRY at peak: c1 (DeepSeek hot) -->
+  <g class="card-marker" data-id="c1">
+    <line class="berry-stem" x1="360" y1="170" x2="360" y2="158"/>
+    <circle class="berry" cx="360" cy="148" r="11"/>
+    <ellipse class="berry-highlight" cx="356" cy="143" rx="3" ry="2"/>
+  </g>
+  <!-- LEAF: c2 -->
+  <g class="card-marker" data-id="c2">
+    <ellipse class="leaf" cx="385" cy="195" rx="9" ry="4" transform="rotate(50 385 195)"/>
+    <line class="leaf-vein" x1="380" y1="200" x2="390" y2="190"/>
+  </g>
+  <!-- LEAF: c3 -->
+  <g class="card-marker" data-id="c3">
+    <ellipse class="leaf" cx="335" cy="195" rx="8" ry="4" transform="rotate(-40 335 195)"/>
+  </g>
+  <!-- LEAF read: c4 -->
+  <g class="card-marker" data-id="c4">
+    <ellipse class="leaf read" cx="395" cy="240" rx="7" ry="3.5" transform="rotate(60 395 240)"/>
+  </g>
+
+  <!-- 推理 sub-label -->
+  <text class="subgenus-label" x="490" y="362">subg. Inference</text>
+  <!-- LEAF: c5 -->
+  <g class="card-marker" data-id="c5">
+    <ellipse class="leaf" cx="475" cy="362" rx="9" ry="4" transform="rotate(20 475 362)"/>
+    <line class="leaf-vein" x1="467" y1="364" x2="483" y2="360"/>
+  </g>
+  <!-- LEAF: c6 -->
+  <g class="card-marker" data-id="c6">
+    <ellipse class="leaf" cx="450" cy="380" rx="8" ry="3.5" transform="rotate(-15 450 380)"/>
+  </g>
+  <!-- LEAF read: c7 -->
+  <g class="card-marker" data-id="c7">
+    <ellipse class="leaf read" cx="495" cy="345" rx="7" ry="3.5" transform="rotate(35 495 345)"/>
+  </g>
+
+  <!-- 视觉 sub-label -->
+  <text class="subgenus-label" x="430" y="495">subg. Visus</text>
+  <!-- LEAF: c8 -->
+  <g class="card-marker" data-id="c8">
+    <ellipse class="leaf" cx="425" cy="495" rx="8" ry="4" transform="rotate(0 425 495)"/>
+  </g>
+  <!-- LEAF: c9 -->
+  <g class="card-marker" data-id="c9">
+    <ellipse class="leaf" cx="400" cy="510" rx="9" ry="4" transform="rotate(-15 400 510)"/>
+    <line class="leaf-vein" x1="392" y1="513" x2="408" y2="507"/>
+  </g>
+
+  <!-- ======= Plant 2: AI 产品 (right side, with flower at top) ======= -->
+  <g class="trunk">
+    <path d="M 1180,820 Q 1170,720 1150,620 Q 1120,510 1080,420 Q 1050,350 1020,310"/>
+    <!-- Agent branch (heavy with berries) -->
+    <path d="M 1080,420 Q 1100,360 1130,310 Q 1145,290 1140,255"/>
+    <!-- Coding branch -->
+    <path d="M 1050,350 Q 1010,335 970,330"/>
+    <!-- Media branch -->
+    <path d="M 1120,510 Q 1170,505 1210,500"/>
+  </g>
+
+  <!-- AI 产品 main label -->
+  <text class="species-label" x="1330" y="780" transform="rotate(2 1330 780)">Producti elegans</text>
+  <text class="subgenus-label" x="1330" y="800" transform="rotate(2 1330 800)">— "AI 产品" —</text>
+
+  <text class="subgenus-label" x="1145" y="245">subg. Agent</text>
+
+  <!-- BERRY: c10 (OpenClaw 4-source) - large fruit at top -->
+  <g class="card-marker" data-id="c10">
+    <line class="berry-stem" x1="1140" y1="255" x2="1140" y2="245"/>
+    <circle class="berry" cx="1140" cy="232" r="10"/>
+    <ellipse class="berry-highlight" cx="1136" cy="228" rx="3" ry="2"/>
+  </g>
+  <!-- FLOWER: c11 (GPT-5.5 3-source) - flower form -->
+  <g class="card-marker" data-id="c11">
+    <line class="berry-stem" x1="1120" y1="295" x2="1095" y2="278"/>
+    <!-- 5-petal flower -->
+    <g transform="translate(1095, 270)">
+      <ellipse class="petal" cx="0" cy="-7" rx="4" ry="6"/>
+      <ellipse class="petal" cx="6.7" cy="-2" rx="4" ry="6" transform="rotate(72 6.7 -2)"/>
+      <ellipse class="petal" cx="4" cy="6.5" rx="4" ry="6" transform="rotate(144 4 6.5)"/>
+      <ellipse class="petal" cx="-4" cy="6.5" rx="4" ry="6" transform="rotate(216 -4 6.5)"/>
+      <ellipse class="petal" cx="-6.7" cy="-2" rx="4" ry="6" transform="rotate(288 -6.7 -2)"/>
+      <circle class="flower-center" r="3"/>
+    </g>
+  </g>
+  <!-- LEAF: c12 -->
+  <g class="card-marker" data-id="c12">
+    <ellipse class="leaf" cx="1110" cy="335" rx="9" ry="4" transform="rotate(-25 1110 335)"/>
+    <line class="leaf-vein" x1="1102" y1="338" x2="1118" y2="332"/>
+  </g>
+
+  <text class="subgenus-label" x="918" y="328">subg. Coding</text>
+  <!-- LEAF read: c13 -->
+  <g class="card-marker" data-id="c13">
+    <ellipse class="leaf read" cx="965" cy="328" rx="8" ry="3.5" transform="rotate(0 965 328)"/>
+  </g>
+
+  <text class="subgenus-label" x="1225" y="497">subg. Media</text>
+  <!-- LEAF: c14 -->
+  <g class="card-marker" data-id="c14">
+    <ellipse class="leaf" cx="1215" cy="498" rx="9" ry="4" transform="rotate(15 1215 498)"/>
+    <line class="leaf-vein" x1="1207" y1="500" x2="1223" y2="496"/>
+  </g>
+
+  <!-- ======= Plant 3: 学术 (smaller plant, lower-center) ======= -->
+  <g class="trunk thin">
+    <path d="M 700,820 Q 705,750 720,680 Q 735,630 760,605"/>
+    <path d="M 735,680 Q 705,660 680,650"/>
+    <path d="M 760,605 Q 800,610 840,605"/>
+  </g>
+
+  <text class="species-label faint" x="630" y="800">Academiae humilis</text>
+  <text class="subgenus-label faint" x="630" y="816">— "学术研究" —</text>
+
+  <text class="subgenus-label" x="615" y="640">subg. Paper</text>
+  <!-- LEAF: c15 -->
+  <g class="card-marker" data-id="c15">
+    <ellipse class="leaf" cx="685" cy="650" rx="8" ry="3.5" transform="rotate(-30 685 650)"/>
+  </g>
+  <!-- LEAF: c16 -->
+  <g class="card-marker" data-id="c16">
+    <ellipse class="leaf" cx="725" cy="675" rx="8" ry="3.5" transform="rotate(20 725 675)"/>
+  </g>
+  <!-- LEAF read: c17 -->
+  <g class="card-marker" data-id="c17">
+    <ellipse class="leaf read" cx="710" cy="635" rx="7" ry="3" transform="rotate(50 710 635)"/>
+  </g>
+
+  <text class="subgenus-label" x="850" y="595">subg. Review</text>
+  <!-- LEAF: c18 -->
+  <g class="card-marker" data-id="c18">
+    <ellipse class="leaf" cx="845" cy="610" rx="9" ry="4" transform="rotate(10 845 610)"/>
+    <line class="leaf-vein" x1="837" y1="612" x2="853" y2="608"/>
+  </g>
+
+  <!-- ======= Sparse domain: 安全 (sprig with single leaf) ======= -->
+  <g class="trunk faint">
+    <path d="M 1430,820 Q 1430,760 1430,700 Q 1430,660 1420,640"/>
+  </g>
+  <text class="empty-folder-label" x="1430" y="835" text-anchor="middle">SECURITAS · sprig</text>
+  <text class="subgenus-label faint" x="1380" y="640">subg. Attack</text>
+  <!-- LEAF: c19 -->
+  <g class="card-marker" data-id="c19">
+    <ellipse class="leaf" cx="1420" cy="638" rx="9" ry="4" transform="rotate(-15 1420 638)"/>
+    <line class="leaf-vein" x1="1412" y1="641" x2="1428" y2="635"/>
+  </g>
+
+  <!-- ======= Sparse domain: 产业 (single sprig) ======= -->
+  <g class="trunk faint">
+    <path d="M 130,820 Q 132,760 140,720 Q 145,690 150,675"/>
+  </g>
+  <text class="empty-folder-label" x="130" y="835" text-anchor="middle">INDUSTRIA · sprig</text>
+  <text class="subgenus-label faint" x="170" y="675">subg. Survey</text>
+  <!-- LEAF: c20 -->
+  <g class="card-marker" data-id="c20">
+    <ellipse class="leaf" cx="155" cy="672" rx="8" ry="3.5" transform="rotate(20 155 672)"/>
+  </g>
+
+  <!-- ======= Empty stub branches (盲区) ======= -->
+  <g class="trunk faint">
+    <path d="M 880,820 Q 875,790 870,770" opacity=".4"/>
+    <path d="M 1280,820 Q 1278,790 1276,770" opacity=".4"/>
+    <path d="M 540,820 Q 542,790 545,770" opacity=".4"/>
+  </g>
+  <text class="empty-folder-label" x="540" y="835" text-anchor="middle" font-size="9" letter-spacing="0.45em">— ungrown —</text>
+  <text class="empty-folder-label" x="880" y="835" text-anchor="middle" font-size="9" letter-spacing="0.45em">— ungrown —</text>
+  <text class="empty-folder-label" x="1280" y="835" text-anchor="middle" font-size="9" letter-spacing="0.45em">— ungrown —</text>
+
+  <!-- ======= Tendrils between plants (shared entities) ======= -->
+  <!-- DeepSeek tendril: c1 (Plant 1 berry) → c10 (Plant 2 berry) - long graceful curl -->
+  <path class="tendril" d="M 365,148 Q 600,180 850,200 Q 1050,220 1140,232"/>
+  <!-- DeepSeek: c1 → c2 (within plant) -->
+  <path class="tendril" d="M 365,148 Q 380,160 385,195"/>
+  <!-- DeepSeek: c1 → c5 (across to inference branch) -->
+  <path class="tendril" d="M 365,148 Q 420,250 475,362"/>
+  <!-- OpenClaw: c10 → c12 -->
+  <path class="tendril" d="M 1140,232 Q 1130,290 1110,335"/>
+  <!-- OpenAI: c9 → c11 -->
+  <path class="tendril" d="M 400,510 Q 700,400 1095,275"/>
+
+</svg>
+
+<!-- Pinned legend label -->
+<div class="pinned-label">
+  <div class="h">Conventiones plantae</div>
+  <div class="legend-row">
+    <svg width="20" height="14"><circle cx="10" cy="7" r="6" fill="#a6452a" stroke="#7a2a18" stroke-width="0.6"/></svg>
+    <span style="font-style:italic">Bacca · 聚合果</span>
+  </div>
+  <div class="legend-row">
+    <svg width="20" height="14"><ellipse cx="10" cy="7" rx="7" ry="3" fill="#6b8d4a" stroke="#4a6a32" stroke-width="0.5"/></svg>
+    <span style="font-style:italic">Folium · 单叶</span>
+  </div>
+  <div class="legend-row">
+    <svg width="20" height="14"><ellipse cx="10" cy="7" rx="6" ry="2.5" fill="#b9a868" opacity=".6"/></svg>
+    <span style="font-style:italic">Folium siccum · 已读</span>
+  </div>
+  <div class="legend-row">
+    <svg width="32" height="6"><line x1="0" y1="3" x2="32" y2="3" stroke="#4a6a32" stroke-width="0.7" stroke-dasharray="1 3" opacity=".55"/></svg>
+    <span style="font-style:italic">Cirrus · 共享实体</span>
+  </div>
+</div>
+
+<!-- Specimen number -->
+<div class="specimen-no">
+  <div class="label">Specimen No.</div>
+  Folio CXIX
+</div>
+
+<!-- Popover -->
+<div class="popover" id="popover">
+  <div class="crest" id="po-crest">MODELORUM · PRETRAIN</div>
+  <h3 class="name" id="po-name">DeepSeek-V4 Pro API 限时 2.5 折</h3>
+  <div class="latin">Bacca rubra · 五源汇</div>
+  <p class="desc" id="po-desc">输入（缓存命中）降至 0.25 元/百万 token；下半年随昇腾 950 量产将进一步降价</p>
+  <div class="meta">
+    <span id="po-src">— ex 量子位</span>
+    <span id="po-hot">⚜ bacca</span>
+  </div>
+  <button class="mark-read" id="po-mark">— Folium siccum —</button>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawer-close">×</button>
+  <div class="source-line">— EX HORTO 量子位 · DIE XXVI —</div>
+  <h2 id="d-title">DeepSeek-V4 Pro API 限时 2.5 折</h2>
+  <div class="latin-sub">Bacca rubra Modelorum · Plantae nº I, ramus superior</div>
+  <div class="byline">Found at the apex of Plant I, dressed by five hands · IV / XXVI / MMXXVI</div>
+  <p>本日采集自 Modelorum 主株顶端的一颗显眼之果——DeepSeek-V4 Pro 模型 API 限时 2.5 折，输入（缓存命中）降至每百万 token 0.25 元。</p>
+  <p>此果由量子位、机器之心、两光年、极客公园、硅星人五家观测者同期记录，体型显著大于本园其余浆果。其根系（实体"DeepSeek"）藤蔓延伸至 Producti officinalis 主株顶端的另一颗果，构成跨株藤系。</p>
+</aside>
+
+<script>
+const script = document.createElement('script');
+script.src = '_data.js';
+document.head.appendChild(script);
+script.onload = function() { initRadar(); };
+function initRadar() {
+  const data = window.RADAR_DEMO;
+  const cardMap = {}; data.cards.forEach(c => cardMap[c.id] = c);
+  const sdMap = {}; data.smallDomains.forEach(s => sdMap[s.id] = s);
+  const bdMap = {}; data.bigDomains.forEach(b => bdMap[b.id] = b);
+  const popover = document.getElementById('popover');
+  const drawer = document.getElementById('drawer');
+  const scrim = document.getElementById('scrim');
+  document.querySelectorAll('.card-marker').forEach(g => {
+    const id = g.dataset.id;
+    const card = cardMap[id]; if (!card) return;
+    const marker = g.querySelector('circle, ellipse');
+    g.addEventListener('mouseenter', () => {
+      const sd = sdMap[card.sd], bd = bdMap[sd.big];
+      document.getElementById('po-crest').textContent = `${bd.short} · ${sd.label}`;
+      document.getElementById('po-name').textContent = card.title;
+      document.getElementById('po-desc').textContent = card.desc;
+      document.getElementById('po-src').textContent = `— ex ${card.src}`;
+      document.getElementById('po-hot').textContent = card.size > 1 ? `⚜ bacca · ${card.size} 源` : '· folium';
+      const rect = marker.getBoundingClientRect();
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      const right = cx > window.innerWidth - 300;
+      popover.style.left = right ? (cx - 290) + 'px' : (cx + 16) + 'px';
+      popover.style.top = (cy - 24) + 'px';
+      popover.classList.add('show');
+      popover.dataset.cardId = id;
+    });
+    g.addEventListener('mouseleave', () => {
+      setTimeout(() => { if (!popover.matches(':hover')) popover.classList.remove('show'); }, 80);
+    });
+    g.addEventListener('click', () => {
+      drawer.classList.add('show'); scrim.classList.add('show');
+      popover.classList.remove('show');
+      marker.classList.add('read');
+    });
+  });
+  popover.addEventListener('mouseleave', () => popover.classList.remove('show'));
+  document.getElementById('po-mark').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = popover.dataset.cardId;
+    const m = document.querySelector(`.card-marker[data-id="${id}"] circle, .card-marker[data-id="${id}"] ellipse`);
+    if (m) m.classList.add('read');
+    popover.classList.remove('show');
+  });
+  document.getElementById('drawer-close').addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  scrim.addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  document.addEventListener('keydown', e => { if (e.key==='Escape') { drawer.classList.remove('show'); scrim.classList.remove('show'); }});
+}
+</script>
+</body>
+</html>

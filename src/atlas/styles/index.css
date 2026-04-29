@@ -1,0 +1,31 @@
+/* Atlas — base reset and page background */
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+}
+body {
+  background: var(--atlas-paper);
+  color: var(--atlas-ink);
+  font-family: var(--atlas-serif);
+  overflow: hidden;
+  /* Aged parchment grain */
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(122, 90, 40, 0.10), transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(122, 90, 40, 0.12), transparent 50%),
+    repeating-linear-gradient(0deg, rgba(90, 66, 34, 0.025) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(90, 66, 34, 0.02) 0 1px, transparent 1px 4px);
+}
+
+#atlas-root { width: 100vw; height: 100vh; }
+
+/* Smooth slide animations for drawer / popover */
+@keyframes atlas-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes atlas-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}

@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Radar №.02 — Celestial Chart</title>
+<style>
+:root {
+  --night:    #0d1428;
+  --night-2:  #131c38;
+  --night-3:  #1d2a4a;
+  --gold:     #d4a45c;
+  --gold-hi:  #f0e0a8;
+  --gold-dim: #76705e;
+  --silver:   #c8c0a8;
+  --crimson:  #c97870;
+  --serif:    "Charter", "Hoefler Text", Georgia, "Noto Serif SC", serif;
+  --display:  "Cinzel", "Trajan Pro", "Charter", serif;
+  --mono:     "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--night);
+  color: var(--silver);
+  font-family: var(--serif);
+  overflow: hidden;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 50% 40%, var(--night-3), var(--night) 65%),
+    radial-gradient(ellipse 30% 30% at 80% 70%, rgba(212,164,92,0.06), transparent),
+    radial-gradient(ellipse 25% 25% at 25% 75%, rgba(120,120,200,0.04), transparent);
+}
+
+.stage { position: relative; width: 100vw; height: 100vh; }
+
+.titleblock {
+  position: absolute; top: 32px; left: 50%; transform: translateX(-50%);
+  text-align: center;
+  z-index: 5;
+}
+.titleblock .super {
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: 0.45em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.titleblock h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 30px;
+  letter-spacing: 0.18em;
+  color: var(--gold-hi);
+  margin: 6px 0 0;
+}
+.titleblock .sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--gold-dim);
+  margin-top: 6px;
+}
+
+svg.sky { width: 100%; height: 100%; display: block; }
+
+/* Stars (cards) */
+.star {
+  fill: var(--gold-hi);
+  cursor: pointer;
+  transition: filter .2s;
+  filter: drop-shadow(0 0 2px rgba(240,224,168,.6));
+}
+.star.read { fill: var(--gold-dim); filter: none; opacity: .35; }
+.star.hot { fill: #fff; filter: drop-shadow(0 0 6px rgba(240,224,168,.85)); }
+.star:hover { filter: drop-shadow(0 0 10px rgba(255,255,255,.95)); }
+
+/* Constellation lines (shared entities) */
+.constline {
+  stroke: var(--gold);
+  stroke-width: 0.6;
+  fill: none;
+  opacity: .55;
+}
+
+/* Grid */
+.grid-circle { stroke: rgba(200,192,168,.08); stroke-width: 0.4; fill: none; }
+.grid-line { stroke: rgba(200,192,168,.06); stroke-width: 0.4; }
+
+/* Region boundaries — celestial sectors for big domains */
+.sector-arc {
+  stroke: rgba(212,164,92,.4);
+  stroke-width: 0.6;
+  stroke-dasharray: 1 6;
+  fill: none;
+}
+.sector-fill {
+  fill: rgba(212,164,92,.04);
+}
+
+/* Labels */
+.constellation-label {
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  fill: var(--gold);
+  text-transform: uppercase;
+}
+.constellation-sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 11px;
+  fill: var(--silver);
+  opacity: .7;
+}
+.constellation-faint {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  fill: var(--gold-dim);
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+/* The dark — blind area indication */
+.void-vignette {
+  fill: url(#voidGrad);
+  pointer-events: none;
+}
+
+/* Legend */
+.legend {
+  position: absolute; bottom: 28px; left: 36px;
+  background: rgba(13,20,40,.7);
+  border: 1px solid rgba(212,164,92,.35);
+  padding: 14px 18px;
+  font-family: var(--serif);
+  font-size: 12px;
+  color: var(--silver);
+  backdrop-filter: blur(6px);
+  max-width: 240px;
+}
+.legend .h {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.legend .row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
+
+/* Compass — celestial directions */
+.compass {
+  position: absolute; bottom: 24px; right: 36px;
+  width: 110px; text-align: center;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.36em;
+  color: var(--gold-dim);
+}
+.compass svg { display: block; margin: 0 auto 4px; }
+
+/* Floating popover */
+.popover {
+  position: absolute;
+  width: 290px;
+  background: rgba(13,20,40,.92);
+  border: 1px solid var(--gold);
+  padding: 16px 18px 14px;
+  font-family: var(--serif);
+  display: none;
+  z-index: 30;
+  box-shadow: 0 12px 32px rgba(0,0,0,.55), 0 0 30px rgba(212,164,92,.15);
+  backdrop-filter: blur(8px);
+}
+.popover.show { display: block; }
+.popover .crest {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.popover .name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--gold-hi);
+  line-height: 1.25;
+  margin: 0 0 8px;
+}
+.popover .desc {
+  font-size: 13px;
+  color: var(--silver);
+  line-height: 1.65;
+  margin: 0 0 12px;
+  opacity: .85;
+}
+.popover .meta {
+  font-style: italic;
+  font-size: 11px;
+  color: var(--gold-dim);
+  display: flex; justify-content: space-between;
+  border-top: 1px solid rgba(212,164,92,.25);
+  padding-top: 8px;
+}
+.popover .mark-read {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 9px 0;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.popover .mark-read:hover { background: var(--gold); color: var(--night); }
+
+/* Drawer */
+.drawer-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 40; backdrop-filter: blur(2px); }
+.drawer-scrim.show { display: block; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 60vw; min-width: 600px;
+  background: var(--night-2);
+  border-left: 1px solid var(--gold);
+  padding: 40px 56px;
+  overflow: auto;
+  transform: translateX(100%);
+  transition: transform .32s cubic-bezier(.16,1,.3,1);
+  z-index: 41;
+  color: var(--silver);
+  box-shadow: -16px 0 32px rgba(0,0,0,.5);
+}
+.drawer.show { transform: translateX(0); }
+.drawer .close {
+  position: absolute; top: 28px; right: 32px;
+  width: 32px; height: 32px;
+  border: 1px solid var(--gold-dim);
+  background: transparent;
+  font-family: var(--display);
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--gold);
+}
+.drawer .source {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.drawer h2 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 32px;
+  color: var(--gold-hi);
+  margin: 10px 0 6px;
+  line-height: 1.2;
+}
+.drawer .byline {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--gold-dim);
+  font-size: 13px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid rgba(212,164,92,.2);
+  padding-bottom: 16px;
+}
+.drawer p {
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 0 0 14px;
+}
+
+.dimmed { opacity: .15 !important; transition: opacity .2s; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+<div class="titleblock">
+  <div class="super">Curation · Stellarium Cotidianum</div>
+  <h1>NOX · IV · XXVI</h1>
+  <div class="sub">Constellations of today's news, plotted on the celestial sphere.</div>
+</div>
+
+<svg class="sky" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="voidGrad" cx="50%" cy="55%" r="60%">
+      <stop offset="0%" stop-color="rgba(13,20,40,0)"/>
+      <stop offset="80%" stop-color="rgba(13,20,40,0.4)"/>
+      <stop offset="100%" stop-color="rgba(8,12,24,0.85)"/>
+    </radialGradient>
+    <filter id="starGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+  </defs>
+
+  <!-- Decorative grid: celestial coordinates -->
+  <g class="grid-circle">
+    <ellipse cx="800" cy="450" rx="700" ry="350"/>
+    <ellipse cx="800" cy="450" rx="500" ry="240"/>
+    <ellipse cx="800" cy="450" rx="300" ry="140"/>
+    <ellipse cx="800" cy="450" rx="120" ry="55"/>
+  </g>
+  <g class="grid-line">
+    <line x1="100" y1="450" x2="1500" y2="450"/>
+    <line x1="800" y1="80" x2="800" y2="820"/>
+    <line x1="320" y1="120" x2="1280" y2="780" stroke-dasharray="2 6" opacity=".6"/>
+    <line x1="320" y1="780" x2="1280" y2="120" stroke-dasharray="2 6" opacity=".6"/>
+  </g>
+
+  <!-- Decorative stars (sky background, not cards) -->
+  <g fill="var(--gold-hi)" opacity=".55">
+    <circle cx="180" cy="210" r="0.5"/><circle cx="240" cy="170" r="0.7"/><circle cx="320" cy="290" r="0.6"/>
+    <circle cx="120" cy="380" r="0.8"/><circle cx="180" cy="600" r="0.5"/><circle cx="80" cy="510" r="0.6"/>
+    <circle cx="1320" cy="200" r="0.5"/><circle cx="1440" cy="320" r="0.8"/><circle cx="1380" cy="440" r="0.5"/>
+    <circle cx="1480" cy="600" r="0.6"/><circle cx="1280" cy="780" r="0.7"/><circle cx="220" cy="780" r="0.5"/>
+    <circle cx="950" cy="120" r="0.4"/><circle cx="1080" cy="80" r="0.6"/><circle cx="700" cy="100" r="0.5"/>
+  </g>
+
+  <!-- Big-domain sectors: subtle band lines defining "regions of sky" -->
+  <!-- AI 模型 - left upper region -->
+  <path class="sector-fill" d="M 250,280 Q 380,220 540,260 L 540,440 Q 400,420 280,440 Z"/>
+  <text class="constellation-label" x="395" y="240" text-anchor="middle">VRSA · MODELORVM</text>
+
+  <!-- AI 产品 - upper right region -->
+  <path class="sector-fill" d="M 880,260 Q 1080,200 1280,250 L 1280,420 Q 1100,440 880,420 Z"/>
+  <text class="constellation-label" x="1080" y="240" text-anchor="middle">AVRIGA · PRODVCTI</text>
+
+  <!-- 学术 - lower center -->
+  <path class="sector-fill" d="M 580,540 Q 720,510 880,540 L 880,720 Q 720,720 580,720 Z"/>
+  <text class="constellation-label" x="730" y="525" text-anchor="middle">CORONA · ACADEMIA</text>
+
+  <!-- 安全 - sparse far right -->
+  <text class="constellation-faint" x="1340" y="540" text-anchor="middle">·  S E C V R I T A S  ·</text>
+
+  <!-- 产业 - sparse far left -->
+  <text class="constellation-faint" x="240" y="700" text-anchor="middle">·  I N D V S T R I A  ·</text>
+
+  <!-- Small-domain labels -->
+  <text class="constellation-sub" x="280" y="320">预训练</text>
+  <text class="constellation-sub" x="450" y="320">推理</text>
+  <text class="constellation-sub" x="500" y="400">视觉模型</text>
+
+  <text class="constellation-sub" x="920" y="320">Agent</text>
+  <text class="constellation-sub" x="1110" y="320">编程助手</text>
+  <text class="constellation-sub" x="1190" y="400">多媒体</text>
+
+  <text class="constellation-sub" x="610" y="610">论文</text>
+  <text class="constellation-sub" x="820" y="610">综述</text>
+
+  <text class="constellation-sub" x="1340" y="560" text-anchor="middle" opacity=".5">攻击手法</text>
+  <text class="constellation-sub" x="240" y="720" text-anchor="middle" opacity=".5">产业调研</text>
+
+  <!-- Constellation lines (shared entities) - drawn before stars -->
+  <g id="constlines">
+    <!-- DeepSeek lineage -->
+    <line class="constline" x1="320" y1="350" x2="430" y2="340"/>
+    <line class="constline" x1="320" y1="350" x2="500" y2="365"/>
+    <line class="constline" x1="320" y1="350" x2="950" y2="400"/>
+    <!-- OpenClaw -->
+    <line class="constline" x1="950" y1="400" x2="1010" y2="430"/>
+    <!-- OpenAI -->
+    <line class="constline" x1="540" y1="360" x2="1075" y2="395"/>
+  </g>
+
+  <!-- ============ STARS (cards) ============ -->
+  <!-- AI 模型 / 预训练 -->
+  <g class="card-marker" data-id="c1"><circle class="star hot" cx="320" cy="350" r="9"/></g>
+  <g class="card-marker" data-id="c2"><circle class="star" cx="380" cy="378" r="3.5"/></g>
+  <g class="card-marker" data-id="c3"><circle class="star" cx="280" cy="380" r="3"/></g>
+  <g class="card-marker" data-id="c4"><circle class="star read" cx="350" cy="395" r="2.5"/></g>
+
+  <!-- AI 模型 / 推理 -->
+  <g class="card-marker" data-id="c5"><circle class="star" cx="430" cy="340" r="4"/></g>
+  <g class="card-marker" data-id="c6"><circle class="star" cx="470" cy="370" r="3"/></g>
+  <g class="card-marker" data-id="c7"><circle class="star read" cx="450" cy="400" r="2.5"/></g>
+
+  <!-- AI 模型 / 视觉 -->
+  <g class="card-marker" data-id="c8"><circle class="star" cx="500" cy="365" r="3"/></g>
+  <g class="card-marker" data-id="c9"><circle class="star" cx="540" cy="360" r="3.5"/></g>
+
+  <!-- AI 产品 / Agent -->
+  <g class="card-marker" data-id="c10"><circle class="star hot" cx="950" cy="400" r="8"/></g>
+  <g class="card-marker" data-id="c11"><circle class="star hot" cx="1075" cy="395" r="7"/></g>
+  <g class="card-marker" data-id="c12"><circle class="star" cx="1010" cy="430" r="3"/></g>
+
+  <!-- AI 产品 / 编程 -->
+  <g class="card-marker" data-id="c13"><circle class="star read" cx="1140" cy="400" r="2.5"/></g>
+
+  <!-- AI 产品 / 多媒体 -->
+  <g class="card-marker" data-id="c14"><circle class="star" cx="1200" cy="395" r="3"/></g>
+
+  <!-- 学术 / 论文 -->
+  <g class="card-marker" data-id="c15"><circle class="star" cx="630" cy="640" r="3"/></g>
+  <g class="card-marker" data-id="c16"><circle class="star" cx="700" cy="660" r="3"/></g>
+  <g class="card-marker" data-id="c17"><circle class="star read" cx="680" cy="615" r="2.5"/></g>
+
+  <!-- 学术 / 综述 -->
+  <g class="card-marker" data-id="c18"><circle class="star" cx="830" cy="640" r="3"/></g>
+
+  <!-- 安全 -->
+  <g class="card-marker" data-id="c19"><circle class="star" cx="1340" cy="585" r="3.5"/></g>
+
+  <!-- 产业 -->
+  <g class="card-marker" data-id="c20"><circle class="star" cx="240" cy="745" r="3"/></g>
+
+  <!-- Vignette overlay for void emphasis -->
+  <rect class="void-vignette" width="1600" height="900"/>
+</svg>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="h">CAELI · TABVLA</div>
+  <div class="row">
+    <svg width="22" height="14"><circle cx="11" cy="7" r="6" fill="#fff" filter="drop-shadow(0 0 4px #f0e0a8)"/></svg>
+    <span style="font-style:italic">焰星 · 多源汇聚</span>
+  </div>
+  <div class="row">
+    <svg width="22" height="14"><circle cx="11" cy="7" r="3" fill="#f0e0a8"/></svg>
+    <span style="font-style:italic">恒星 · 单源新闻</span>
+  </div>
+  <div class="row">
+    <svg width="22" height="14"><circle cx="11" cy="7" r="2" fill="#76705e" opacity=".5"/></svg>
+    <span style="font-style:italic">冷星 · 已读</span>
+  </div>
+  <div class="row">
+    <svg width="32" height="6"><line x1="0" y1="3" x2="32" y2="3" stroke="#d4a45c" stroke-width="0.6" opacity=".55"/></svg>
+    <span style="font-style:italic">星座线 · 共享实体</span>
+  </div>
+</div>
+
+<!-- Compass -->
+<div class="compass">
+  <svg width="80" height="80" viewBox="-40 -40 80 80">
+    <circle r="36" fill="none" stroke="#d4a45c" stroke-width="0.4" opacity=".5"/>
+    <line x1="0" y1="-32" x2="0" y2="32" stroke="#d4a45c" stroke-width="0.4" opacity=".5"/>
+    <line x1="-32" y1="0" x2="32" y2="0" stroke="#d4a45c" stroke-width="0.4" opacity=".5"/>
+    <polygon points="0,-32 3,-3 -3,-3" fill="#f0e0a8"/>
+    <polygon points="0,32 3,3 -3,3" fill="#76705e"/>
+  </svg>
+  Hora · sidereal
+</div>
+
+<!-- Popover -->
+<div class="popover" id="popover">
+  <div class="crest" id="po-crest">AI MODELORVM · PRETRAINING</div>
+  <h3 class="name" id="po-name">DeepSeek-V4 Pro API 限时 2.5 折</h3>
+  <p class="desc" id="po-desc">输入（缓存命中）降至 0.25 元/百万 token；下半年随昇腾 950 量产将进一步降价</p>
+  <div class="meta">
+    <span id="po-src">— 量子位</span>
+    <span id="po-hot">⚹ 五源汇聚</span>
+  </div>
+  <button class="mark-read" id="po-mark">Marked As Read</button>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawer-close">×</button>
+  <div class="source" id="d-source">— 量子位 · STELLARVM —</div>
+  <h2 id="d-title">DeepSeek-V4 Pro API 限时 2.5 折</h2>
+  <div class="byline" id="d-byline">天文台二六年四月二六日 · 视黄经 312°</div>
+  <p>今晚的天空之上，一颗本不起眼的恒星骤然增亮——DeepSeek 实验室宣布其 V4-Pro 模型 API 限时 2.5 折，输入（缓存命中场景）降至每百万令牌 0.25 元。</p>
+  <p>同一时刻，量子位、机器之心、两光年等多个观测站同时记录到这一光变，其曲线在我们的星图上被绘成今夜最亮的"焰星"。</p>
+  <p>它与 OpenClaw 2026.4.24 之间存在一条由"DeepSeek"实体相连的星座线——这是今夜的主线之一。</p>
+</aside>
+
+</div>
+
+<script>
+const script = document.createElement('script');
+script.src = '_data.js';
+document.head.appendChild(script);
+script.onload = function() { initRadar(); };
+function initRadar() {
+  const data = window.RADAR_DEMO;
+  const cardMap = {}; data.cards.forEach(c => cardMap[c.id] = c);
+  const sdMap = {}; data.smallDomains.forEach(s => sdMap[s.id] = s);
+  const bdMap = {}; data.bigDomains.forEach(b => bdMap[b.id] = b);
+  const popover = document.getElementById('popover');
+  const drawer = document.getElementById('drawer');
+  const scrim = document.getElementById('scrim');
+
+  document.querySelectorAll('.card-marker').forEach(g => {
+    const id = g.dataset.id;
+    const card = cardMap[id]; if (!card) return;
+    const circle = g.querySelector('circle');
+    g.addEventListener('mouseenter', () => {
+      const sd = sdMap[card.sd], bd = bdMap[sd.big];
+      document.getElementById('po-crest').textContent = `${bd.label} · ${sd.label}`;
+      document.getElementById('po-name').textContent = card.title;
+      document.getElementById('po-desc').textContent = card.desc;
+      document.getElementById('po-src').textContent = `— ${card.src}`;
+      document.getElementById('po-hot').textContent = card.size > 1 ? `⚹ ${card.size} 源汇聚` : '· 单源';
+      const rect = circle.getBoundingClientRect();
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      const right = cx > window.innerWidth - 320;
+      popover.style.left = right ? (cx - 310) + 'px' : (cx + 16) + 'px';
+      popover.style.top = (cy - 24) + 'px';
+      popover.classList.add('show');
+      popover.dataset.cardId = id;
+    });
+    g.addEventListener('mouseleave', () => {
+      setTimeout(() => { if (!popover.matches(':hover')) popover.classList.remove('show'); }, 80);
+    });
+    g.addEventListener('click', () => {
+      drawer.classList.add('show'); scrim.classList.add('show');
+      popover.classList.remove('show');
+      circle.classList.add('read');
+    });
+  });
+  popover.addEventListener('mouseleave', () => popover.classList.remove('show'));
+  document.getElementById('po-mark').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = popover.dataset.cardId;
+    const c = document.querySelector(`.card-marker[data-id="${id}"] circle`);
+    if (c) c.classList.add('read');
+    popover.classList.remove('show');
+  });
+  document.getElementById('drawer-close').addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  scrim.addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  document.addEventListener('keydown', e => { if (e.key==='Escape') { drawer.classList.remove('show'); scrim.classList.remove('show'); }});
+}
+</script>
+</body>
+</html>

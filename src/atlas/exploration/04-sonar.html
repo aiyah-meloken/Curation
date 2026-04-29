@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Radar №.04 — Phosphor Sonar</title>
+<style>
+:root {
+  --void:     #050a09;
+  --deep:     #0a1110;
+  --hull:     #1a2a26;
+  --rivet:    #2a3a36;
+  --p-dim:    #3aa37b;
+  --p-mid:    #5fc995;
+  --p-hi:     #7ee0b4;
+  --p-flame:  #cffce6;
+  --amber:    #d4a45c;
+  --ink:      #050a09;
+  --label:    #6f9f88;
+  --mono:     "SF Mono", "JetBrains Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+  --serif:    "Charter", Georgia, "Noto Serif SC", serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--void);
+  color: var(--p-mid);
+  font-family: var(--mono);
+  /* CRT scanlines effect */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 50%, var(--deep), var(--void) 100%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.3) 0 1px, transparent 1px 3px);
+}
+
+.bezel {
+  position: absolute; inset: 24px;
+  border: 8px solid var(--hull);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,.6),
+    inset 0 0 4px rgba(126,224,180,.08),
+    0 0 0 1px var(--rivet);
+  overflow: hidden;
+  background: var(--deep);
+}
+
+/* Header strip — feels like a piece of military-academic equipment */
+.header-strip {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 56px;
+  border-bottom: 1px solid var(--rivet);
+  background: linear-gradient(180deg, var(--hull) 0%, var(--deep) 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 28px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--label);
+  text-transform: uppercase;
+  z-index: 5;
+}
+.header-strip .left { display: flex; gap: 28px; align-items: center; }
+.header-strip .center { color: var(--p-hi); font-weight: 600; letter-spacing: 0.36em; }
+.header-strip .right { display: flex; gap: 24px; }
+.header-strip .led {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--p-hi);
+  box-shadow: 0 0 8px var(--p-hi);
+  margin-right: 6px;
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* Main scope area */
+.scope-area {
+  position: absolute;
+  top: 56px; left: 0; right: 380px; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+svg.scope { width: 100%; height: 100%; max-width: calc(100vh - 56px - 56px); display: block; }
+
+/* Right panel — readout / data */
+.readout {
+  position: absolute;
+  top: 56px; right: 0; bottom: 0;
+  width: 380px;
+  border-left: 1px solid var(--rivet);
+  background: var(--deep);
+  padding: 24px 28px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--label);
+}
+.readout .section { margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px dashed rgba(58,163,123,.2); }
+.readout .h {
+  font-size: 9px; letter-spacing: 0.36em; color: var(--p-mid);
+  text-transform: uppercase; margin-bottom: 10px;
+  display: flex; justify-content: space-between;
+}
+.readout .h::after { content: '——'; color: var(--rivet); }
+.readout .row { display: flex; justify-content: space-between; padding: 3px 0; }
+.readout .row .v { color: var(--p-hi); }
+.readout .row .v.flame { color: var(--p-flame); font-weight: 600; }
+.readout .row .v.amber { color: var(--amber); }
+.readout pre {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--p-mid);
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* SVG styles */
+.scope-grid { stroke: var(--p-dim); stroke-width: 0.5; fill: none; opacity: .35; }
+.scope-grid.thick { opacity: .55; stroke-width: 0.8; }
+.scope-tick { stroke: var(--p-dim); stroke-width: 0.6; opacity: .5; }
+.scope-tick-text { font-family: var(--mono); font-size: 9px; fill: var(--label); letter-spacing: 0.16em; }
+
+.scan-fill { fill: var(--p-dim); opacity: .07; }
+.scan-edge { stroke: var(--p-hi); stroke-width: 1; opacity: .85; }
+
+.sector-edge { stroke: var(--p-mid); stroke-width: 0.6; opacity: .6; stroke-dasharray: 2 2; }
+
+.bigdomain-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.24em;
+  fill: var(--p-hi); text-transform: uppercase; font-weight: 600;
+}
+.bigdomain-label.faint { fill: var(--label); opacity: .55; font-weight: 400; }
+.smalldomain-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em;
+  fill: var(--p-mid); text-transform: uppercase; opacity: .8;
+}
+
+.blip {
+  fill: var(--p-hi);
+  stroke: var(--p-flame);
+  stroke-width: 0.5;
+  cursor: pointer;
+  filter: drop-shadow(0 0 3px var(--p-hi));
+}
+.blip.hot {
+  fill: var(--p-flame);
+  filter: drop-shadow(0 0 8px var(--p-hi));
+}
+.blip.read {
+  fill: var(--p-dim);
+  stroke: none;
+  opacity: .4;
+  filter: none;
+}
+
+.entity-line { stroke: var(--p-dim); stroke-width: 0.5; stroke-dasharray: 1 3; opacity: .55; fill: none; }
+
+/* Center pivot */
+.center-pivot {
+  fill: var(--p-flame);
+  stroke: var(--p-hi);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 6px var(--p-hi));
+}
+
+/* Popover */
+.popover {
+  position: absolute;
+  width: 280px;
+  background: var(--deep);
+  border: 1px solid var(--p-mid);
+  padding: 14px 16px;
+  font-family: var(--mono);
+  display: none;
+  z-index: 30;
+  box-shadow: 0 0 0 1px rgba(58,163,123,.2), 0 12px 32px rgba(0,0,0,.6);
+}
+.popover.show { display: block; }
+.popover .crest {
+  font-size: 9px; letter-spacing: 0.26em; color: var(--p-mid);
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.popover .name {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; line-height: 1.25;
+  color: var(--p-flame); margin: 0 0 8px;
+}
+.popover .desc {
+  font-family: var(--serif); font-size: 13px;
+  color: var(--p-mid); line-height: 1.6;
+  margin: 0 0 12px;
+}
+.popover .meta {
+  font-size: 10px; letter-spacing: 0.16em;
+  color: var(--label); border-top: 1px solid var(--rivet);
+  padding-top: 8px; display: flex; justify-content: space-between;
+}
+.popover .mark-read {
+  display: block; width: 100%; margin-top: 12px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em;
+  text-transform: uppercase;
+  background: transparent; color: var(--p-hi);
+  border: 1px solid var(--p-mid); padding: 9px 0; cursor: pointer;
+  transition: all .15s;
+}
+.popover .mark-read:hover { background: var(--p-hi); color: var(--ink); border-color: var(--p-hi); }
+
+/* Drawer */
+.drawer-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; z-index: 40; }
+.drawer-scrim.show { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 60vw; min-width: 600px; background: var(--deep); border-left: 1px solid var(--p-mid); padding: 40px 56px; overflow: auto; transform: translateX(100%); transition: transform .32s cubic-bezier(.16,1,.3,1); z-index: 41; color: var(--p-mid); font-family: var(--serif); }
+.drawer.show { transform: translateX(0); }
+.drawer .close { position: absolute; top: 28px; right: 32px; width: 32px; height: 32px; border: 1px solid var(--p-mid); background: transparent; font-family: var(--mono); font-size: 16px; cursor: pointer; color: var(--p-hi); }
+.drawer .source-line { font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em; color: var(--p-mid); text-transform: uppercase; }
+.drawer h2 { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 32px; color: var(--p-flame); margin: 8px 0 6px; }
+.drawer .byline { font-family: var(--mono); color: var(--label); font-size: 11px; margin-bottom: 28px; border-bottom: 1px solid var(--rivet); padding-bottom: 14px; letter-spacing: 0.18em; }
+.drawer p { font-size: 16px; line-height: 1.8; margin: 0 0 14px; color: var(--p-mid); }
+</style>
+</head>
+<body>
+
+<div class="bezel">
+
+<!-- Header strip -->
+<div class="header-strip">
+  <div class="left">
+    <span><span class="led"></span>SCOPE · ACTIVE</span>
+    <span>BAND · 02-160 MHZ</span>
+  </div>
+  <div class="center">CURATION SONAR · MODEL S-VII</div>
+  <div class="right">
+    <span>UTC 22:14:08</span>
+    <span>BRG 312°</span>
+    <span>RNG 200KM</span>
+  </div>
+</div>
+
+<!-- SVG scope -->
+<div class="scope-area">
+<svg class="scope" viewBox="-500 -400 1000 800">
+  <defs>
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(126,224,180,.14)"/>
+      <stop offset="100%" stop-color="rgba(126,224,180,0)"/>
+    </radialGradient>
+    <linearGradient id="scanGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(126,224,180,.05)"/>
+      <stop offset="100%" stop-color="rgba(126,224,180,.02)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Center glow -->
+  <circle cx="0" cy="0" r="380" fill="url(#centerGlow)"/>
+
+  <!-- Apex on left at (-340, 0). Fan 220° opening rightward (-110° to +110°) -->
+  <!-- Concentric range arcs (radius 80 / 160 / 240 / 320) -->
+  <g class="scope-grid">
+    <path d="M -340,0 L -340,0 m 27.36,-75.18 A 80,80 0 1,1 27.36,75.18" stroke-dasharray="1 4"/>
+    <path d="M -286.64,-150.35 A 160,160 0 1,1 -286.64,150.35" stroke-dasharray="1 6"/>
+    <path d="M -257.96,-225.53 A 240,240 0 1,1 -257.96,225.53" stroke-dasharray="2 6"/>
+  </g>
+  <g class="scope-grid thick">
+    <path d="M -229.28,-300.71 A 320,320 0 1,1 -229.28,300.71"/>
+  </g>
+
+  <!-- Range tick labels -->
+  <g class="scope-tick-text">
+    <text x="-260" y="-3">20</text>
+    <text x="-180" y="-3">50</text>
+    <text x="-100" y="-3">100</text>
+    <text x="-20"  y="-3">160</text>
+  </g>
+
+  <!-- Bearing rays (every 22°, fan -110° to +110° relative to apex) -->
+  <g class="scope-grid" transform="translate(-340,0)">
+    <line x1="0" y1="0" x2="335" y2="0" stroke-dasharray="0"/>
+    <line x1="0" y1="0" x2="313.6" y2="-117.45" stroke-dasharray="2 8"/>
+    <line x1="0" y1="0" x2="313.6" y2="117.45" stroke-dasharray="2 8"/>
+    <line x1="0" y1="0" x2="263.55" y2="-228.96" stroke-dasharray="2 8"/>
+    <line x1="0" y1="0" x2="263.55" y2="228.96" stroke-dasharray="2 8"/>
+    <line x1="0" y1="0" x2="184.85" y2="-321.96" stroke-dasharray="2 8"/>
+    <line x1="0" y1="0" x2="184.85" y2="321.96" stroke-dasharray="2 8"/>
+  </g>
+
+  <!-- Bearing degree labels along outer arc -->
+  <g class="scope-tick-text">
+    <text x="-15" y="-330" text-anchor="middle">110°</text>
+    <text x="-22" y="-238">85°</text>
+    <text x="-30" y="-128">50°</text>
+    <text x="-30" y="9">0°</text>
+    <text x="-30" y="138">-50°</text>
+    <text x="-22" y="248">-85°</text>
+    <text x="-15" y="350" text-anchor="middle">-110°</text>
+  </g>
+
+  <!-- Static scan beam (showing last sweep direction) -->
+  <g transform="translate(-340,0)">
+    <path class="scan-fill" d="M 0,0 L 335,0 A 335,335 0 0,0 263.55,-228.96 Z" />
+    <line class="scan-edge" x1="0" y1="0" x2="263.55" y2="-228.96" />
+  </g>
+
+  <!-- Big-domain sectors (carved from fan) -->
+  <!-- Layout: divide 220° into 5 sectors by domain density -->
+  <!-- aimodel: -110°..-40° (70°), aiproduct: -40°..30° (70°), academic: 30°..70° (40°), security: 70°..90° (20° sparse), industry: 90°..110° (20° sparse) -->
+  <g transform="translate(-340,0)">
+    <line class="sector-edge" x1="0" y1="0" x2="313.6" y2="-117.45"/> <!-- 110° / -110° -->
+    <line class="sector-edge" x1="0" y1="0" x2="256.7" y2="-215.4"/> <!-- -40° -->
+    <line class="sector-edge" x1="0" y1="0" x2="289.99" y2="167.5"/> <!-- 30° -->
+    <line class="sector-edge" x1="0" y1="0" x2="114.59" y2="314.78"/> <!-- 70° -->
+    <line class="sector-edge" x1="0" y1="0" x2="58.31" y2="328.95"/> <!-- 80°  for security/industry split -->
+  </g>
+
+  <!-- Big domain labels (at outer arc, mid-sector angle) -->
+  <g transform="translate(-340,0)">
+    <text class="bigdomain-label" x="240" y="-260" text-anchor="middle">AI · MODEL</text>
+    <text class="bigdomain-label" x="320" y="-60" text-anchor="middle">PRODUCT</text>
+    <text class="bigdomain-label" x="320" y="170" text-anchor="middle">ACADEMIC</text>
+    <text class="bigdomain-label faint" x="190" y="290" text-anchor="middle">SEC.</text>
+    <text class="bigdomain-label faint" x="100" y="335" text-anchor="middle">IND.</text>
+  </g>
+
+  <!-- Small domain labels (mid radius) -->
+  <g transform="translate(-340,0)">
+    <text class="smalldomain-label" x="170" y="-265" text-anchor="middle">PRETRAIN</text>
+    <text class="smalldomain-label" x="245" y="-185" text-anchor="middle">INFER</text>
+    <text class="smalldomain-label" x="270" y="-110" text-anchor="middle">VISION</text>
+    <text class="smalldomain-label" x="290" y="-30" text-anchor="middle">AGENT</text>
+    <text class="smalldomain-label" x="295" y="55" text-anchor="middle">CODING</text>
+    <text class="smalldomain-label" x="270" y="135" text-anchor="middle">MEDIA</text>
+    <text class="smalldomain-label" x="250" y="195" text-anchor="middle">PAPER</text>
+    <text class="smalldomain-label" x="195" y="240" text-anchor="middle">REVIEW</text>
+  </g>
+
+  <!-- Entity lines (drawn before blips) -->
+  <g transform="translate(-340,0)">
+    <!-- DeepSeek lineage -->
+    <line class="entity-line" x1="120" y1="-200" x2="170" y2="-145"/>
+    <line class="entity-line" x1="120" y1="-200" x2="200" y2="-110"/>
+    <line class="entity-line" x1="120" y1="-200" x2="280" y2="-50"/>
+    <!-- OpenClaw -->
+    <line class="entity-line" x1="280" y1="-50" x2="240" y2="0"/>
+    <!-- OpenAI -->
+    <line class="entity-line" x1="225" y1="-65" x2="280" y2="-50"/>
+  </g>
+
+  <!-- Blips (cards) -->
+  <g transform="translate(-340,0)">
+    <!-- AI 模型 / 预训练 -->
+    <g class="card-marker" data-id="c1"><circle class="blip hot" cx="120" cy="-200" r="9"/></g>
+    <g class="card-marker" data-id="c2"><circle class="blip" cx="170" cy="-180" r="3.5"/></g>
+    <g class="card-marker" data-id="c3"><circle class="blip" cx="135" cy="-235" r="3"/></g>
+    <g class="card-marker" data-id="c4"><circle class="blip read" cx="100" cy="-235" r="2.5"/></g>
+
+    <!-- AI 模型 / 推理 -->
+    <g class="card-marker" data-id="c5"><circle class="blip" cx="170" cy="-145" r="3.5"/></g>
+    <g class="card-marker" data-id="c6"><circle class="blip" cx="225" cy="-160" r="3"/></g>
+    <g class="card-marker" data-id="c7"><circle class="blip read" cx="200" cy="-115" r="2.5"/></g>
+
+    <!-- AI 模型 / 视觉 -->
+    <g class="card-marker" data-id="c8"><circle class="blip" cx="200" cy="-110" r="3"/></g>
+    <g class="card-marker" data-id="c9"><circle class="blip" cx="225" cy="-65" r="3.5"/></g>
+
+    <!-- AI 产品 / Agent -->
+    <g class="card-marker" data-id="c10"><circle class="blip hot" cx="280" cy="-50" r="8"/></g>
+    <g class="card-marker" data-id="c11"><circle class="blip hot" cx="285" cy="0" r="7"/></g>
+    <g class="card-marker" data-id="c12"><circle class="blip" cx="240" cy="0" r="3"/></g>
+
+    <!-- AI 产品 / 编程 -->
+    <g class="card-marker" data-id="c13"><circle class="blip read" cx="290" cy="40" r="2.5"/></g>
+
+    <!-- AI 产品 / 多媒体 -->
+    <g class="card-marker" data-id="c14"><circle class="blip" cx="265" cy="120" r="3"/></g>
+
+    <!-- 学术 / 论文 -->
+    <g class="card-marker" data-id="c15"><circle class="blip" cx="225" cy="160" r="3"/></g>
+    <g class="card-marker" data-id="c16"><circle class="blip" cx="245" cy="200" r="3"/></g>
+    <g class="card-marker" data-id="c17"><circle class="blip read" cx="195" cy="195" r="2.5"/></g>
+
+    <!-- 学术 / 综述 -->
+    <g class="card-marker" data-id="c18"><circle class="blip" cx="195" cy="240" r="3"/></g>
+
+    <!-- 安全 -->
+    <g class="card-marker" data-id="c19"><circle class="blip" cx="155" cy="265" r="3.5"/></g>
+
+    <!-- 产业 -->
+    <g class="card-marker" data-id="c20"><circle class="blip" cx="80" cy="280" r="3"/></g>
+  </g>
+
+  <!-- Center pivot -->
+  <circle class="center-pivot" cx="-340" cy="0" r="4"/>
+  <text x="-355" y="3" text-anchor="end" class="scope-tick-text" fill="var(--p-flame)">SHIP</text>
+
+  <!-- Reverse "未照射" — large dim arc area on the LEFT -->
+  <text x="-450" y="-10" text-anchor="middle" class="scope-tick-text" fill="var(--label)" opacity=".55">UNSCANNED</text>
+  <text x="-450" y="6" text-anchor="middle" class="scope-tick-text" fill="var(--label)" opacity=".55">— REAR ARC —</text>
+</svg>
+</div>
+
+<!-- Right readout panel -->
+<aside class="readout">
+  <div class="section">
+    <div class="h">SCAN SUMMARY <span></span></div>
+    <div class="row"><span>CARDS · TOTAL</span><span class="v">20</span></div>
+    <div class="row"><span>CARDS · UNREAD</span><span class="v flame">15</span></div>
+    <div class="row"><span>CARDS · HOT</span><span class="v amber">3</span></div>
+    <div class="row"><span>EDGES · ENTITY</span><span class="v">5</span></div>
+  </div>
+
+  <div class="section">
+    <div class="h">SECTOR · DENSITY <span></span></div>
+    <div class="row"><span>AI · MODEL</span><span class="v">9 ███████</span></div>
+    <div class="row"><span>AI · PRODUCT</span><span class="v">5 ████</span></div>
+    <div class="row"><span>ACADEMIC</span><span class="v">4 ███</span></div>
+    <div class="row"><span>SECURITY</span><span class="v amber">1 ▪</span></div>
+    <div class="row"><span>INDUSTRY</span><span class="v amber">1 ▪</span></div>
+  </div>
+
+  <div class="section">
+    <div class="h">RECENT BLIPS <span></span></div>
+    <pre>22:14:02  AI·MODEL  □ DeepSeek-V4 Pro
+22:13:40  AI·PROD   □ OpenClaw 2026.4.24
+22:12:55  AI·PROD   □ GPT-5.5
+22:11:20  ACADEMIC  · MathForge
+22:10:08  SECURITY  · Prompt injection
+22:08:51  INDUSTRY  · Epoch AI 万人调研
+                    ...</pre>
+  </div>
+
+  <div class="section" style="border-bottom: none;">
+    <div class="h">REAR ARC <span></span></div>
+    <pre>BEARING ±110° to ±180°
+NO SIGNAL · UNSCANNED
+— politics
+— consumer
+— climate
+— biotech
+— ...</pre>
+  </div>
+</aside>
+
+</div>
+
+<!-- Popover -->
+<div class="popover" id="popover">
+  <div class="crest" id="po-crest">AI · MODEL / PRETRAIN</div>
+  <h3 class="name" id="po-name">DeepSeek-V4 Pro API 限时 2.5 折</h3>
+  <p class="desc" id="po-desc">输入（缓存命中）降至 0.25 元/百万 token；下半年随昇腾 950 量产将进一步降价</p>
+  <div class="meta">
+    <span id="po-src">SRC · 量子位</span>
+    <span id="po-hot">★ 5 SRC</span>
+  </div>
+  <button class="mark-read" id="po-mark">MARK · ACK</button>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawer-close">×</button>
+  <div class="source-line">SRC · 量子位 · TIME 22:14:02 UTC</div>
+  <h2 id="d-title">DeepSeek-V4 Pro API 限时 2.5 折</h2>
+  <div class="byline">BRG 312° · RNG 102KM · CONFIDENCE HIGH · CORROBORATED ×5</div>
+  <p>智元二六年四月二十六日，DeepSeek 实验室宣布其 V4-Pro 模型 API 限时 2.5 折，输入（缓存命中）降至每百万 token 0.25 元。</p>
+  <p>该信号在过去三小时内被多个传感器同时拾取，包含 量子位 / 机器之心 / 两光年 / 极客公园 / 硅星人 等五个来源，强度评级为 FLAME。</p>
+</aside>
+
+<script>
+const script = document.createElement('script');
+script.src = '_data.js';
+document.head.appendChild(script);
+script.onload = function() { initRadar(); };
+function initRadar() {
+  const data = window.RADAR_DEMO;
+  const cardMap = {}; data.cards.forEach(c => cardMap[c.id] = c);
+  const sdMap = {}; data.smallDomains.forEach(s => sdMap[s.id] = s);
+  const bdMap = {}; data.bigDomains.forEach(b => bdMap[b.id] = b);
+  const popover = document.getElementById('popover');
+  const drawer = document.getElementById('drawer');
+  const scrim = document.getElementById('scrim');
+  document.querySelectorAll('.card-marker').forEach(g => {
+    const id = g.dataset.id;
+    const card = cardMap[id]; if (!card) return;
+    const blip = g.querySelector('circle');
+    g.addEventListener('mouseenter', () => {
+      const sd = sdMap[card.sd], bd = bdMap[sd.big];
+      document.getElementById('po-crest').textContent = `${bd.short} · ${sd.label.toUpperCase()}`;
+      document.getElementById('po-name').textContent = card.title;
+      document.getElementById('po-desc').textContent = card.desc;
+      document.getElementById('po-src').textContent = `SRC · ${card.src}`;
+      document.getElementById('po-hot').textContent = card.size > 1 ? `★ ${card.size} SRC` : '· 1 SRC';
+      const rect = blip.getBoundingClientRect();
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      const right = cx > window.innerWidth - 320;
+      popover.style.left = right ? (cx - 300) + 'px' : (cx + 16) + 'px';
+      popover.style.top = (cy - 24) + 'px';
+      popover.classList.add('show');
+      popover.dataset.cardId = id;
+    });
+    g.addEventListener('mouseleave', () => {
+      setTimeout(() => { if (!popover.matches(':hover')) popover.classList.remove('show'); }, 80);
+    });
+    g.addEventListener('click', () => {
+      drawer.classList.add('show'); scrim.classList.add('show');
+      popover.classList.remove('show');
+      blip.classList.add('read');
+    });
+  });
+  popover.addEventListener('mouseleave', () => popover.classList.remove('show'));
+  document.getElementById('po-mark').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = popover.dataset.cardId;
+    const c = document.querySelector(`.card-marker[data-id="${id}"] circle`);
+    if (c) c.classList.add('read');
+    popover.classList.remove('show');
+  });
+  document.getElementById('drawer-close').addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  scrim.addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  document.addEventListener('keydown', e => { if (e.key==='Escape') { drawer.classList.remove('show'); scrim.classList.remove('show'); }});
+}
+</script>
+</body>
+</html>

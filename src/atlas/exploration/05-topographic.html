@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Radar №.05 — Topographic Survey</title>
+<style>
+:root {
+  --paper:    #f0eadc;
+  --paper-2:  #e6dec5;
+  --tint:     #d8c89e;
+  --line:     #7a6a44;
+  --line-2:   #a89a76;
+  --ink:      #3a2a14;
+  --ink-2:    #5a4222;
+  --water:    #b8c5b8;
+  --vermillion: #b8492a;
+  --bistre:   #5a3a1a;
+  --serif:    "Charter", "Hoefler Text", Georgia, "Noto Serif SC", serif;
+  --display:  "Charter", "Bodoni 72", serif;
+  --mono:     "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  overflow: hidden;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(122,90,40,.012) 0 1px, transparent 1px 3px);
+}
+
+/* Survey title block — drafted in margin like a USGS quad */
+.survey-block {
+  position: absolute;
+  top: 32px; left: 36px;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  padding: 12px 16px 14px;
+  max-width: 320px;
+  z-index: 5;
+}
+.survey-block .super {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--ink-2);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+.survey-block h1 {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 24px;
+  margin: 0 0 4px;
+  letter-spacing: 0.01em;
+}
+.survey-block .sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.survey-block .quad-info {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--line);
+  text-transform: uppercase;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px dotted var(--line-2);
+  padding-top: 6px;
+}
+
+/* Margin scale-bar */
+.scale-block {
+  position: absolute;
+  bottom: 32px; left: 36px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--line);
+  text-transform: uppercase;
+  background: var(--paper);
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+}
+.scale-block svg { display: block; margin: 6px 0 4px; }
+.scale-block .legend-row {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--serif); font-style: italic; text-transform: none;
+  letter-spacing: 0; font-size: 11px; color: var(--ink-2);
+  margin: 4px 0;
+}
+
+/* Compass */
+.compass {
+  position: absolute;
+  bottom: 36px; right: 36px;
+  width: 90px; height: 90px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+svg.terrain { width: 100%; height: 100%; display: block; }
+
+/* Contour lines — the heart of this paradigm */
+.contour {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 0.5;
+  opacity: .7;
+}
+.contour.thick { stroke-width: 0.85; opacity: .9; }
+.contour.fill {
+  fill: var(--tint);
+  fill-opacity: 0.18;
+  stroke: var(--line);
+  stroke-width: 0.4;
+}
+.contour-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  fill: var(--line);
+}
+
+/* Big domain - massif label */
+.massif-label {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  fill: var(--bistre);
+}
+.massif-label.faint {
+  font-size: 13px;
+  fill: var(--line-2);
+  opacity: .8;
+}
+
+/* Small domain - peak label */
+.peak-label {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12px;
+  fill: var(--ink-2);
+}
+.peak-label.faint {
+  fill: var(--line);
+  opacity: .7;
+  font-size: 11px;
+}
+
+/* Card markers - peak triangles for hot, dots for ordinary */
+.peak-marker {
+  fill: var(--vermillion);
+  stroke: var(--ink);
+  stroke-width: 0.6;
+  cursor: pointer;
+  transition: transform .18s ease;
+}
+.peak-marker.read {
+  fill: var(--paper-2);
+  stroke: var(--line-2);
+  opacity: .5;
+}
+.peak-marker:hover { transform: scale(1.2); transform-origin: center; }
+.dot-marker {
+  fill: var(--bistre);
+  stroke: var(--paper);
+  stroke-width: 1.2;
+  cursor: pointer;
+}
+.dot-marker.read {
+  fill: var(--line-2);
+  opacity: .45;
+}
+
+/* Spot heights — like elevations on a topo map */
+.spot-height {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  fill: var(--ink-2);
+}
+
+/* Trails (shared entities) — like footpaths between summits */
+.trail {
+  stroke: var(--vermillion);
+  stroke-width: 0.7;
+  fill: none;
+  stroke-dasharray: 1 2;
+  opacity: .55;
+}
+
+/* "Plain" indication — vast emptiness with shrub stipple */
+.shrub { fill: var(--line); opacity: .35; }
+.plain-label {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.32em;
+  fill: var(--line-2);
+  text-transform: uppercase;
+  opacity: .5;
+}
+
+/* Gridlines (graticule) */
+.graticule { stroke: var(--line-2); stroke-width: 0.3; opacity: .25; }
+
+/* Popover */
+.popover {
+  position: absolute;
+  width: 270px;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  padding: 14px 16px 12px;
+  box-shadow: 4px 4px 0 var(--line-2);
+  display: none;
+  z-index: 30;
+  font-family: var(--serif);
+}
+.popover.show { display: block; }
+.popover .crest {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  color: var(--vermillion); text-transform: uppercase; margin-bottom: 6px;
+}
+.popover .name {
+  font-family: var(--display); font-style: italic; font-weight: 400;
+  font-size: 17px; margin: 0 0 6px; line-height: 1.25;
+}
+.popover .desc {
+  font-size: 12.5px; color: var(--ink-2); line-height: 1.6; margin: 0 0 10px;
+}
+.popover .meta {
+  font-style: italic; font-size: 11px; color: var(--line);
+  border-top: 1px dotted var(--line-2); padding-top: 8px;
+  display: flex; justify-content: space-between;
+}
+.popover .mark-read {
+  width: 100%; margin-top: 12px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase;
+  background: var(--ink); color: var(--paper);
+  border: none; padding: 9px 0; cursor: pointer;
+}
+.popover .mark-read:hover { background: var(--vermillion); }
+
+/* Drawer */
+.drawer-scrim { position: fixed; inset: 0; background: rgba(58,42,20,.4); display: none; z-index: 40; }
+.drawer-scrim.show { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 60vw; min-width: 600px; background: var(--paper); border-left: 1.5px solid var(--ink); padding: 40px 56px; overflow: auto; transform: translateX(100%); transition: transform .32s cubic-bezier(.16,1,.3,1); z-index: 41; }
+.drawer.show { transform: translateX(0); }
+.drawer .close { position: absolute; top: 28px; right: 32px; width: 32px; height: 32px; border: 1px solid var(--ink); background: transparent; font-size: 16px; cursor: pointer; }
+.drawer .source-line { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; color: var(--vermillion); text-transform: uppercase; }
+.drawer h2 { font-family: var(--display); font-style: italic; font-weight: 400; font-size: 32px; margin: 8px 0 4px; }
+.drawer .byline { font-family: var(--serif); font-style: italic; color: var(--line); font-size: 13px; margin-bottom: 28px; border-bottom: 1px solid var(--ink); padding-bottom: 14px; }
+.drawer p { font-size: 16px; line-height: 1.8; margin: 0 0 14px; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<svg class="terrain" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+  <!-- Graticule -->
+  <g class="graticule">
+    <line x1="0" y1="225" x2="1600" y2="225"/>
+    <line x1="0" y1="450" x2="1600" y2="450"/>
+    <line x1="0" y1="675" x2="1600" y2="675"/>
+    <line x1="320"  y1="0" x2="320"  y2="900"/>
+    <line x1="640"  y1="0" x2="640"  y2="900"/>
+    <line x1="960"  y1="0" x2="960"  y2="900"/>
+    <line x1="1280" y1="0" x2="1280" y2="900"/>
+  </g>
+
+  <!-- Plain (blind area) shrub stipple - bottom-left + far-right -->
+  <g class="shrub">
+    <circle cx="120" cy="800" r="1.5"/><circle cx="180" cy="780" r="1.5"/><circle cx="220" cy="820" r="1.5"/>
+    <circle cx="280" cy="800" r="1.5"/><circle cx="160" cy="850" r="1.5"/><circle cx="200" cy="860" r="1.5"/>
+    <circle cx="100" cy="780" r="1.5"/><circle cx="140" cy="820" r="1.5"/><circle cx="240" cy="780" r="1.5"/>
+    <circle cx="1500" cy="170" r="1.5"/><circle cx="1450" cy="190" r="1.5"/><circle cx="1480" cy="220" r="1.5"/>
+    <circle cx="1420" cy="170" r="1.5"/><circle cx="1500" cy="240" r="1.5"/>
+    <circle cx="1460" cy="800" r="1.5"/><circle cx="1500" cy="780" r="1.5"/><circle cx="1520" cy="820" r="1.5"/>
+  </g>
+
+  <text class="plain-label" x="180" y="800" text-anchor="middle">PLAIN ·</text>
+  <text class="plain-label" x="180" y="824" text-anchor="middle">UNSURVEYED</text>
+
+  <text class="plain-label" x="1480" y="200" text-anchor="middle" font-size="11">— Salt Flats —</text>
+
+  <!-- ========== MASSIF 1: AI 模型 ========== -->
+  <!-- Three peaks: 预训练 (highest), 推理, 视觉 -->
+  <!-- Concentric contours around peaks -->
+
+  <!-- Peak 1: 预训练 (DeepSeek hot 5-source = highest) at (380, 350) -->
+  <g class="contour fill" data-peak="pretrain">
+    <ellipse cx="380" cy="350" rx="220" ry="120"/>
+  </g>
+  <g class="contour" data-peak="pretrain">
+    <ellipse cx="380" cy="350" rx="180" ry="100"/>
+    <ellipse cx="380" cy="350" rx="140" ry="78"/>
+    <ellipse cx="380" cy="350" rx="100" ry="56" class="thick"/>
+    <ellipse cx="380" cy="350" rx="65" ry="35"/>
+    <ellipse cx="380" cy="350" rx="35" ry="18"/>
+    <ellipse cx="380" cy="350" rx="14" ry="7" class="thick"/>
+  </g>
+  <text class="contour-label" x="540" y="350">·680m·</text>
+
+  <!-- Peak 2: 推理 at (620, 380) — adjoining ridge to peak 1 -->
+  <g class="contour fill" data-peak="inference">
+    <ellipse cx="620" cy="380" rx="120" ry="80" transform="rotate(-10 620 380)"/>
+  </g>
+  <g class="contour" data-peak="inference">
+    <ellipse cx="620" cy="380" rx="95" ry="62" transform="rotate(-10 620 380)"/>
+    <ellipse cx="620" cy="380" rx="68" ry="44" transform="rotate(-10 620 380)" class="thick"/>
+    <ellipse cx="620" cy="380" rx="40" ry="25" transform="rotate(-10 620 380)"/>
+    <ellipse cx="620" cy="380" rx="18" ry="10" transform="rotate(-10 620 380)" class="thick"/>
+  </g>
+  <text class="contour-label" x="710" y="380">·420m·</text>
+
+  <!-- Peak 3: 视觉 at (560, 480) — lower elevation -->
+  <g class="contour fill" data-peak="vision">
+    <ellipse cx="560" cy="480" rx="80" ry="50"/>
+  </g>
+  <g class="contour" data-peak="vision">
+    <ellipse cx="560" cy="480" rx="60" ry="38"/>
+    <ellipse cx="560" cy="480" rx="38" ry="22" class="thick"/>
+    <ellipse cx="560" cy="480" rx="18" ry="11"/>
+  </g>
+  <text class="contour-label" x="630" y="480">·280m·</text>
+
+  <text class="massif-label" x="380" y="195" text-anchor="middle">Mons · AI Modelorum</text>
+
+  <text class="peak-label" x="380" y="275" text-anchor="middle">预训练</text>
+  <text class="peak-label" x="620" y="320" text-anchor="middle">推理</text>
+  <text class="peak-label" x="560" y="455" text-anchor="middle">视觉模型</text>
+
+  <!-- ========== MASSIF 2: AI 产品 ========== -->
+  <!-- Peak 1: Agent (highest), Coding, Media -->
+
+  <g class="contour fill" data-peak="agent">
+    <ellipse cx="1100" cy="400" rx="200" ry="110"/>
+  </g>
+  <g class="contour" data-peak="agent">
+    <ellipse cx="1100" cy="400" rx="160" ry="90"/>
+    <ellipse cx="1100" cy="400" rx="120" ry="68" class="thick"/>
+    <ellipse cx="1100" cy="400" rx="85" ry="50"/>
+    <ellipse cx="1100" cy="400" rx="50" ry="30"/>
+    <ellipse cx="1100" cy="400" rx="22" ry="13" class="thick"/>
+  </g>
+  <text class="contour-label" x="1240" y="400">·580m·</text>
+
+  <!-- Peak 2: Coding -->
+  <g class="contour fill" data-peak="coding">
+    <ellipse cx="1290" cy="450" rx="55" ry="35"/>
+  </g>
+  <g class="contour" data-peak="coding">
+    <ellipse cx="1290" cy="450" rx="40" ry="26"/>
+    <ellipse cx="1290" cy="450" rx="22" ry="14" class="thick"/>
+  </g>
+
+  <!-- Peak 3: Media -->
+  <g class="contour fill" data-peak="media">
+    <ellipse cx="1240" cy="540" rx="55" ry="32"/>
+  </g>
+  <g class="contour" data-peak="media">
+    <ellipse cx="1240" cy="540" rx="38" ry="22"/>
+    <ellipse cx="1240" cy="540" rx="18" ry="10" class="thick"/>
+  </g>
+
+  <text class="massif-label" x="1100" y="240" text-anchor="middle">Mons · AI Producti</text>
+
+  <text class="peak-label" x="1100" y="305" text-anchor="middle">Agent</text>
+  <text class="peak-label" x="1290" y="425" text-anchor="middle">编程助手</text>
+  <text class="peak-label" x="1240" y="515" text-anchor="middle">多媒体</text>
+
+  <!-- ========== MASSIF 3: 学术 (smaller range south) ========== -->
+  <g class="contour fill" data-peak="paper">
+    <ellipse cx="700" cy="700" rx="100" ry="55"/>
+  </g>
+  <g class="contour" data-peak="paper">
+    <ellipse cx="700" cy="700" rx="78" ry="42"/>
+    <ellipse cx="700" cy="700" rx="55" ry="30" class="thick"/>
+    <ellipse cx="700" cy="700" rx="32" ry="17"/>
+    <ellipse cx="700" cy="700" rx="14" ry="7" class="thick"/>
+  </g>
+
+  <g class="contour fill" data-peak="review">
+    <ellipse cx="850" cy="730" rx="55" ry="32"/>
+  </g>
+  <g class="contour" data-peak="review">
+    <ellipse cx="850" cy="730" rx="38" ry="22"/>
+    <ellipse cx="850" cy="730" rx="18" ry="10" class="thick"/>
+  </g>
+
+  <text class="massif-label" x="775" y="608" text-anchor="middle">Collis · Academia</text>
+  <text class="peak-label" x="700" y="675" text-anchor="middle">论文</text>
+  <text class="peak-label" x="850" y="700" text-anchor="middle">综述</text>
+
+  <!-- ========== Sparse: 安全 — isolated hill ========== -->
+  <g class="contour fill" data-peak="attack">
+    <ellipse cx="1380" cy="700" rx="35" ry="20"/>
+  </g>
+  <g class="contour" data-peak="attack">
+    <ellipse cx="1380" cy="700" rx="22" ry="12"/>
+    <ellipse cx="1380" cy="700" rx="10" ry="6" class="thick"/>
+  </g>
+  <text class="massif-label faint" x="1380" y="660" text-anchor="middle">Tumulus · Securitas</text>
+  <text class="peak-label faint" x="1380" y="690" text-anchor="middle">攻击手法</text>
+
+  <!-- ========== Sparse: 产业 — single butte SW ========== -->
+  <g class="contour fill" data-peak="survey">
+    <ellipse cx="220" cy="650" rx="32" ry="18"/>
+  </g>
+  <g class="contour" data-peak="survey">
+    <ellipse cx="220" cy="650" rx="20" ry="11"/>
+    <ellipse cx="220" cy="650" rx="10" ry="6" class="thick"/>
+  </g>
+  <text class="massif-label faint" x="220" y="615" text-anchor="middle">Tumulus · Industria</text>
+  <text class="peak-label faint" x="220" y="640" text-anchor="middle">产业调研</text>
+
+  <!-- ============ Trails (shared entities) ============ -->
+  <!-- DeepSeek lineage: c1 (peak pretrain) → c2,5,10 -->
+  <path class="trail" d="M 380,350 Q 420,330 460,340"/>
+  <path class="trail" d="M 380,350 Q 500,360 580,375"/>
+  <path class="trail" d="M 380,350 Q 700,380 1080,395"/>
+  <!-- OpenClaw: c10→c12 -->
+  <path class="trail" d="M 1080,395 Q 1120,420 1140,440"/>
+  <!-- OpenAI: c9→c11 -->
+  <path class="trail" d="M 540,475 Q 800,440 1080,400"/>
+
+  <!-- ============ Markers (cards) ============ -->
+  <!-- Peaks (▲) for hot cards (size > 1), dots (●) for ordinary -->
+
+  <!-- AI 模型 / 预训练 (peak at 380,350) -->
+  <g class="card-marker" data-id="c1">
+    <polygon class="peak-marker" points="380,338 372,358 388,358"/>
+  </g>
+  <g class="card-marker" data-id="c2">
+    <circle class="dot-marker" cx="430" cy="335" r="3"/>
+  </g>
+  <g class="card-marker" data-id="c3">
+    <circle class="dot-marker" cx="340" cy="370" r="2.6"/>
+  </g>
+  <g class="card-marker" data-id="c4">
+    <circle class="dot-marker read" cx="395" cy="380" r="2.4"/>
+  </g>
+
+  <!-- AI 模型 / 推理 (peak at 620,380) -->
+  <g class="card-marker" data-id="c5">
+    <circle class="dot-marker" cx="615" cy="378" r="2.6"/>
+  </g>
+  <g class="card-marker" data-id="c6">
+    <circle class="dot-marker" cx="600" cy="395" r="2.4"/>
+  </g>
+  <g class="card-marker" data-id="c7">
+    <circle class="dot-marker read" cx="640" cy="370" r="2.4"/>
+  </g>
+
+  <!-- AI 模型 / 视觉 (peak at 560,480) -->
+  <g class="card-marker" data-id="c8">
+    <circle class="dot-marker" cx="560" cy="478" r="2.6"/>
+  </g>
+  <g class="card-marker" data-id="c9">
+    <circle class="dot-marker" cx="540" cy="475" r="2.6"/>
+  </g>
+
+  <!-- AI 产品 / Agent (peak at 1100,400) -->
+  <g class="card-marker" data-id="c10">
+    <polygon class="peak-marker" points="1100,388 1093,408 1107,408"/>
+  </g>
+  <g class="card-marker" data-id="c11">
+    <polygon class="peak-marker" points="1135,402 1129,418 1141,418"/>
+  </g>
+  <g class="card-marker" data-id="c12">
+    <circle class="dot-marker" cx="1140" cy="440" r="2.6"/>
+  </g>
+
+  <!-- AI 产品 / 编程 (peak at 1290,450) -->
+  <g class="card-marker" data-id="c13">
+    <circle class="dot-marker read" cx="1290" cy="448" r="2.4"/>
+  </g>
+
+  <!-- AI 产品 / 多媒体 (peak at 1240,540) -->
+  <g class="card-marker" data-id="c14">
+    <circle class="dot-marker" cx="1240" cy="538" r="2.6"/>
+  </g>
+
+  <!-- 学术 / 论文 (peak at 700,700) -->
+  <g class="card-marker" data-id="c15">
+    <circle class="dot-marker" cx="690" cy="697" r="2.6"/>
+  </g>
+  <g class="card-marker" data-id="c16">
+    <circle class="dot-marker" cx="710" cy="710" r="2.6"/>
+  </g>
+  <g class="card-marker" data-id="c17">
+    <circle class="dot-marker read" cx="725" cy="690" r="2.4"/>
+  </g>
+
+  <!-- 学术 / 综述 -->
+  <g class="card-marker" data-id="c18">
+    <circle class="dot-marker" cx="850" cy="728" r="2.6"/>
+  </g>
+
+  <!-- 安全 -->
+  <g class="card-marker" data-id="c19">
+    <circle class="dot-marker" cx="1380" cy="700" r="2.6"/>
+  </g>
+
+  <!-- 产业 -->
+  <g class="card-marker" data-id="c20">
+    <circle class="dot-marker" cx="220" cy="648" r="2.6"/>
+  </g>
+
+  <!-- Spot heights / elevation marks scattered -->
+  <text class="spot-height" x="395" y="345">·680</text>
+  <text class="spot-height" x="1115" y="395">·580</text>
+  <text class="spot-height" x="715" y="695">·310</text>
+
+</svg>
+
+<!-- Survey title block -->
+<div class="survey-block">
+  <div class="super">U.S. Curation Survey · Quad N-IV-26</div>
+  <h1>Topographic Sheet</h1>
+  <div class="sub">Daily news terrain · 1:50 000 · contour interval 60m</div>
+  <div class="quad-info">
+    <span>SHEET 119</span>
+    <span>·</span>
+    <span>IV.MMXXVI</span>
+  </div>
+</div>
+
+<!-- Scale block & legend -->
+<div class="scale-block">
+  <div>SCALE · 1:50 000</div>
+  <svg width="160" height="14" viewBox="0 0 160 14">
+    <rect x="0" y="2" width="40" height="6" fill="#3a2a14"/>
+    <rect x="40" y="2" width="40" height="6" fill="white" stroke="#3a2a14" stroke-width="0.5"/>
+    <rect x="80" y="2" width="40" height="6" fill="#3a2a14"/>
+    <rect x="120" y="2" width="40" height="6" fill="white" stroke="#3a2a14" stroke-width="0.5"/>
+    <text x="0" y="14" font-family="SF Mono" font-size="7" fill="#7a6a44">0</text>
+    <text x="80" y="14" font-family="SF Mono" font-size="7" fill="#7a6a44">2 KM</text>
+    <text x="160" y="14" font-family="SF Mono" font-size="7" fill="#7a6a44" text-anchor="end">4 KM</text>
+  </svg>
+  <div class="legend-row">
+    <svg width="16" height="12" viewBox="0 0 16 12"><polygon points="8,1 4,11 12,11" fill="#b8492a" stroke="#3a2a14" stroke-width="0.6"/></svg>
+    Aggregate peak (聚合)
+  </div>
+  <div class="legend-row">
+    <svg width="16" height="12" viewBox="0 0 16 12"><circle cx="8" cy="6" r="3" fill="#5a3a1a" stroke="#f0eadc" stroke-width="1.2"/></svg>
+    Single source
+  </div>
+  <div class="legend-row">
+    <svg width="16" height="12" viewBox="0 0 16 12"><circle cx="8" cy="6" r="2.4" fill="#a89a76" opacity=".5"/></svg>
+    Visited (已读)
+  </div>
+  <div class="legend-row">
+    <svg width="32" height="12" viewBox="0 0 32 12"><line x1="0" y1="6" x2="32" y2="6" stroke="#b8492a" stroke-width="0.7" stroke-dasharray="1 2"/></svg>
+    Trail (实体共享)
+  </div>
+</div>
+
+<!-- Compass -->
+<div class="compass">
+  <svg viewBox="-45 -45 90 90" width="100%" height="100%">
+    <line x1="0" y1="-40" x2="0" y2="40" stroke="#3a2a14" stroke-width="0.5"/>
+    <line x1="-40" y1="0" x2="40" y2="0" stroke="#3a2a14" stroke-width="0.5"/>
+    <polygon points="0,-38 4,-4 -4,-4" fill="#3a2a14"/>
+    <polygon points="0,38 4,4 -4,4" fill="none" stroke="#3a2a14" stroke-width="0.6"/>
+    <text x="0" y="-43" text-anchor="middle" font-family="Charter, serif" font-size="12" fill="#3a2a14" font-weight="700" font-style="italic">N</text>
+  </svg>
+</div>
+
+<!-- Popover -->
+<div class="popover" id="popover">
+  <div class="crest" id="po-crest">AI 模型 · 预训练</div>
+  <h3 class="name" id="po-name">DeepSeek-V4 Pro API 限时 2.5 折</h3>
+  <p class="desc" id="po-desc">输入（缓存命中）降至 0.25 元/百万 token；下半年随昇腾 950 量产将进一步降价</p>
+  <div class="meta">
+    <span id="po-src">Field log · 量子位</span>
+    <span id="po-hot">▲ 680m</span>
+  </div>
+  <button class="mark-read" id="po-mark">VISITED · ✓</button>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <button class="close" id="drawer-close">×</button>
+  <div class="source-line">FIELD LOG · 量子位 · QUAD N-IV-26</div>
+  <h2 id="d-title">DeepSeek-V4 Pro API 限时 2.5 折</h2>
+  <div class="byline">Surveyed at peak — 380, 350 · elev. 680m · IV / XXVI / MMXXVI</div>
+  <p>测绘队从 N-IV-26 象限出发，自西麓登高，于今日下午抵达 AI 模型山脉之主峰"预训练"，海拔 680 米。峰顶发现一处显著的多源汇聚信号——DeepSeek-V4 Pro 模型限时 2.5 折——为今日全 quad 最显著地物。</p>
+  <p>此点向南有山径联通至山顶 Agent (海拔 580m)，向东南至 视觉模型 与 推理 双峰；西侧悬崖陡降，是地图边缘外的未测绘平原。</p>
+</aside>
+
+<script>
+const script = document.createElement('script');
+script.src = '_data.js';
+document.head.appendChild(script);
+script.onload = function() { initRadar(); };
+function initRadar() {
+  const data = window.RADAR_DEMO;
+  const cardMap = {}; data.cards.forEach(c => cardMap[c.id] = c);
+  const sdMap = {}; data.smallDomains.forEach(s => sdMap[s.id] = s);
+  const bdMap = {}; data.bigDomains.forEach(b => bdMap[b.id] = b);
+  const popover = document.getElementById('popover');
+  const drawer = document.getElementById('drawer');
+  const scrim = document.getElementById('scrim');
+  document.querySelectorAll('.card-marker').forEach(g => {
+    const id = g.dataset.id;
+    const card = cardMap[id]; if (!card) return;
+    const marker = g.querySelector('circle, polygon');
+    g.addEventListener('mouseenter', () => {
+      const sd = sdMap[card.sd], bd = bdMap[sd.big];
+      document.getElementById('po-crest').textContent = `${bd.label} · ${sd.label}`;
+      document.getElementById('po-name').textContent = card.title;
+      document.getElementById('po-desc').textContent = card.desc;
+      document.getElementById('po-src').textContent = `Field log · ${card.src}`;
+      document.getElementById('po-hot').textContent = card.size > 1 ? `▲ ${300 + card.size*60}m peak` : '· 单源记录';
+      const rect = marker.getBoundingClientRect();
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      const right = cx > window.innerWidth - 300;
+      popover.style.left = right ? (cx - 290) + 'px' : (cx + 16) + 'px';
+      popover.style.top = (cy - 24) + 'px';
+      popover.classList.add('show');
+      popover.dataset.cardId = id;
+    });
+    g.addEventListener('mouseleave', () => {
+      setTimeout(() => { if (!popover.matches(':hover')) popover.classList.remove('show'); }, 80);
+    });
+    g.addEventListener('click', () => {
+      drawer.classList.add('show'); scrim.classList.add('show');
+      popover.classList.remove('show');
+      marker.classList.add('read');
+    });
+  });
+  popover.addEventListener('mouseleave', () => popover.classList.remove('show'));
+  document.getElementById('po-mark').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = popover.dataset.cardId;
+    const m = document.querySelector(`.card-marker[data-id="${id}"] circle, .card-marker[data-id="${id}"] polygon`);
+    if (m) m.classList.add('read');
+    popover.classList.remove('show');
+  });
+  document.getElementById('drawer-close').addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  scrim.addEventListener('click', () => { drawer.classList.remove('show'); scrim.classList.remove('show'); });
+  document.addEventListener('keydown', e => { if (e.key==='Escape') { drawer.classList.remove('show'); scrim.classList.remove('show'); }});
+}
+</script>
+</body>
+</html>
