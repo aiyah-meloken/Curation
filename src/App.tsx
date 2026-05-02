@@ -20,6 +20,7 @@ import { AdminPane } from './components/AdminPane';
 import { InboxList } from './components/InboxList';
 import { ReaderPane } from './components/ReaderPane';
 import { SearchList } from './components/SearchList';
+import { AtlasShell } from './components/AtlasShell';
 import { useSearch } from './hooks/useSearch';
 import { ArticleDrawer } from './components/ArticleDrawer';
 import { LoginScreen } from './components/LoginScreen';
@@ -172,7 +173,7 @@ function AppMain({ currentUser, onLogout }: {
   }, []);
 
   // View state
-  const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites" | "search" | "home">("inbox");
+  const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites" | "search" | "home" | "atlas">("inbox");
   const [selectedBiz, setSelectedBiz] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedDiscardedId, setSelectedDiscardedId] = useState<string | null>(null);
@@ -388,6 +389,12 @@ function AppMain({ currentUser, onLogout }: {
     setSelectedFavorite(null);
   }
 
+  function handleSelectAtlas() {
+    setSelectedView("atlas");
+    setSelectedCardId(null);
+    setSelectedBiz(null);
+  }
+
   function handleSelectFavoriteItem(item: FavoriteItem) {
     setSelectedFavorite(item);
   }
@@ -462,6 +469,7 @@ function AppMain({ currentUser, onLogout }: {
         onSelectInbox={handleSelectInbox}
         onSelectFavorites={handleSelectFavorites}
         onSelectDiscarded={handleSelectDiscarded}
+        onSelectAtlas={handleSelectAtlas}
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
         onToggleSubs={handleToggleSubs}
         onToggleSettings={handleToggleSettings}
@@ -500,7 +508,9 @@ function AppMain({ currentUser, onLogout }: {
       </SidebarDrawer>
 
       {/* Pane 2: List */}
-      {selectedView === "search" ? (
+      {selectedView === "atlas" ? (
+        <AtlasShell />
+      ) : selectedView === "search" ? (
         <SearchList
           query={search.query}
           onQueryChange={search.setQuery}
