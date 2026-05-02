@@ -19,10 +19,27 @@ type CoastlineOpts = {
 };
 
 /**
- * Returns an SVG path `d` string forming a closed quadratic-Bezier loop
- * around (cx, cy) with hand-drawn irregularity. Determined by seed.
+ * Result of generating a coastline:
+ *   - `path`: SVG `d` string (closed quadratic-bezier loop)
+ *   - `top_y` / `bottom_y` / `left_x` / `right_x`: tight bounding box of the
+ *     final vertex ring, used by layout.ts to anchor labels at a CONSTANT
+ *     visual distance from the squiggly edge (rather than a fixed offset
+ *     from the base radius, which gives inconsistent gaps because each
+ *     coastline wobbles differently at the top).
  */
-export function generateCoastline(opts: CoastlineOpts): string {
+export type CoastlineResult = {
+  path: string;
+  top_y: number;
+  bottom_y: number;
+  left_x: number;
+  right_x: number;
+};
+
+/**
+ * Returns the SVG path + bounding box for a closed coastline around
+ * (cx, cy). Determined by seed — same input always yields same output.
+ */
+export function generateCoastline(opts: CoastlineOpts): CoastlineResult {
   const sparse = opts.sparse ?? false;
   const segments = opts.segments ?? (sparse ? 8 : 12);
   const wobble = opts.wobble ?? (sparse ? 0.18 : 0.28);
@@ -58,14 +75,76 @@ export function generateCoastline(opts: CoastlineOpts): string {
     y: (a.y + b.y) / 2,
   });
 
+  // Build the path AND compute the EXACT axis-aligned bounding box of the
+  // rendered bezier curve. Tight bbox is required by layout.ts to anchor
+  // labels at a constant *visual* gap from the squiggly edge — sampling
+  // vertices alone gives a loose approximation because the bezier curve
+  // never reaches its control points.
+  //
+  // For each quadratic segment B(t) = (1-t)² P0 + 2t(1-t) P1 + t² P2, the
+  // y-extremum is at t* = (P0 - P1) / (P0 - 2P1 + P2) — analytical, exact.
   const m0 = mid(verts[verts.length - 1], verts[0]);
   let d = `M ${m0.x.toFixed(1)},${m0.y.toFixed(1)}`;
+  let topY = Infinity;
+  let bottomY = -Infinity;
+  let leftX = Infinity;
+  let rightX = -Infinity;
+  const probe = (x: number, y: number) => {
+    if (y < topY) topY = y;
+    if (y > bottomY) bottomY = y;
+    if (x < leftX) leftX = x;
+    if (x > rightX) rightX = x;
+  };
+  // Helper: evaluate bezier at t given P0/P1/P2.
+  const bezAt = (
+    t: number,
+    p0: { x: number; y: number },
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+  ) => {
+    const u = 1 - t;
+    return {
+      x: u * u * p0.x + 2 * t * u * p1.x + t * t * p2.x,
+      y: u * u * p0.y + 2 * t * u * p1.y + t * t * p2.y,
+    };
+  };
+  // Probe the segment's endpoints plus the analytical x- and y-extrema.
+  const probeSegment = (
+    p0: { x: number; y: number },
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+  ) => {
+    probe(p0.x, p0.y);
+    probe(p2.x, p2.y);
+    // y-extremum
+    const denomY = p0.y - 2 * p1.y + p2.y;
+    if (Math.abs(denomY) > 1e-9) {
+      const tY = (p0.y - p1.y) / denomY;
+      if (tY > 0 && tY < 1) {
+        const ext = bezAt(tY, p0, p1, p2);
+        probe(ext.x, ext.y);
+      }
+    }
+    // x-extremum
+    const denomX = p0.x - 2 * p1.x + p2.x;
+    if (Math.abs(denomX) > 1e-9) {
+      const tX = (p0.x - p1.x) / denomX;
+      if (tX > 0 && tX < 1) {
+        const ext = bezAt(tX, p0, p1, p2);
+        probe(ext.x, ext.y);
+      }
+    }
+  };
+
+  let prev = m0;
   for (let i = 0; i < verts.length; i++) {
     const v = verts[i];
     const next = verts[(i + 1) % verts.length];
     const m = mid(v, next);
     d += ` Q ${v.x.toFixed(1)},${v.y.toFixed(1)} ${m.x.toFixed(1)},${m.y.toFixed(1)}`;
+    probeSegment(prev, v, m);
+    prev = m;
   }
   d += " Z";
-  return d;
+  return { path: d, top_y: topY, bottom_y: bottomY, left_x: leftX, right_x: rightX };
 }

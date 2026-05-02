@@ -11,6 +11,8 @@ type Props = {
   onMarkRead: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  /** Optional: clicking the card body opens the drawer with full content. */
+  onOpenDrawer?: () => void;
 };
 
 export function AtlasFloatingCard({
@@ -20,19 +22,26 @@ export function AtlasFloatingCard({
   onMarkRead,
   onMouseEnter,
   onMouseLeave,
+  onOpenDrawer,
 }: Props) {
-  const sd = dsl.small_domains.find((s) => s.id === card.small_domain_id);
-  const bd = dsl.big_domains.find((b) =>
-    b.small_domain_ids.includes(card.small_domain_id),
-  );
-  const sourceCount = card.source_count ?? 1;
-  const isHot = sourceCount >= 2;
+  const topic = dsl.topics.find((s) => s.id === card.atlas_topic_id);
+  const domain = dsl.domains.find((b) => b.id === topic?.domain_id);
+  // source_count is always 1 in v1; hot indicator not used.
+  const isHot = false;
   const account = card.article_meta?.account ?? "";
 
   return (
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={(e) => {
+        // Click anywhere on the card body (except the Mark-Read button which
+        // stops propagation) → open drawer with full content.
+        if (onOpenDrawer) {
+          e.stopPropagation();
+          onOpenDrawer();
+        }
+      }}
       style={{
         position: "absolute",
         left: position.x,
@@ -45,6 +54,7 @@ export function AtlasFloatingCard({
         fontFamily: "var(--atlas-serif)",
         zIndex: 30,
         pointerEvents: "auto",
+        cursor: onOpenDrawer ? "pointer" : "default",
         animation: "atlas-fade-in 180ms cubic-bezier(.16,1,.3,1) both",
       }}
     >
@@ -61,7 +71,7 @@ export function AtlasFloatingCard({
           marginBottom: 4,
         }}
       >
-        {bd?.label ?? "—"} · {sd?.label ?? "—"}
+        {domain?.label ?? "—"} · {topic?.label ?? "—"}
       </div>
       <h3
         style={{
@@ -103,7 +113,7 @@ export function AtlasFloatingCard({
         }}
       >
         <span>— {account || "—"}</span>
-        <span>{isHot ? `⚜ ${sourceCount} 源汇` : "· 单源"}</span>
+        <span>{isHot ? "⚜ 多源汇" : "· 单源"}</span>
       </div>
       <button
         onClick={(e) => {

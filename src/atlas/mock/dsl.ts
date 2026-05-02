@@ -4,48 +4,48 @@
 import type { AtlasDSL } from "../types";
 
 export const mockAtlasDSL: AtlasDSL = {
-  big_domains: [
+  domains: [
     {
       id: "aimodel",
       label: "AI 模型",
       latin_label: "AI · MODELORVM",
-      small_domain_ids: ["pretrain", "inference", "vision"],
+      display_order: 0,
     },
     {
       id: "aiproduct",
       label: "AI 产品",
       latin_label: "AI · PRODVCTORVM",
-      small_domain_ids: ["agent", "coding", "media"],
+      display_order: 1,
     },
     {
       id: "academic",
       label: "学术研究",
       latin_label: "ACADEMIA",
-      small_domain_ids: ["paper", "review"],
+      display_order: 2,
     },
     {
       id: "security",
       label: "AI 安全",
       latin_label: "SECVRITAS",
-      small_domain_ids: ["attack"],
+      display_order: 3,
     },
     {
       id: "industry",
       label: "产业观察",
       latin_label: "INDVSTRIA",
-      small_domain_ids: ["survey"],
+      display_order: 4,
     },
   ],
-  small_domains: [
-    { id: "pretrain", label: "预训练" },
-    { id: "inference", label: "推理" },
-    { id: "vision", label: "视觉模型" },
-    { id: "agent", label: "Agent" },
-    { id: "coding", label: "编程助手" },
-    { id: "media", label: "多媒体" },
-    { id: "paper", label: "论文" },
-    { id: "review", label: "综述" },
-    { id: "attack", label: "攻击手法" },
-    { id: "survey", label: "产业调研" },
+  topics: [
+    { id: "pretrain", domain_id: "aimodel", label: "预训练", display_order: 0 },
+    { id: "inference", domain_id: "aimodel", label: "推理", display_order: 1 },
+    { id: "vision", domain_id: "aimodel", label: "视觉模型", display_order: 2 },
+    { id: "agent", domain_id: "aiproduct", label: "Agent", display_order: 0 },
+    { id: "coding", domain_id: "aiproduct", label: "编程助手", display_order: 1 },
+    { id: "media", domain_id: "aiproduct", label: "多媒体", display_order: 2 },
+    { id: "paper", domain_id: "academic", label: "论文", display_order: 0 },
+    { id: "review", domain_id: "academic", label: "综述", display_order: 1 },
+    { id: "attack", domain_id: "security", label: "攻击手法", display_order: 0 },
+    { id: "survey", domain_id: "industry", label: "产业调研", display_order: 0 },
   ],
 };

@@ -10,15 +10,26 @@ body {
   color: var(--atlas-ink);
   font-family: var(--atlas-serif);
   overflow: hidden;
-  /* Aged parchment grain */
-  background-image:
-    radial-gradient(ellipse at 20% 10%, rgba(122, 90, 40, 0.10), transparent 50%),
-    radial-gradient(ellipse at 80% 90%, rgba(122, 90, 40, 0.12), transparent 50%),
-    repeating-linear-gradient(0deg, rgba(90, 66, 34, 0.025) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(90, 66, 34, 0.02) 0 1px, transparent 1px 4px);
+  background-image: var(--atlas-grain);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #atlas-root { width: 100vw; height: 100vh; }
+
+/* Dark mode — beef up + gild the connection lines so they read as
+   the focal layer, the way gold leaf catches candlelight. */
+[data-atlas-theme="dark"] svg path[stroke="var(--atlas-voyage-main)"] {
+  stroke-width: 5.5;
+  filter: drop-shadow(0 0 4px rgba(255, 201, 119, 0.6));
+}
+/* Don't override stroke-width on crimson paths — TradeRoute drives
+   width by hover/pin state. Just brighten via glow. */
+[data-atlas-theme="dark"] svg path[stroke="var(--atlas-crimson)"] {
+  filter: drop-shadow(0 0 2px rgba(200, 184, 144, 0.4));
+}
+[data-atlas-theme="dark"] svg text {
+  letter-spacing: 0.02em;
+}
 
 /* Smooth slide animations for drawer / popover */
 @keyframes atlas-fade-in {

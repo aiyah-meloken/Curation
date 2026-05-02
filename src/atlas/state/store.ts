@@ -11,17 +11,25 @@ type AtlasState = {
   hovered_card_id: string | null;
   drawer_card_id: string | null;
   session_read_card_ids: Set<string>;
+  routes_visible: boolean;
+  /** Entities the user has explicitly hidden — their routes/lines are not
+   *  rendered. Settlement halos still apply when other entities are focused. */
+  hidden_entities: Set<string>;
 
   setHoveredCard: (id: string | null) => void;
   openDrawer: (card_id: string) => void;
   closeDrawer: () => void;
   markCardRead: (card_id: string) => void;
+  toggleRoutes: () => void;
+  toggleEntityHidden: (entity: string) => void;
 };
 
 export const useAtlasStore = create<AtlasState>((set) => ({
   hovered_card_id: null,
   drawer_card_id: null,
   session_read_card_ids: new Set<string>(),
+  routes_visible: true,
+  hidden_entities: new Set<string>(),
 
   setHoveredCard: (id) => set({ hovered_card_id: id }),
 
@@ -49,6 +57,16 @@ export const useAtlasStore = create<AtlasState>((set) => ({
       const next = new Set(s.session_read_card_ids);
       next.add(card_id);
       return { session_read_card_ids: next };
+    }),
+
+  toggleRoutes: () => set((s) => ({ routes_visible: !s.routes_visible })),
+
+  toggleEntityHidden: (entity) =>
+    set((s) => {
+      const next = new Set(s.hidden_entities);
+      if (next.has(entity)) next.delete(entity);
+      else next.add(entity);
+      return { hidden_entities: next };
     }),
 }));
 

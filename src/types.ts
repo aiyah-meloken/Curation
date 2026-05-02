@@ -173,6 +173,10 @@ export interface InboxItem {
   /** Canonical entity names extracted by the agent (companies, products,
    *  papers, lab teams, …). Empty array for legacy / queued items. */
   entities: string[];
+  /** Atlas taxonomy (FK → atlas_topic.id). Nullable until tagging pipeline lands. */
+  atlas_topic_id?: string | null;
+  /** Estimated reading minutes (server-computed, on-the-fly). Used to size atlas settlements. */
+  reading_minutes?: number;
   routing: Routing;
   /**
    * Per-card template name (DB column reused, will be renamed `template`):

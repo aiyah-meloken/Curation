@@ -5,7 +5,8 @@
 //
 // Real fields: card_id, title, description, source account, article_date.
 // Mocked atlas tags (not in source data yet):
-//   small_domain_id, source_count, shared_entities, read.
+//   atlas_topic_id, entities (formerly shared_entities), read.
+// Note: source_count is always 1 in v1 (aggregate cards removed).
 
 import type { AtlasCard } from "../types";
 
@@ -13,9 +14,8 @@ const mk = (
   partial: Pick<AtlasCard, "card_id" | "article_id" | "title" | "description"> & {
     account: string;
     publish_time: string;
-    small_domain_id: string;
-    shared_entities: string[];
-    source_count?: number;
+    atlas_topic_id: string;
+    entities: string[];
     read?: boolean;
     routing?: "ai_curation" | "original_content_with_pre_card" | "original_content_with_post_card";
   },
@@ -26,7 +26,8 @@ const mk = (
   description: partial.description,
   routing: partial.routing ?? "ai_curation",
   subtype: null,
-  entities: partial.shared_entities,
+  entities: partial.entities,
+  atlas_topic_id: partial.atlas_topic_id,
   article_date: "2026-04-26",
   read_at: partial.read ? "2026-04-26T20:00:00+08:00" : null,
   queue_status: null,
@@ -40,9 +41,6 @@ const mk = (
     cover_url: null,
     digest: null,
   },
-  small_domain_id: partial.small_domain_id,
-  shared_entities: partial.shared_entities,
-  source_count: partial.source_count,
 });
 
 export const mockAtlasCards: AtlasCard[] = [
@@ -55,9 +53,8 @@ export const mockAtlasCards: AtlasCard[] = [
       "输入（缓存命中）降至 0.25 元/百万 token；下半年随昇腾 950 量产将进一步降价",
     account: "量子位",
     publish_time: "2026-04-26T09:32:00+08:00",
-    small_domain_id: "pretrain",
-    shared_entities: ["DeepSeek"],
-    source_count: 5,
+    atlas_topic_id: "pretrain",
+    entities: ["DeepSeek"],
   }),
   mk({
     card_id: "c2",
@@ -66,8 +63,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "代码与 Agent 能力逼近闭源旗舰，社区一周复现训练曲线",
     account: "两光年",
     publish_time: "2026-04-26T10:15:00+08:00",
-    small_domain_id: "pretrain",
-    shared_entities: ["DeepSeek"],
+    atlas_topic_id: "pretrain",
+    entities: ["DeepSeek"],
   }),
   mk({
     card_id: "c3",
@@ -76,8 +73,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "长程 Agent 任务对标头部闭源模型，体积压缩到 7B",
     account: "两光年",
     publish_time: "2026-04-26T11:02:00+08:00",
-    small_domain_id: "pretrain",
-    shared_entities: [],
+    atlas_topic_id: "pretrain",
+    entities: [],
   }),
   mk({
     card_id: "c4",
@@ -86,8 +83,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "姚顺雨主导重建后首次开源，参数规模未披露",
     account: "两光年",
     publish_time: "2026-04-26T13:20:00+08:00",
-    small_domain_id: "pretrain",
-    shared_entities: [],
+    atlas_topic_id: "pretrain",
+    entities: [],
     read: true,
   }),
 
@@ -99,8 +96,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "从注意力变体到 KV 压缩到 MoE 路由的工程化分析",
     account: "zartbot",
     publish_time: "2026-04-26T07:45:00+08:00",
-    small_domain_id: "inference",
-    shared_entities: ["DeepSeek"],
+    atlas_topic_id: "inference",
+    entities: ["DeepSeek"],
     routing: "original_content_with_post_card",
   }),
   mk({
@@ -110,8 +107,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "通过编译优化消除 Skill 与模型间的语义鸿沟",
     account: "量子位",
     publish_time: "2026-04-26T14:18:00+08:00",
-    small_domain_id: "inference",
-    shared_entities: [],
+    atlas_topic_id: "inference",
+    entities: [],
   }),
   mk({
     card_id: "c7",
@@ -120,8 +117,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "将集合通信映射到并行独立网络轨道的 Clos 拓扑",
     account: "智猩猩芯算",
     publish_time: "2026-04-26T16:50:00+08:00",
-    small_domain_id: "inference",
-    shared_entities: [],
+    atlas_topic_id: "inference",
+    entities: [],
     read: true,
   }),
 
@@ -133,8 +130,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "从单张 2D 图片生成可漫游的长时程 3D 场景",
     account: "新智元",
     publish_time: "2026-04-26T15:10:00+08:00",
-    small_domain_id: "vision",
-    shared_entities: [],
+    atlas_topic_id: "vision",
+    entities: [],
   }),
   mk({
     card_id: "c9",
@@ -143,8 +140,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "中文文字渲染实现突破，海报级输出",
     account: "两光年",
     publish_time: "2026-04-26T17:00:00+08:00",
-    small_domain_id: "vision",
-    shared_entities: ["OpenAI"],
+    atlas_topic_id: "vision",
+    entities: ["OpenAI"],
   }),
 
   // ===== AI 产品 / Agent =====
@@ -155,9 +152,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "默认集成 DeepSeek V4 Flash，原生 MCP 支持，多家媒体同步覆盖",
     account: "机器之心",
     publish_time: "2026-04-26T08:05:00+08:00",
-    small_domain_id: "agent",
-    shared_entities: ["DeepSeek", "OpenClaw"],
-    source_count: 4,
+    atlas_topic_id: "agent",
+    entities: ["DeepSeek", "OpenClaw"],
   }),
   mk({
     card_id: "c11",
@@ -167,9 +163,8 @@ export const mockAtlasCards: AtlasCard[] = [
       "从聊天模型转向自主智能体；Pro 在 LisanBench 跨过门萨 130 门槛",
     account: "两光年",
     publish_time: "2026-04-26T12:00:00+08:00",
-    small_domain_id: "agent",
-    shared_entities: ["OpenAI"],
-    source_count: 3,
+    atlas_topic_id: "agent",
+    entities: ["OpenAI"],
   }),
   mk({
     card_id: "c12",
@@ -178,8 +173,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "OpenClaw 创始人发布，一天关闭 50 个 GitHub issue",
     account: "新智元",
     publish_time: "2026-04-26T18:30:00+08:00",
-    small_domain_id: "agent",
-    shared_entities: ["OpenClaw"],
+    atlas_topic_id: "agent",
+    entities: ["OpenClaw"],
   }),
 
   // ===== AI 产品 / 编程助手 =====
@@ -190,8 +185,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "免费用户可用；OpenAI、Google 同步跟进",
     account: "新智元",
     publish_time: "2026-04-26T19:15:00+08:00",
-    small_domain_id: "coding",
-    shared_entities: ["Anthropic"],
+    atlas_topic_id: "coding",
+    entities: ["Anthropic"],
     read: true,
   }),
 
@@ -203,8 +198,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "自然语言操控视频剪辑，支持批量操作和智能文案",
     account: "机器之心",
     publish_time: "2026-04-26T20:00:00+08:00",
-    small_domain_id: "media",
-    shared_entities: [],
+    atlas_topic_id: "media",
+    entities: [],
   }),
 
   // ===== 学术 / 论文 =====
@@ -215,8 +210,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "通过难度感知的强化学习提升大模型数学推理效率",
     account: "机器之心",
     publish_time: "2026-04-26T11:30:00+08:00",
-    small_domain_id: "paper",
-    shared_entities: ["RLHF"],
+    atlas_topic_id: "paper",
+    entities: ["RLHF"],
   }),
   mk({
     card_id: "c16",
@@ -225,8 +220,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "利用模型自身置信度信号；精度 +10%，推理长度 −35%",
     account: "机器之心",
     publish_time: "2026-04-26T13:45:00+08:00",
-    small_domain_id: "paper",
-    shared_entities: [],
+    atlas_topic_id: "paper",
+    entities: [],
   }),
   mk({
     card_id: "c17",
@@ -235,8 +230,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "通过扩展验证计算提升 Agent 轨迹选择能力",
     account: "机器之心",
     publish_time: "2026-04-26T15:50:00+08:00",
-    small_domain_id: "paper",
-    shared_entities: [],
+    atlas_topic_id: "paper",
+    entities: [],
     read: true,
   }),
 
@@ -248,8 +243,8 @@ export const mockAtlasCards: AtlasCard[] = [
     description: "五条理论线索汇聚为统一框架",
     account: "机器之心",
     publish_time: "2026-04-26T16:20:00+08:00",
-    small_domain_id: "review",
-    shared_entities: [],
+    atlas_topic_id: "review",
+    entities: [],
   }),
 
   // ===== AI 安全 / 攻击手法 (sparse) =====
@@ -261,9 +256,8 @@ export const mockAtlasCards: AtlasCard[] = [
       "Google 与 Forcepoint 同时捕获规模化攻击载荷，从 PoC 走向生产环境",
     account: "FreeBuf",
     publish_time: "2026-04-26T10:30:00+08:00",
-    small_domain_id: "attack",
-    shared_entities: [],
-    source_count: 2,
+    atlas_topic_id: "attack",
+    entities: [],
   }),
 
   // ===== 产业观察 / 产业调研 (sparse) =====
@@ -275,7 +269,7 @@ export const mockAtlasCards: AtlasCard[] = [
       "公司付费是 AI 进入工作的开关；使用率从 38% 跃至 76%；产出而非消耗成新度量",
     account: "新智元",
     publish_time: "2026-04-26T18:00:00+08:00",
-    small_domain_id: "survey",
-    shared_entities: [],
+    atlas_topic_id: "survey",
+    entities: [],
   }),
 ];

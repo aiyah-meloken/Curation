@@ -35,7 +35,7 @@ export function AtlasPreviewDrawer({ open, card, articleContent, onClose }: Prop
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(42,32,20,.45)",
+          background: "var(--atlas-scrim)",
           backdropFilter: "blur(2px)",
           display: open ? "block" : "none",
           zIndex: 40,
@@ -114,13 +114,62 @@ export function AtlasPreviewDrawer({ open, card, articleContent, onClose }: Prop
                 fontStyle: "italic",
                 color: "var(--atlas-ink-2)",
                 fontSize: 14,
-                marginBottom: 24,
-                borderBottom: "1px solid var(--atlas-ink-2)",
+                marginBottom: card.entities?.length ? 12 : 24,
                 paddingBottom: 16,
+                borderBottom: card.entities?.length
+                  ? "none"
+                  : "1px solid var(--atlas-ink-2)",
               }}
             >
               {card.description ?? ""}
             </div>
+
+            {/* Entities — small chips showing the card's named entities. These
+                are what drive the cross-card "trade route" connections on the
+                map. */}
+            {card.entities && card.entities.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  marginBottom: 24,
+                  paddingBottom: 16,
+                  borderBottom: "1px solid var(--atlas-ink-2)",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--atlas-mono)",
+                    fontSize: 9,
+                    letterSpacing: "0.22em",
+                    color: "var(--atlas-rust)",
+                    textTransform: "uppercase",
+                    alignSelf: "center",
+                    marginRight: 4,
+                  }}
+                >
+                  实体 ·
+                </span>
+                {card.entities.map((e) => (
+                  <span
+                    key={e}
+                    style={{
+                      fontFamily: "var(--atlas-serif)",
+                      fontStyle: "italic",
+                      fontSize: 12,
+                      color: "var(--atlas-crimson)",
+                      background: "var(--atlas-vellum)",
+                      border: "1px solid var(--atlas-crimson)",
+                      padding: "2px 8px",
+                      borderRadius: 2,
+                    }}
+                  >
+                    {e}
+                  </span>
+                ))}
+              </div>
+            )}
             <div
               style={{
                 fontFamily: "var(--atlas-serif)",

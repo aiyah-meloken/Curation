@@ -1,62 +1,46 @@
-// Atlas — DSL & cards integrity validator.
-// Throws on any structural problem so the UI fails loud rather than rendering garbage.
+import type { AtlasDSL, AtlasCard } from "../types";
 
-import type { AtlasCard, AtlasDSL } from "../types";
-
-export function validateAtlasInput(dsl: AtlasDSL, cards: AtlasCard[]): void {
-  // 1. small_domain_ids in big_domains must reference existing small_domains.
-  const sd_ids = new Set(dsl.small_domains.map((s) => s.id));
-  for (const bd of dsl.big_domains) {
-    for (const sid of bd.small_domain_ids) {
-      if (!sd_ids.has(sid)) {
-        throw new Error(
-          `[atlas/validate] big_domain "${bd.id}" references unknown small_domain "${sid}"`,
-        );
-      }
-    }
-  }
-
-  // 2. small_domain_ids must form a contiguous slice of dsl.small_domains.
-  const sd_order = dsl.small_domains.map((s) => s.id);
-  for (const bd of dsl.big_domains) {
-    if (bd.small_domain_ids.length === 0) continue;
-    const idx = bd.small_domain_ids.map((sid) => sd_order.indexOf(sid));
-    const sorted = [...idx].sort((a, b) => a - b);
-    if (sorted[sorted.length - 1] - sorted[0] + 1 !== sorted.length) {
+/**
+ * Validate atlas DSL + cards. Throws on structural errors.
+ * Pure function; safe to call on every render (cheap).
+ */
+export function validate(dsl: AtlasDSL, cards: AtlasCard[]): void {
+  // 1. topic.domain_id must reference an existing domain.
+  const domainIds = new Set(dsl.domains.map((d) => d.id));
+  for (const t of dsl.topics) {
+    if (!domainIds.has(t.domain_id)) {
       throw new Error(
-        `[atlas/validate] big_domain "${bd.id}" small_domain_ids are not a contiguous slice of dsl.small_domains: ${bd.small_domain_ids.join(", ")}`,
+        `[atlas/validate] topic "${t.id}" references unknown domain "${t.domain_id}"`,
       );
     }
   }
 
-  // 3. Each small_domain must belong to exactly one big_domain.
-  const sd_to_bd = new Map<string, string>();
-  for (const bd of dsl.big_domains) {
-    for (const sid of bd.small_domain_ids) {
-      const prev = sd_to_bd.get(sid);
-      if (prev && prev !== bd.id) {
-        throw new Error(
-          `[atlas/validate] small_domain "${sid}" belongs to both "${prev}" and "${bd.id}"`,
-        );
-      }
-      sd_to_bd.set(sid, bd.id);
+  // 2. topic ids must be unique.
+  const topicIds = new Set<string>();
+  for (const t of dsl.topics) {
+    if (topicIds.has(t.id)) {
+      throw new Error(`[atlas/validate] duplicate topic id "${t.id}"`);
     }
+    topicIds.add(t.id);
   }
 
-  // 4. Card small_domain_id must exist; card_id must be unique.
-  const seen_ids = new Set<string>();
+  // 3. card_id uniqueness; warn (don't throw) on unknown atlas_topic_id.
+  const cardIds = new Set<string>();
   for (const c of cards) {
-    if (!c.card_id) {
-      throw new Error(`[atlas/validate] card has null card_id: ${c.title}`);
+    if (c.card_id) {
+      if (cardIds.has(c.card_id)) {
+        throw new Error(`[atlas/validate] duplicate card_id "${c.card_id}"`);
+      }
+      cardIds.add(c.card_id);
     }
-    if (seen_ids.has(c.card_id)) {
-      throw new Error(`[atlas/validate] duplicate card_id: ${c.card_id}`);
-    }
-    seen_ids.add(c.card_id);
-    if (!sd_ids.has(c.small_domain_id)) {
-      throw new Error(
-        `[atlas/validate] card "${c.card_id}" references unknown small_domain "${c.small_domain_id}"`,
+    if (c.atlas_topic_id != null && !topicIds.has(c.atlas_topic_id)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[atlas/validate] card "${c.card_id ?? c.article_id}" has unknown atlas_topic_id "${c.atlas_topic_id}"`,
       );
     }
   }
 }
+
+/** @deprecated Use `validate` instead. */
+export const validateAtlasInput = validate;

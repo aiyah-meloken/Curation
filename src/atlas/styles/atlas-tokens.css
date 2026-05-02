@@ -32,4 +32,78 @@
   --atlas-shadow-pinned:   4px 5px 0 rgba(42, 32, 20, 0.20);
   --atlas-shadow-vellum:   0 1px 0 var(--atlas-ink-2);
   --atlas-shadow-drawer:   -16px 0 32px rgba(42, 32, 20, 0.20);
+
+  /* ===== Body grain (theme-aware) ===== */
+  --atlas-grain:
+    radial-gradient(ellipse at 20% 10%, rgba(122, 90, 40, 0.10), transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(122, 90, 40, 0.12), transparent 50%),
+    repeating-linear-gradient(0deg,  rgba(90, 66, 34, 0.025) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(90, 66, 34, 0.02)  0 1px, transparent 1px 4px);
+
+  /* ===== Canvas accents (theme-aware) ===== */
+  --atlas-wave:           #7a8d75;             /* sea-wave stroke */
+  --atlas-graticule:      #7a6a44;             /* lat/long grid */
+  --atlas-coast-shadow:   rgba(90, 66, 34, 0.40);
+  --atlas-region-fill:    rgba(140, 100, 50, 0.07);
+  --atlas-voyage-halo:    rgba(120, 80, 30, 0.15);
+  --atlas-voyage-shadow:  rgba(122, 42, 24, 0.35);
+  --atlas-voyage-main:    var(--atlas-rust);
+  --atlas-scrim:          rgba(42, 32, 20, 0.45);
+}
+
+/* ============================================================ */
+/* Dark theme — "Night Atlas / Star Chart"                      */
+/* Deep ink-blue parchment with warm gold ink. Mirrors the      */
+/* main app's dark palette (bg-base / accent-gold) so atlas can */
+/* live alongside the inbox without color whiplash.             */
+/* ============================================================ */
+/* Aesthetic: 17th-c. astronomer's night chart — Cellarius / Bayer.
+   Deep ink-blue velvet ground, marks rendered as gold leaf and bone
+   silver. NOT a darkened day map (no browns, no reds). The two ink
+   colors are gold (warm, ornamental — voyages, hot settlements) and
+   bone (cool-warm, secondary annotation — trade routes, entity
+   labels). Red is exiled. */
+[data-atlas-theme="dark"] {
+  --atlas-paper:    #14141d;   /* deep velvet midnight */
+  --atlas-paper-2:  #1e1f2a;   /* continent fill — lifted */
+  --atlas-vellum:   #262738;   /* popovers / cartouche backing */
+  --atlas-ocean:    #0b0b13;   /* deepest sea */
+
+  /* Bone (warm cream, NOT pure white) — primary marks */
+  --atlas-ink:      #e8dfc4;
+  --atlas-ink-2:    #b3a98c;   /* secondary bone — dashed coast, body */
+  --atlas-ink-faint: #6e6651;
+
+  /* Gold — warmer, brighter than light theme; this is gilding, not paint */
+  --atlas-rust:     #e8b768;
+  --atlas-rust-hi:  #ffd089;
+  /* "Crimson" slot is reused for trade-routes + entity labels.
+     In dark it becomes silver-bone italic — bone with a hint of gold,
+     readable but quiet, never red. */
+  --atlas-crimson:  #e0d0a0;
+  --atlas-vermillion: #ffc977;
+
+  --atlas-shadow-pinned:  4px 5px 0 rgba(0, 0, 0, 0.6);
+  --atlas-shadow-vellum:  0 0 0 1px rgba(232, 223, 196, 0.06);
+  --atlas-shadow-drawer:  -16px 0 32px rgba(0, 0, 0, 0.65);
+
+  /* Velvet grain — warm gold drift in upper left, cool indigo in
+     lower right, faint horizontal weave. Vignette darkens corners
+     for the "candlelit center" effect. */
+  --atlas-grain:
+    radial-gradient(ellipse at 18% 12%, rgba(232, 183, 104, 0.07), transparent 55%),
+    radial-gradient(ellipse at 82% 88%, rgba(110, 130, 200, 0.05), transparent 55%),
+    radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.45) 100%),
+    repeating-linear-gradient(0deg,  rgba(232, 223, 196, 0.018) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(232, 223, 196, 0.014) 0 1px, transparent 1px 4px);
+
+  /* Canvas accents */
+  --atlas-wave:           #3a4862;             /* faint indigo sea-wave */
+  --atlas-graticule:      #3a3d52;             /* cool grid */
+  --atlas-coast-shadow:   rgba(232, 183, 104, 0.18);   /* warm rim-light */
+  --atlas-region-fill:    rgba(232, 183, 104, 0.05);
+  --atlas-voyage-halo:    rgba(232, 183, 104, 0.18);   /* gold glow */
+  --atlas-voyage-shadow:  rgba(232, 183, 104, 0.32);   /* gold inner */
+  --atlas-voyage-main:    #ffc977;                     /* bright gilt */
+  --atlas-scrim:          rgba(0, 0, 0, 0.7);
 }
