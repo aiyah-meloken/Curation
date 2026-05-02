@@ -49,13 +49,16 @@ export function SidebarRail({
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false);
 
-  // Subscribed + temp combined; sort: unread count desc, then keep order.
-  const visibleAccounts = [...accounts]
+  // Subscribed + temp combined; sort: unread count desc, then stable tiebreaker.
+  const filteredAccounts = [...accounts]
     .filter((a) => !a.subscription_type || a.subscription_type === "subscribed" || a.subscription_type === "temporary")
-    .sort((a, b) => (unreadCounts[b.biz] ?? 0) - (unreadCounts[a.biz] ?? 0))
-    .slice(0, RAIL_MAX_ACCOUNTS);
+    .sort((a, b) => {
+      const diff = (unreadCounts[b.biz] ?? 0) - (unreadCounts[a.biz] ?? 0);
+      return diff !== 0 ? diff : a.id - b.id;
+    });
 
-  const overflowCount = Math.max(0, accounts.length - visibleAccounts.length);
+  const visibleAccounts = filteredAccounts.slice(0, RAIL_MAX_ACCOUNTS);
+  const overflowCount = Math.max(0, filteredAccounts.length - visibleAccounts.length);
   const totalUnread = unreadCounts["total"] ?? 0;
 
   const railNavActive = (view: "inbox" | "favorites" | "discarded") =>
