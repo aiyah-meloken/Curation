@@ -126,20 +126,8 @@ function EntityChips({ entities }: { entities: string[] }) {
         padding: "0",
         alignItems: "center",
       }}
-      aria-label="实体"
+      aria-label="entities"
     >
-      <span
-        style={{
-          fontSize: "0.7rem",
-          color: "var(--text-faint)",
-          letterSpacing: "0.05em",
-          marginRight: 4,
-          textTransform: "uppercase",
-          userSelect: "none",
-        }}
-      >
-        实体
-      </span>
       {entities.map((e) => (
         <span
           key={e}

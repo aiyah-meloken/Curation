@@ -23,7 +23,7 @@ function OverviewTab({ run }: { run: RunEntry }) {
     enabled: !!run.workspace_path,
   });
 
-  let manifest: { routing?: string; routing_reason?: string; cards?: { file: string; title: string; description?: string }[] } | null = null;
+  let manifest: { routing?: string; routing_reason?: string; cards?: { file: string; title: string; description?: string; entities?: string[] }[] } | null = null;
   if (manifestContent) {
     try { manifest = JSON.parse(manifestContent); } catch { /* ignore */ }
   }
@@ -55,9 +55,29 @@ function OverviewTab({ run }: { run: RunEntry }) {
         <>
           <h4 style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: "0 0 8px" }}>产出卡片</h4>
           {manifest.cards.map((c, i) => (
-            <div key={i} style={{ background: "var(--bg-panel)", borderRadius: 8, padding: "8px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)" }}>{c.file}</span>
-              <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{c.title}</span>
+            <div key={i} style={{ background: "var(--bg-panel)", borderRadius: 8, padding: "10px 12px", marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: c.description || c.entities?.length ? 6 : 0 }}>
+                <span style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)" }}>{c.file}</span>
+                <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{c.title}</span>
+              </div>
+              {c.description && (
+                <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-xs)", lineHeight: 1.5, marginBottom: c.entities?.length ? 6 : 0 }}>
+                  {c.description}
+                </div>
+              )}
+              {c.entities && c.entities.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {c.entities.map((e) => (
+                    <span key={e} style={{
+                      display: "inline-block", padding: "1px 6px", fontSize: "var(--fs-xs)",
+                      color: "var(--text-secondary)", background: "var(--bg-elev)",
+                      border: "1px solid var(--border)", borderRadius: 3, whiteSpace: "nowrap",
+                    }}>
+                      {e}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </>

@@ -98,6 +98,33 @@ export function ArticleDrawer({
           </div>
         </div>
 
+        {/* Card metadata: description + entity chips */}
+        {(item.description || (item.entities && item.entities.length > 0)) && (
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)" }}>
+            {item.description && (
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.55, marginBottom: item.entities?.length ? 8 : 0 }}>
+                {item.description}
+              </div>
+            )}
+            {item.entities && item.entities.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {item.entities.map((e) => (
+                  <span
+                    key={e}
+                    style={{
+                      display: "inline-block", padding: "2px 8px", fontSize: "0.72rem", lineHeight: 1.4,
+                      color: "var(--text-secondary)", background: "var(--bg-elev)",
+                      border: "1px solid var(--border)", borderRadius: 4, whiteSpace: "nowrap",
+                    }}
+                  >
+                    {e}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Content */}
         <div className="drawer-content">
           {isLoading ? (

@@ -13,12 +13,10 @@ function RoutingPill({ routing }: { routing: string | null }) {
     return <span style={{ background: "var(--bg-base)", color: "var(--text-faint)", padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>未推送</span>;
   }
   const m: Record<string, { text: string; bg: string; color: string }> = {
-    ai_curation:   { text: "AI梳理",   bg: "var(--bg-panel)", color: "var(--accent-green)" },
-    reading_guide: { text: "阅前导读", bg: "var(--bg-panel)", color: "var(--accent-green)" },
-    post_read:     { text: "阅后梳理", bg: "var(--bg-panel)", color: "var(--accent-gold)" },
-    discard:       { text: "丢弃",     bg: "var(--bg-panel)", color: "var(--accent-gold)" },
-    // legacy: pre-2026-05-01 rows that haven't been migrated yet.
-    original_push: { text: "原文推送", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    ai_curation:                       { text: "AI 梳理",     bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    original_content_with_pre_card:    { text: "原文 + 阅前卡", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    original_content_with_post_card:   { text: "原文 + 阅后卡", bg: "var(--bg-panel)", color: "var(--accent-gold)" },
+    discard:                           { text: "丢弃",         bg: "var(--bg-panel)", color: "var(--accent-gold)" },
   };
   const v = m[routing] ?? { text: routing, bg: "var(--bg-base)", color: "var(--text-faint)" };
   return <span style={{ background: v.bg, color: v.color, padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>{v.text}</span>;
@@ -42,7 +40,7 @@ function CardMarkdownView({ articleId }: { articleId: string }) {
 
   return (
     <div className="markdown-body">
-      {cards.map((card: { card_id: string; title: string; content: string }, i: number) => (
+      {cards.map((card: { card_id: string; title: string; description?: string | null; entities?: string[]; content: string }, i: number) => (
         <div key={card.card_id}>
           {i > 0 && <hr style={{ margin: "24px 0", border: "none", height: 2, background: "linear-gradient(90deg, transparent, var(--border-strong), transparent)" }} />}
           {cards.length > 1 && (
@@ -52,6 +50,31 @@ function CardMarkdownView({ articleId }: { articleId: string }) {
             }}>
               卡片 {i + 1}/{cards.length}
               {card.title && <span style={{ marginLeft: 8, fontWeight: 400 }}>{card.title}</span>}
+            </div>
+          )}
+          {(card.description || (card.entities && card.entities.length > 0)) && (
+            <div style={{ marginBottom: 14 }}>
+              {card.description && (
+                <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.55, marginBottom: card.entities?.length ? 8 : 0 }}>
+                  {card.description}
+                </div>
+              )}
+              {card.entities && card.entities.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {card.entities.map((e) => (
+                    <span
+                      key={e}
+                      style={{
+                        display: "inline-block", padding: "2px 8px", fontSize: "0.72rem", lineHeight: 1.4,
+                        color: "var(--text-secondary)", background: "var(--bg-elev)",
+                        border: "1px solid var(--border)", borderRadius: 4, whiteSpace: "nowrap",
+                      }}
+                    >
+                      {e}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>
