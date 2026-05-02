@@ -46,34 +46,39 @@ export function AtlasTabBar({ value, onChange, earliest }: Props) {
           {t.label}
         </button>
       ))}
-      <button
-        role="tab"
-        aria-selected={value.kind === "earlier"}
-        className={`atlas-tab ${value.kind === "earlier" ? "active" : ""}`}
-        onClick={() => {
-          const el = pickerRef.current;
-          if (!el) return;
-          if (typeof (el as any).showPicker === "function") {
-            (el as any).showPicker();
-          } else {
-            el.click();
-          }
-        }}
-      >
-        {earlierLabel}
-      </button>
-      <input
-        ref={pickerRef}
-        type="date"
-        max={pickerMax}
-        min={earliest}
-        value={value.kind === "earlier" ? value.date : ""}
-        onChange={(e) => {
-          if (e.target.value) onChange({ kind: "earlier", date: e.target.value });
-        }}
-        style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
-        aria-hidden
-      />
+      <span className="atlas-tab-earlier-wrap">
+        <button
+          role="tab"
+          aria-selected={value.kind === "earlier"}
+          className={`atlas-tab ${value.kind === "earlier" ? "active" : ""}`}
+          onClick={() => {
+            const el = pickerRef.current;
+            if (!el) return;
+            if (typeof (el as any).showPicker === "function") {
+              (el as any).showPicker();
+            } else {
+              el.click();
+            }
+          }}
+        >
+          {earlierLabel}
+        </button>
+        {/* Native date input sits invisibly OVER the button so the calendar
+            popup anchors to the button position (not the top-left of tabbar). */}
+        <input
+          ref={pickerRef}
+          type="date"
+          max={pickerMax}
+          min={earliest}
+          value={value.kind === "earlier" ? value.date : ""}
+          onChange={(e) => {
+            if (e.target.value) onChange({ kind: "earlier", date: e.target.value });
+          }}
+          className="atlas-tab-date-input"
+          aria-hidden
+          tabIndex={-1}
+        />
+      </span>
     </div>
   );
 }

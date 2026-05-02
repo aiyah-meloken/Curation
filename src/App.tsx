@@ -507,10 +507,13 @@ function AppMain({ currentUser, onLogout }: {
         )}
       </SidebarDrawer>
 
-      {/* Pane 2: List */}
+      {/* Atlas takeover: replaces both the list pane and reader pane entirely */}
       {selectedView === "atlas" ? (
         <AtlasShell />
-      ) : selectedView === "search" ? (
+      ) : (
+      <>
+      {/* Pane 2: List */}
+      {selectedView === "search" ? (
         <SearchList
           query={search.query}
           onQueryChange={search.setQuery}
@@ -600,6 +603,8 @@ function AppMain({ currentUser, onLogout }: {
           onOpenDrawer={() => setIsDrawerOpen(true)}
           onOpenSubs={handleToggleSubs}
         />
+      )}
+      </>
       )}
 
       {/* Article Drawer overlay */}
