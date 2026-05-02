@@ -11,6 +11,7 @@ import { validate as validateAtlasInput } from "../lib/validate";
 import { isCardRead as deriveRead, useAtlasStore } from "../state/store";
 import type { ArticleContent, AtlasCard, AtlasDSL } from "../types";
 import { AtlasCanvas, type RouteFocus } from "./AtlasCanvas";
+import { useFavorites } from "../../hooks/useFavorites";
 import { AtlasCartouche } from "./AtlasCartouche";
 import { AtlasCompass } from "./AtlasCompass";
 import { AtlasEntityList } from "./AtlasEntityList";
@@ -53,6 +54,17 @@ export function AtlasPage({
   const sessionRead = useAtlasStore((s) => s.session_read_card_ids);
   const routesVisible = useAtlasStore((s) => s.routes_visible);
   const hiddenEntities = useAtlasStore((s) => s.hidden_entities);
+
+  const { data: favorites } = useFavorites();
+  const favoritedIds = useMemo(
+    () =>
+      new Set(
+        (favorites ?? [])
+          .filter((f: any) => f.item_type === "card")
+          .map((f: any) => f.item_id as string),
+      ),
+    [favorites],
+  );
 
   // Track stage element to compute popover absolute positions (the SVG canvas
   // uses a viewBox so we need the rendered scale to map back to screen pixels).
@@ -308,6 +320,7 @@ export function AtlasPage({
           });
         }}
         onCanvasBlankClick={() => setRouteFocus(null)}
+        favoritedIds={favoritedIds}
       />
 
       <AtlasCartouche date={formatDate(cards[0]?.article_date ?? null)} />

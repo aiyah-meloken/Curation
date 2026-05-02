@@ -13,6 +13,7 @@
   --atlas-ink-2:    #5a4222;   /* secondary ink: region dashes, body text */
   --atlas-ink-faint: #8a7a52;  /* faded ink: read state, sparse labels */
 
+  --atlas-gold:     #c8961f;   /* warm gold leaf — favorites star (light mode) */
   --atlas-rust:     #a3711a;   /* settlement city (hot card) fill */
   --atlas-rust-hi:  #c69248;   /* hover for hot */
   --atlas-crimson:  #7a2a18;   /* trade route dashes */
@@ -75,6 +76,7 @@
   --atlas-ink-faint: #6e6651;
 
   /* Gold — warmer, brighter than light theme; this is gilding, not paint */
+  --atlas-gold:     #d4a017;   /* warm gold leaf — favorites star */
   --atlas-rust:     #e8b768;
   --atlas-rust-hi:  #ffd089;
   /* "Crimson" slot is reused for trade-routes + entity labels.

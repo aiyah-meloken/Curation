@@ -8,6 +8,13 @@ import {
   SEA_MONSTER_PATH,
   SEA_SWIRLS,
 } from "../lib/decoration";
+import {
+  pickShape,
+  baseRadius,
+  ringCount,
+  starPath,
+  trianglePath,
+} from "../lib/settlement-style";
 import type {
   AtlasCard,
   AtlasDSL,
@@ -49,6 +56,8 @@ type Props = {
   onRouteHover: (focus: RouteFocus | null) => void;
   onRouteClick: (focus: RouteFocus) => void;
   onCanvasBlankClick: () => void;
+  /** Set of card_ids that the user has favorited. */
+  favoritedIds?: Set<string>;
 };
 
 export function AtlasCanvas({
@@ -64,6 +73,7 @@ export function AtlasCanvas({
   onRouteHover,
   onRouteClick,
   onCanvasBlankClick,
+  favoritedIds,
 }: Props) {
   const [hoveredBigDomain, setHoveredBigDomain] = useState<string | null>(null);
 
@@ -392,12 +402,18 @@ export function AtlasCanvas({
         {layout.continents.flatMap((cont) =>
           cont.cards.map((s) => {
             const focused = focusedCardIds.has(s.card_id);
+            const card = cardById.get(s.card_id);
+            const isFavorited = card?.card_id
+              ? (favoritedIds?.has(card.card_id) ?? false)
+              : false;
             return (
               <Settlement
                 key={s.card_id}
                 settlement={s}
+                card={card ?? null}
                 isRead={isCardRead(s.card_id)}
                 isFocused={focused}
+                isFavorited={isFavorited}
                 dimmed={routeFocus != null && !focused}
                 onHover={onSettlementHover}
                 onClick={onSettlementClick}
@@ -526,48 +542,54 @@ function Continent({
 
 function Settlement({
   settlement,
+  card,
   isRead,
   isFocused,
+  isFavorited,
   dimmed,
   onHover,
   onClick,
 }: {
   settlement: SettlementLayout;
+  card: AtlasCard | null;
   isRead: boolean;
   isFocused: boolean;
+  isFavorited: boolean;
   /** True when a route focus is active and this settlement is not in it. */
   dimmed: boolean;
   onHover: (card_id: string | null, x: number, y: number) => void;
   onClick: (card_id: string) => void;
 }) {
-  const isHot = settlement.hot;
-  const fill = isRead
-    ? "var(--atlas-paper)"
-    : isHot
-      ? "var(--atlas-rust)"
-      : "var(--atlas-vellum)";
-  const stroke = isRead ? "var(--atlas-ink-faint)" : "var(--atlas-ink)";
-  const strokeWidth = isRead ? 0.6 : 1.4;
+  // Derive shape + radius from the card (fall back to settlement.radius if no card)
+  const shape = card ? pickShape(card, isFavorited) : "circle-rust";
+  const r = card ? baseRadius(card.reading_minutes) : settlement.radius;
+  const rings = card ? ringCount((card as any).source_count) : 0;
+
   // Priority: dimmed (entity not in focus) → focused → read-dim → normal
-  const opacity = dimmed ? 0.15 : isFocused ? 1 : isRead ? 0.5 : 1;
+  const opacity = dimmed ? 0.15 : isFocused ? 1 : isRead ? 0.35 : 1;
 
   return (
     <g
+      transform={`translate(${settlement.x}, ${settlement.y})`}
       onMouseEnter={() => onHover(settlement.card_id, settlement.x, settlement.y)}
       onMouseLeave={() => onHover(null, 0, 0)}
       onClick={(e) => {
         e.stopPropagation();
         onClick(settlement.card_id);
       }}
-      style={{ cursor: "pointer" }}
+      style={{
+        cursor: "pointer",
+        opacity,
+        transition: "opacity 180ms",
+      }}
     >
       {/* Outer halo when this settlement is a route endpoint in focus */}
       {isFocused && (
         <>
           <circle
-            cx={settlement.x}
-            cy={settlement.y}
-            r={settlement.radius + 8}
+            cx={0}
+            cy={0}
+            r={r + 8}
             fill="none"
             stroke="var(--atlas-crimson)"
             strokeWidth={1.2}
@@ -575,9 +597,9 @@ function Settlement({
             strokeDasharray="2 2"
           />
           <circle
-            cx={settlement.x}
-            cy={settlement.y}
-            r={settlement.radius + 4}
+            cx={0}
+            cy={0}
+            r={r + 4}
             fill="none"
             stroke="var(--atlas-crimson)"
             strokeWidth={1.4}
@@ -585,24 +607,71 @@ function Settlement({
           />
         </>
       )}
-      <circle
-        cx={settlement.x}
-        cy={settlement.y}
-        r={settlement.radius}
-        fill={fill}
-        stroke={isFocused ? "var(--atlas-crimson)" : stroke}
-        strokeWidth={isFocused ? 1.8 : strokeWidth}
-        opacity={opacity}
-        style={{ transition: "all 180ms" }}
-      />
-      {/* Invisible enlarged hit-area. Settlement dots render at 4-7px radius
+
+      {/* Aggregate rings (dashed concentric circles, rendered before main shape) */}
+      {Array.from({ length: rings }).map((_, i) => (
+        <circle
+          key={`ring-${i}`}
+          cx={0}
+          cy={0}
+          r={r + 3 + i * 3}
+          fill="none"
+          stroke="var(--atlas-ink-2)"
+          strokeWidth={1}
+          strokeDasharray="1 2"
+        />
+      ))}
+
+      {/* Main shape based on priority */}
+      {shape === "star" && (
+        <path
+          d={starPath(r)}
+          fill="var(--atlas-gold)"
+          stroke="var(--atlas-gold)"
+          strokeWidth={1}
+          style={{ transition: "all 180ms" }}
+        />
+      )}
+      {shape === "triangle" && (
+        <path
+          d={trianglePath(r)}
+          fill="none"
+          stroke="var(--atlas-ink-2)"
+          strokeWidth={1.2}
+          style={{ transition: "all 180ms" }}
+        />
+      )}
+      {shape === "circle-rust" && (
+        <circle
+          cx={0}
+          cy={0}
+          r={r}
+          fill="var(--atlas-rust)"
+          stroke={isFocused ? "var(--atlas-crimson)" : "var(--atlas-ink)"}
+          strokeWidth={isFocused ? 1.8 : isRead ? 0.6 : 1.4}
+          style={{ transition: "all 180ms" }}
+        />
+      )}
+      {shape === "circle-vellum" && (
+        <circle
+          cx={0}
+          cy={0}
+          r={r}
+          fill="var(--atlas-vellum)"
+          stroke={isFocused ? "var(--atlas-crimson)" : "var(--atlas-ink)"}
+          strokeWidth={isFocused ? 1.8 : isRead ? 0.6 : 1.4}
+          style={{ transition: "all 180ms" }}
+        />
+      )}
+
+      {/* Invisible enlarged hit-area. Settlement dots render at 4-11px radius
           which is awkward to target precisely; a +5px transparent halo lets
           hover/click resolve to the dot rather than to a passing route line.
           Drawn last so it's the topmost element of this <g>. */}
       <circle
-        cx={settlement.x}
-        cy={settlement.y}
-        r={settlement.radius + 5}
+        cx={0}
+        cy={0}
+        r={r + 5}
         fill="transparent"
         stroke="transparent"
       />
