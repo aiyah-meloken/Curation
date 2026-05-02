@@ -1,4 +1,5 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useState } from "react";
+import { AtlasDatePicker } from "./AtlasDatePicker";
 
 export type DateTab =
   | { kind: "yesterday" }
@@ -15,15 +16,18 @@ interface Props {
 function isoDaysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function AtlasTabBar({ value, onChange, earliest }: Props) {
   const yesterday = useMemo(() => isoDaysAgo(1), []);
   const dayBefore = useMemo(() => isoDaysAgo(2), []);
-  // Picker max = 3 days ago (never collide with fixed tabs)
+  // Picker max = 3 days ago (never collide with the fixed tabs).
   const pickerMax = useMemo(() => isoDaysAgo(3), []);
-  const pickerRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const tabs = [
     { kind: "yesterday" as const, label: `昨天 · ${yesterday.slice(5)}` },
@@ -37,6 +41,7 @@ export function AtlasTabBar({ value, onChange, earliest }: Props) {
     <div className="atlas-tabbar" role="tablist">
       {tabs.map((t) => (
         <button
+          type="button"
           key={t.kind}
           role="tab"
           aria-selected={value.kind === t.kind}
@@ -48,36 +53,25 @@ export function AtlasTabBar({ value, onChange, earliest }: Props) {
       ))}
       <span className="atlas-tab-earlier-wrap">
         <button
+          type="button"
           role="tab"
           aria-selected={value.kind === "earlier"}
+          aria-haspopup="dialog"
+          aria-expanded={pickerOpen}
           className={`atlas-tab ${value.kind === "earlier" ? "active" : ""}`}
-          onClick={() => {
-            const el = pickerRef.current;
-            if (!el) return;
-            if (typeof (el as any).showPicker === "function") {
-              (el as any).showPicker();
-            } else {
-              el.click();
-            }
-          }}
+          onClick={() => setPickerOpen((o) => !o)}
         >
           {earlierLabel}
         </button>
-        {/* Native date input sits invisibly OVER the button so the calendar
-            popup anchors to the button position (not the top-left of tabbar). */}
-        <input
-          ref={pickerRef}
-          type="date"
-          max={pickerMax}
-          min={earliest}
-          value={value.kind === "earlier" ? value.date : ""}
-          onChange={(e) => {
-            if (e.target.value) onChange({ kind: "earlier", date: e.target.value });
-          }}
-          className="atlas-tab-date-input"
-          aria-hidden
-          tabIndex={-1}
-        />
+        {pickerOpen && (
+          <AtlasDatePicker
+            value={value.kind === "earlier" ? value.date : null}
+            onChange={(iso) => onChange({ kind: "earlier", date: iso })}
+            min={earliest}
+            max={pickerMax}
+            onClose={() => setPickerOpen(false)}
+          />
+        )}
       </span>
     </div>
   );
