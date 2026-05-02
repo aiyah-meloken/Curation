@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLayout } from "./hooks/useLayout";
 import { useInbox, useDiscarded, useIsFirstSync, useAnalyzingQueue } from "./hooks/useInbox";
 import { useAccounts, usePrimeAccountsCache } from "./hooks/useAccounts";
@@ -15,7 +15,7 @@ import { X, Sparkles } from 'lucide-react';
 import { check, relaunch, getVersion } from './lib/platform/updater';
 import { SidebarRail } from './components/SidebarRail';
 import { SidebarDrawer } from './components/SidebarDrawer';
-import { NavDrawerBody } from './components/NavDrawerBody';
+import { SubscriptionsDrawerBody } from './components/SubscriptionsDrawerBody';
 import { AdminPane } from './components/AdminPane';
 import { InboxList } from './components/InboxList';
 import { ReaderPane } from './components/ReaderPane';
@@ -149,47 +149,21 @@ function AppMain({ currentUser, onLogout }: {
   // Appearance (font system)
   const appearance = useAppearance();
   useFontShortcuts({ bump: appearance.bumpReaderSize, clear: appearance.resetReaderSize });
-  const [drawerState, setDrawerState] = useState<"idle" | "nav" | "settings">("idle");
-  const drawerCloseTimerRef = useRef<number | null>(null);
+  // Drawer is now click-toggle only: subscriptions panel and settings
+  // panel are both sticky; hover does nothing.
+  const [drawerState, setDrawerState] = useState<"idle" | "subs" | "settings">("idle");
 
-  const cancelDrawerCloseTimer = () => {
-    if (drawerCloseTimerRef.current != null) {
-      window.clearTimeout(drawerCloseTimerRef.current);
-      drawerCloseTimerRef.current = null;
-    }
-  };
-
-  const handleRailEnter = () => {
-    cancelDrawerCloseTimer();
-    if (drawerState === "settings") return; // settings is sticky
-    setDrawerState("nav");
-  };
-
-  const handleDrawerEnter = () => {
-    cancelDrawerCloseTimer();
-  };
-
-  const handleDrawerLeave = () => {
-    if (drawerState === "settings") return; // sticky stays open
-    cancelDrawerCloseTimer();
-    drawerCloseTimerRef.current = window.setTimeout(() => {
-      setDrawerState((s) => (s === "nav" ? "idle" : s));
-    }, 200);
+  const handleToggleSubs = () => {
+    setDrawerState((s) => (s === "subs" ? "idle" : "subs"));
   };
 
   const handleToggleSettings = () => {
-    cancelDrawerCloseTimer();
     setDrawerState((s) => (s === "settings" ? "idle" : "settings"));
   };
 
   const handleCloseDrawer = () => {
-    cancelDrawerCloseTimer();
     setDrawerState("idle");
   };
-
-  // Clear any pending close timer if the component unmounts before
-  // the 200ms grace timer fires.
-  useEffect(() => () => cancelDrawerCloseTimer(), []);
 
   const [notesPath, setNotesPath] = useState(() => localStorage.getItem("notesPath") ?? "");
   const handleNotesPathChange = useCallback((path: string) => {
@@ -389,7 +363,8 @@ function AppMain({ currentUser, onLogout }: {
 
   function handleSelectAccount(biz: string) {
     setSelectedView("inbox");
-    setSelectedBiz(biz);
+    // Click an already-selected account → deselect (back to all-inbox).
+    setSelectedBiz((current) => (current === biz ? null : biz));
     setSelectedCardId(null);
   }
 
@@ -482,35 +457,31 @@ function AppMain({ currentUser, onLogout }: {
         unreadCounts={unreadCounts}
         isAdminMode={isAdminMode}
         currentUserRole={currentUser.role}
+        isSubsOpen={drawerState === "subs"}
         isSettingsOpen={drawerState === "settings"}
         onSelectInbox={handleSelectInbox}
         onSelectFavorites={handleSelectFavorites}
         onSelectDiscarded={handleSelectDiscarded}
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
+        onToggleSubs={handleToggleSubs}
         onToggleSettings={handleToggleSettings}
-        onMouseEnter={handleRailEnter}
         onNavigateToCard={handleNavigateToCard}
       />
 
       <SidebarDrawer
         open={drawerState !== "idle"}
-        sticky={drawerState === "settings"}
         onClose={handleCloseDrawer}
-        onMouseEnter={handleDrawerEnter}
-        onMouseLeave={handleDrawerLeave}
       >
-        {drawerState === "nav" && (
-          <NavDrawerBody
+        {drawerState === "subs" && (
+          <SubscriptionsDrawerBody
             accounts={accounts}
             selectedView={selectedView}
             selectedBiz={selectedBiz}
             unreadCounts={unreadCounts}
             userName={currentUser.email || currentUser.username}
             appVersion={appVersion}
-            onSelectInbox={handleSelectInbox}
-            onSelectFavorites={handleSelectFavorites}
-            onSelectDiscarded={handleSelectDiscarded}
             onSelectAccount={handleSelectAccount}
+            onNavigateToCard={handleNavigateToCard}
           />
         )}
         {drawerState === "settings" && (
@@ -562,6 +533,7 @@ function AppMain({ currentUser, onLogout }: {
                 : inboxItems
           }
           isDiscardedView={isDiscardedView}
+          isFavoritesView={selectedView === "favorites"}
           selectedId={selectedView === "favorites"
             ? (selectedFavorite?.item_id ?? null)
             : currentSelectedId}
@@ -578,6 +550,17 @@ function AppMain({ currentUser, onLogout }: {
               .filter((f) => f.item_type === "card" && f.item_id)
               .map((f) => f.item_id)
           )}
+          filterAccount={
+            selectedView === "inbox" && selectedBiz
+              ? {
+                  biz: selectedBiz,
+                  name:
+                    accounts.find((a) => a.biz === selectedBiz)?.name ??
+                    selectedBiz,
+                }
+              : null
+          }
+          onClearFilter={() => setSelectedBiz(null)}
         />
       )}
 
@@ -605,6 +588,7 @@ function AppMain({ currentUser, onLogout }: {
           isHomeView={selectedView === "home"}
           cacheReady={cacheReady}
           onOpenDrawer={() => setIsDrawerOpen(true)}
+          onOpenSubs={handleToggleSubs}
         />
       )}
 

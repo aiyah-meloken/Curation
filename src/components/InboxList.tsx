@@ -17,12 +17,15 @@ import {
 interface InboxListProps {
   items: InboxItem[] | undefined;
   isDiscardedView: boolean;
+  isFavoritesView?: boolean;
   selectedId: string | null;
   onSelect: (id: string, type: "card" | "discarded") => void;
   isLoading: boolean;
   listWidth: number;
   favoriteCardIds?: Set<string>;
   isFirstSync?: boolean;
+  filterAccount?: { biz: string; name: string } | null;
+  onClearFilter?: () => void;
 }
 
 function routingTag(routing: Routing, queueStatus?: "pending" | "running" | null, isDiscarded?: boolean) {
@@ -168,12 +171,15 @@ function searchResultToInbox(h: SearchResult): InboxItem {
 export function InboxList({
   items,
   isDiscardedView,
+  isFavoritesView = false,
   selectedId,
   onSelect,
   isLoading,
   listWidth,
   favoriteCardIds = new Set(),
   isFirstSync = false,
+  filterAccount = null,
+  onClearFilter,
 }: InboxListProps) {
   const [search, setSearch] = useState("");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -213,6 +219,8 @@ export function InboxList({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   function isGroupOpen(group: DateGroup<InboxItem>) {
+    // Favorites view: always default to expanded; ignore collapse memory.
+    if (isFavoritesView) return true;
     if (group.key in collapsed) return !collapsed[group.key];
     // Defaults
     if (group.key === "today" || group.key === "yesterday") return true;
@@ -286,6 +294,23 @@ export function InboxList({
           </button>
         </div>
       </header>
+
+      {/* Active account filter chip */}
+      {filterAccount && (
+        <div className="inbox-filter-chip-wrap">
+          <div className="inbox-filter-chip">
+            <span className="inbox-filter-chip-name">{filterAccount.name}</span>
+            <button
+              className="inbox-filter-chip-x"
+              onClick={onClearFilter}
+              aria-label="清除筛选"
+              title="清除筛选"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* List content */}
       <div className="list-content">

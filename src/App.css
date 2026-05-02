@@ -165,6 +165,28 @@ body {
   opacity: 0.3;
 }
 
+.reader-empty-cta {
+  margin-top: var(--sp-5);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background var(--dur-instant) var(--ease-out),
+              color var(--dur-instant) var(--ease-out),
+              border-color var(--dur-instant) var(--ease-out),
+              transform var(--dur-instant) var(--ease-out);
+}
+.reader-empty-cta:hover {
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+.reader-empty-cta:active { transform: translateY(1px); }
+
 /* Markdown Typography (for AI Summary) */
 .markdown-body {
   font-family: var(--font-body);
@@ -1773,6 +1795,42 @@ body {
 
 .rail-glyph:hover { background: var(--bg-hover); color: var(--text-primary); }
 
+/* Fast tooltip — appears on hover/focus with no native delay.
+   Font size matches inbox list item titles (--fs-base).
+   Centered via fixed-height + integer-pixel offset (avoids the
+   subpixel anti-aliasing that translateY(-50%) introduces). */
+.rail-glyph[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  /* rail-glyph is 36px tall; tooltip is 30px (14px text + 6+6+1+1 box) */
+  top: 3px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-elev);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 80ms ease-out;
+  z-index: 300;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+.rail-glyph[data-tooltip]:hover::after,
+.rail-glyph[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
 .rail-glyph.active {
   background: var(--accent-gold-dim);
   color: var(--accent-gold);
@@ -2052,6 +2110,109 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
 }
+
+/* Active filter chip at top of middle list pane */
+.inbox-filter-chip-wrap {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-raised);
+}
+.inbox-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  max-width: 100%;
+}
+.inbox-filter-chip-label {
+  font-size: var(--fs-xs);
+  color: var(--accent-gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.inbox-filter-chip-name {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inbox-filter-chip-x {
+  background: transparent;
+  border: none;
+  color: var(--accent-gold);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  transition: background var(--dur-instant) var(--ease-out),
+              color var(--dur-instant) var(--ease-out);
+}
+.inbox-filter-chip-x:hover {
+  background: var(--accent-gold);
+  color: #1a1208;
+}
+
+/* Hint text in drawer */
+.drawer-hint {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid var(--accent-gold-dim);
+  background: rgba(212, 164, 92, 0.04);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+/* CTA row for subscription drawer (订阅公众号 / 添加文章) */
+.drawer-cta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+.drawer-cta-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: background var(--dur-instant) var(--ease-out),
+              border-color var(--dur-instant) var(--ease-out),
+              color var(--dur-instant) var(--ease-out),
+              transform var(--dur-instant) var(--ease-out);
+}
+.drawer-cta-btn:hover {
+  background: var(--accent-gold-dim);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+.drawer-cta-btn:active { transform: translateY(1px); }
+.drawer-cta-btn svg { color: var(--accent-gold); flex-shrink: 0; }
 
 .drawer-settings-section {
   border-top: 1px dashed var(--border-hairline);

@@ -54,6 +54,7 @@ interface ReaderPaneProps {
   isHomeView?: boolean;
   cacheReady?: boolean;
   onOpenDrawer: () => void;
+  onOpenSubs?: () => void;
 }
 
 function SourceBar({
@@ -217,6 +218,7 @@ export function ReaderPane({
   isHomeView,
   cacheReady,
   onOpenDrawer,
+  onOpenSubs,
 }: ReaderPaneProps) {
   const { state: authState } = useAuth();
   const isAdmin = authState.status === "authenticated" && authState.user.role === "admin";
@@ -455,6 +457,11 @@ ${notesSection}
         <div className="reader-empty">
           <div className="reader-empty-icon"><BookOpen size={64} /></div>
           <h3>请选择一篇内容阅读</h3>
+          {onOpenSubs && (
+            <button className="reader-empty-cta" onClick={onOpenSubs}>
+              + 添加订阅 / 文章
+            </button>
+          )}
         </div>
       </main>
     );

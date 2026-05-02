@@ -1,6 +1,6 @@
 // curation-app/src/components/SidebarRail.tsx
 import { useState } from "react";
-import { Inbox, Star, Plus, Trash2, ShieldCheck, Settings } from "lucide-react";
+import { Inbox, Star, Plus, Trash2, ShieldCheck, Settings, Library } from "lucide-react";
 import { AddMenu } from "./AddMenu";
 import { SubscribeModal } from "./SubscribeModal";
 import { AddArticleModal } from "./AddArticleModal";
@@ -14,13 +14,14 @@ interface SidebarRailProps {
   unreadCounts: Record<string, number>;
   isAdminMode: boolean;
   currentUserRole: string;
+  isSubsOpen: boolean;
   isSettingsOpen: boolean;
   onSelectInbox: () => void;
   onSelectFavorites: () => void;
   onSelectDiscarded: () => void;
   onToggleAdmin: () => void;
+  onToggleSubs: () => void;
   onToggleSettings: () => void;
-  onMouseEnter: () => void;
   onNavigateToCard?: (cardId: string) => void;
 }
 
@@ -31,13 +32,14 @@ export function SidebarRail({
   unreadCounts,
   isAdminMode,
   currentUserRole,
+  isSubsOpen,
   isSettingsOpen,
   onSelectInbox,
   onSelectFavorites,
   onSelectDiscarded,
   onToggleAdmin,
+  onToggleSubs,
   onToggleSettings,
-  onMouseEnter,
   onNavigateToCard,
 }: SidebarRailProps) {
   const queryClient = useQueryClient();
@@ -51,15 +53,12 @@ export function SidebarRail({
     selectedView === view && (view !== "inbox" || selectedBiz === null);
 
   return (
-    <aside
-      className="rail"
-      onMouseEnter={onMouseEnter}
-      onFocus={onMouseEnter}
-    >
+    <aside className="rail">
       {/* Top: view glyphs */}
       <button
         className={`rail-glyph ${railNavActive("inbox") ? "active" : ""}`}
-        title="全部卡片"
+        data-tooltip="全部卡片"
+        aria-label="全部卡片"
         onClick={onSelectInbox}
       >
         <Inbox size={18} />
@@ -67,17 +66,31 @@ export function SidebarRail({
       </button>
       <button
         className={`rail-glyph ${railNavActive("favorites") ? "active" : ""}`}
-        title="收藏"
+        data-tooltip="收藏"
+        aria-label="收藏"
         onClick={onSelectFavorites}
       >
         <Star size={16} />
       </button>
       <button
         className={`rail-glyph ${railNavActive("discarded") ? "active" : ""}`}
-        title="未推送"
+        data-tooltip="未推送"
+        aria-label="未推送"
         onClick={onSelectDiscarded}
       >
         <Trash2 size={16} />
+      </button>
+
+      <div className="rail-rule" />
+
+      {/* Subscriptions toggle */}
+      <button
+        className={`rail-glyph ${isSubsOpen ? "active" : ""}`}
+        data-tooltip="订阅列表"
+        aria-label="订阅列表"
+        onClick={onToggleSubs}
+      >
+        <Library size={16} />
       </button>
 
       {/* Bottom: + and ⚙ */}
@@ -85,7 +98,8 @@ export function SidebarRail({
         {currentUserRole === "admin" && !__IS_WEB__ && (
           <button
             className={`rail-glyph ${isAdminMode ? "active" : ""}`}
-            title="管理员模式"
+            data-tooltip="管理员模式"
+            aria-label="管理员模式"
             onClick={onToggleAdmin}
           >
             <ShieldCheck size={16} />
@@ -100,7 +114,8 @@ export function SidebarRail({
           />
           <button
             className="rail-glyph rail-glyph-primary"
-            title="添加内容"
+            data-tooltip="添加内容"
+            aria-label="添加内容"
             onClick={() => setIsAddMenuOpen((v) => !v)}
           >
             <Plus size={18} />
@@ -108,7 +123,8 @@ export function SidebarRail({
         </div>
         <button
           className={`rail-glyph ${isSettingsOpen ? "active" : ""}`}
-          title="设置"
+          data-tooltip="设置"
+          aria-label="设置"
           onClick={onToggleSettings}
         >
           <Settings size={16} />

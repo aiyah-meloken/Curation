@@ -1,48 +1,45 @@
-// curation-app/src/components/NavDrawerBody.tsx
+// curation-app/src/components/SubscriptionsDrawerBody.tsx
 import { useState } from "react";
-import { Inbox, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Rss, FilePlus } from "lucide-react";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { SubscribeModal } from "./SubscribeModal";
+import { AddArticleModal } from "./AddArticleModal";
 import { useUnsubscribe, useResubscribe } from "../hooks/useAccounts";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Account } from "../types";
 
-interface NavDrawerBodyProps {
+interface SubscriptionsDrawerBodyProps {
   accounts: Account[];
   selectedView: "inbox" | "discarded" | "favorites" | "search" | "home";
   selectedBiz: string | null;
   unreadCounts: Record<string, number>;
   userName: string;
   appVersion: string;
-  onSelectInbox: () => void;
-  onSelectFavorites: () => void;
-  onSelectDiscarded: () => void;
   onSelectAccount: (biz: string) => void;
+  onNavigateToCard?: (cardId: string) => void;
 }
 
-export function NavDrawerBody({
+export function SubscriptionsDrawerBody({
   accounts,
   selectedView,
   selectedBiz,
   unreadCounts,
   userName,
   appVersion,
-  onSelectInbox,
-  onSelectFavorites,
-  onSelectDiscarded,
   onSelectAccount,
-}: NavDrawerBodyProps) {
+  onNavigateToCard,
+}: SubscriptionsDrawerBodyProps) {
+  const queryClient = useQueryClient();
   const unsubscribe = useUnsubscribe();
   const resubscribe = useResubscribe();
   const [isSubsOpen, setIsSubsOpen] = useState(true);
   const [isTempOpen, setIsTempOpen] = useState(true);
+  const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
+  const [isAddArticleOpen, setIsAddArticleOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   const subscribed = accounts.filter((a) => !a.subscription_type || a.subscription_type === "subscribed");
   const temporary = accounts.filter((a) => a.subscription_type === "temporary");
-  const totalUnread = unreadCounts["total"] ?? 0;
-  const favoritesCount = unreadCounts["favorites"] ?? 0;
-
-  const isViewActive = (view: "inbox" | "favorites" | "discarded") =>
-    selectedView === view && (view !== "inbox" || selectedBiz === null);
 
   const renderAccountItem = (acc: Account, kind: "subscribed" | "temporary") => {
     const count = unreadCounts[acc.biz] ?? 0;
@@ -75,44 +72,38 @@ export function NavDrawerBody({
 
   return (
     <div className="drawer-body">
-      <div className="drawer-brand">
-        <div className="drawer-brand-name">Curation</div>
-        <div className="drawer-brand-rule" />
-        <div className="drawer-brand-tag">
-          <span>值得读完的文章</span>
-          <span>远比你以为的少</span>
-        </div>
+      <div className="drawer-settings-title">
+        <span className="drawer-settings-title-serif">Subscriptions</span>
+        <span className="drawer-settings-title-sans">订阅列表</span>
       </div>
 
-      <div className="drawer-section-label">视图</div>
-      <nav className="drawer-nav">
+      <p className="drawer-hint">
+        点击公众号可筛选其文章；再次点击同一公众号取消筛选。
+      </p>
+
+      <div className="drawer-cta-row">
         <button
-          className={`drawer-nav-item ${isViewActive("inbox") ? "active" : ""}`}
-          onClick={onSelectInbox}
+          className="drawer-cta-btn"
+          onClick={() => setIsSubscribeOpen(true)}
         >
-          <Inbox size={20} className="glyph" /><span>全部卡片</span>
-          {totalUnread > 0 && <span className="drawer-nav-badge unread">{totalUnread}</span>}
+          <Rss size={16} />
+          <span>订阅公众号</span>
         </button>
         <button
-          className={`drawer-nav-item ${isViewActive("favorites") ? "active" : ""}`}
-          onClick={onSelectFavorites}
+          className="drawer-cta-btn"
+          onClick={() => setIsAddArticleOpen(true)}
         >
-          <Star size={20} className="glyph" /><span>收藏</span>
-          {favoritesCount > 0 && <span className="drawer-nav-badge">{favoritesCount}</span>}
+          <FilePlus size={16} />
+          <span>添加文章</span>
         </button>
-        <button
-          className={`drawer-nav-item ${isViewActive("discarded") ? "active" : ""}`}
-          onClick={onSelectDiscarded}
-        >
-          <Trash2 size={20} className="glyph" /><span>未推送</span>
-        </button>
-      </nav>
+      </div>
 
       {subscribed.length > 0 && (
         <>
           <button
             className="drawer-section-label drawer-section-toggle"
             onClick={() => setIsSubsOpen(!isSubsOpen)}
+            aria-expanded={isSubsOpen}
           >
             {isSubsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <span>公众号 · {subscribed.length}</span>
@@ -126,6 +117,7 @@ export function NavDrawerBody({
           <button
             className="drawer-section-label drawer-section-toggle"
             onClick={() => setIsTempOpen(!isTempOpen)}
+            aria-expanded={isTempOpen}
           >
             {isTempOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <span>临时文章 · {temporary.length}</span>
@@ -147,6 +139,25 @@ export function NavDrawerBody({
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      <SubscribeModal
+        open={isSubscribeOpen}
+        onClose={() => setIsSubscribeOpen(false)}
+        onSuccess={() => {
+          setIsSubscribeOpen(false);
+          queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        }}
+      />
+      <AddArticleModal
+        open={isAddArticleOpen}
+        onClose={() => setIsAddArticleOpen(false)}
+        accounts={accounts}
+        onRefresh={() => {
+          queryClient.invalidateQueries({ queryKey: ["accounts"] });
+          queryClient.invalidateQueries({ queryKey: ["inbox"] });
+        }}
+        onNavigateToCard={onNavigateToCard}
+      />
     </div>
   );
 }

@@ -3,27 +3,18 @@ import { useEffect, useRef } from "react";
 
 interface SidebarDrawerProps {
   open: boolean;
-  /** When true, drawer ignores its own mouseleave for hover-mode close.
-   *  Settings drawer is `sticky=true` (closed via toggle/Esc/click-outside).
-   *  Nav drawer is `sticky=false` (closed when mouse leaves rail+drawer area). */
-  sticky: boolean;
   onClose: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
   children: React.ReactNode;
 }
 
 export function SidebarDrawer({
   open,
-  sticky,
   onClose,
-  onMouseEnter,
-  onMouseLeave,
   children,
 }: SidebarDrawerProps) {
   const drawerRef = useRef<HTMLElement | null>(null);
 
-  // Esc closes (only matters when sticky; non-sticky closes via mouseleave).
+  // Esc closes the drawer.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -33,9 +24,9 @@ export function SidebarDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Sticky drawer: click outside drawer (and outside rail) closes.
+  // Click outside drawer (and outside rail) closes.
   useEffect(() => {
-    if (!open || !sticky) return;
+    if (!open) return;
     const onClick = (e: MouseEvent) => {
       const target = e.target as Node;
       if (drawerRef.current && drawerRef.current.contains(target)) return;
@@ -44,7 +35,7 @@ export function SidebarDrawer({
       if (rail && rail.contains(target)) return;
       onClose();
     };
-    // Defer to next tick so the click that opened settings doesn't close it.
+    // Defer so the click that opened the drawer doesn't immediately close it.
     const id = window.setTimeout(() => {
       window.addEventListener("click", onClick, true);
     }, 0);
@@ -52,21 +43,12 @@ export function SidebarDrawer({
       window.clearTimeout(id);
       window.removeEventListener("click", onClick, true);
     };
-  }, [open, sticky, onClose]);
+  }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <aside
-      ref={drawerRef}
-      className="drawer"
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      onBlur={(e) => {
-        // Only fire when focus leaves the drawer entirely (not moving between children).
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) onMouseLeave();
-      }}
-    >
+    <aside ref={drawerRef} className="drawer">
       {children}
     </aside>
   );
