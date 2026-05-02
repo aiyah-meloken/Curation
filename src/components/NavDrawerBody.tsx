@@ -90,21 +90,21 @@ export function NavDrawerBody({
           className={`drawer-nav-item ${isViewActive("inbox") ? "active" : ""}`}
           onClick={onSelectInbox}
         >
-          <Inbox size={14} className="glyph" /><span>全部卡片</span>
+          <Inbox size={20} className="glyph" /><span>全部卡片</span>
           {totalUnread > 0 && <span className="drawer-nav-badge unread">{totalUnread}</span>}
         </button>
         <button
           className={`drawer-nav-item ${isViewActive("favorites") ? "active" : ""}`}
           onClick={onSelectFavorites}
         >
-          <Star size={14} className="glyph" /><span>收藏</span>
+          <Star size={20} className="glyph" /><span>收藏</span>
           {favoritesCount > 0 && <span className="drawer-nav-badge">{favoritesCount}</span>}
         </button>
         <button
           className={`drawer-nav-item ${isViewActive("discarded") ? "active" : ""}`}
           onClick={onSelectDiscarded}
         >
-          <Trash2 size={14} className="glyph" /><span>未推送</span>
+          <Trash2 size={20} className="glyph" /><span>未推送</span>
         </button>
       </nav>
 
@@ -114,7 +114,7 @@ export function NavDrawerBody({
             className="drawer-section-label drawer-section-toggle"
             onClick={() => setIsSubsOpen(!isSubsOpen)}
           >
-            {isSubsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            {isSubsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <span>公众号 · {subscribed.length}</span>
           </button>
           {isSubsOpen && subscribed.map((acc) => renderAccountItem(acc, "subscribed"))}
@@ -127,7 +127,7 @@ export function NavDrawerBody({
             className="drawer-section-label drawer-section-toggle"
             onClick={() => setIsTempOpen(!isTempOpen)}
           >
-            {isTempOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            {isTempOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <span>临时文章 · {temporary.length}</span>
           </button>
           {isTempOpen && temporary.map((acc) => renderAccountItem(acc, "temporary"))}

@@ -7,8 +7,6 @@ import { AddArticleModal } from "./AddArticleModal";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Account } from "../types";
 
-const RAIL_MAX_ACCOUNTS = 9;
-
 interface SidebarRailProps {
   accounts: Account[];
   selectedView: "inbox" | "discarded" | "favorites" | "search" | "home";
@@ -20,7 +18,6 @@ interface SidebarRailProps {
   onSelectInbox: () => void;
   onSelectFavorites: () => void;
   onSelectDiscarded: () => void;
-  onSelectAccount: (biz: string) => void;
   onToggleAdmin: () => void;
   onToggleSettings: () => void;
   onMouseEnter: () => void;
@@ -38,7 +35,6 @@ export function SidebarRail({
   onSelectInbox,
   onSelectFavorites,
   onSelectDiscarded,
-  onSelectAccount,
   onToggleAdmin,
   onToggleSettings,
   onMouseEnter,
@@ -49,16 +45,6 @@ export function SidebarRail({
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false);
 
-  // Subscribed + temp combined; sort: unread count desc, then stable tiebreaker.
-  const filteredAccounts = [...accounts]
-    .filter((a) => !a.subscription_type || a.subscription_type === "subscribed" || a.subscription_type === "temporary")
-    .sort((a, b) => {
-      const diff = (unreadCounts[b.biz] ?? 0) - (unreadCounts[a.biz] ?? 0);
-      return diff !== 0 ? diff : a.id - b.id;
-    });
-
-  const visibleAccounts = filteredAccounts.slice(0, RAIL_MAX_ACCOUNTS);
-  const overflowCount = Math.max(0, filteredAccounts.length - visibleAccounts.length);
   const totalUnread = unreadCounts["total"] ?? 0;
 
   const railNavActive = (view: "inbox" | "favorites" | "discarded") =>
@@ -93,25 +79,6 @@ export function SidebarRail({
       >
         <Trash2 size={16} />
       </button>
-
-      <div className="rail-rule" />
-
-      {/* Account avatars */}
-      {visibleAccounts.map((acc) => (
-        <button
-          key={acc.id}
-          className={`rail-acct ${selectedBiz === acc.biz ? "active" : ""} ${(unreadCounts[acc.biz] ?? 0) > 0 ? "unread" : ""}`}
-          title={acc.name}
-          onClick={() => onSelectAccount(acc.biz)}
-        >
-          {acc.avatar_url ? (
-            <img src={acc.avatar_url} alt={acc.name} referrerPolicy="no-referrer" />
-          ) : (
-            <span className="rail-acct-fallback">{acc.name.slice(0, 1)}</span>
-          )}
-        </button>
-      ))}
-      {overflowCount > 0 && <span className="rail-overflow">+{overflowCount}</span>}
 
       {/* Bottom: + and ⚙ */}
       <div className="rail-bottom">

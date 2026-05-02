@@ -486,7 +486,6 @@ function AppMain({ currentUser, onLogout }: {
         onSelectInbox={handleSelectInbox}
         onSelectFavorites={handleSelectFavorites}
         onSelectDiscarded={handleSelectDiscarded}
-        onSelectAccount={handleSelectAccount}
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
         onToggleSettings={handleToggleSettings}
         onMouseEnter={handleRailEnter}
