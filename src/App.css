@@ -2322,3 +2322,21 @@ body {
   border-color: var(--atlas-ink-2);
   background: var(--atlas-vellum);
 }
+.atlas-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--atlas-paper);
+  color: var(--atlas-ink);
+  overflow: hidden;
+  min-width: 0;
+}
+.atlas-error,
+.atlas-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-family: "Charter", Georgia, serif;
+  color: var(--atlas-ink-2);
+}
