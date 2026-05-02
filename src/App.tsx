@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLayout } from "./hooks/useLayout";
 import { useInbox, useDiscarded, useIsFirstSync, useAnalyzingQueue } from "./hooks/useInbox";
 import { useAccounts, usePrimeAccountsCache } from "./hooks/useAccounts";
@@ -13,7 +13,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import 'highlight.js/styles/github-dark.css';
 import { X, Sparkles } from 'lucide-react';
 import { check, relaunch, getVersion } from './lib/platform/updater';
-import { Sidebar } from './components/Sidebar';
+import { SidebarRail } from './components/SidebarRail';
+import { SidebarDrawer } from './components/SidebarDrawer';
+import { NavDrawerBody } from './components/NavDrawerBody';
 import { AdminPane } from './components/AdminPane';
 import { InboxList } from './components/InboxList';
 import { ReaderPane } from './components/ReaderPane';
@@ -27,7 +29,7 @@ import { API_BASE, WS_BASE } from './lib/api';
 import { authingClient } from './lib/authing';
 import { useAppearance } from "./hooks/useAppearance";
 import { useFontShortcuts } from "./hooks/useFontShortcuts";
-import { SettingsDrawer } from "./components/SettingsDrawer";
+import { SettingsDrawerBody } from "./components/SettingsDrawerBody";
 import { startAcpListener } from "./lib/acp/listener";
 import { useCardStatusStore, isInboxUnread } from "./lib/acp/cardStatusStore";
 import { getAcpMaxAlive, setAcpMaxAlive } from "./lib/chat";
@@ -147,7 +149,43 @@ function AppMain({ currentUser, onLogout }: {
   // Appearance (font system)
   const appearance = useAppearance();
   useFontShortcuts({ bump: appearance.bumpReaderSize, clear: appearance.resetReaderSize });
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drawerState, setDrawerState] = useState<"idle" | "nav" | "settings">("idle");
+  const drawerCloseTimerRef = useRef<number | null>(null);
+
+  const cancelDrawerCloseTimer = () => {
+    if (drawerCloseTimerRef.current != null) {
+      window.clearTimeout(drawerCloseTimerRef.current);
+      drawerCloseTimerRef.current = null;
+    }
+  };
+
+  const handleRailEnter = () => {
+    cancelDrawerCloseTimer();
+    if (drawerState === "settings") return; // settings is sticky
+    setDrawerState("nav");
+  };
+
+  const handleDrawerEnter = () => {
+    cancelDrawerCloseTimer();
+  };
+
+  const handleDrawerLeave = () => {
+    if (drawerState === "settings") return; // sticky stays open
+    cancelDrawerCloseTimer();
+    drawerCloseTimerRef.current = window.setTimeout(() => {
+      setDrawerState((s) => (s === "nav" ? "idle" : s));
+    }, 200);
+  };
+
+  const handleToggleSettings = () => {
+    cancelDrawerCloseTimer();
+    setDrawerState((s) => (s === "settings" ? "idle" : "settings"));
+  };
+
+  const handleCloseDrawer = () => {
+    cancelDrawerCloseTimer();
+    setDrawerState("idle");
+  };
   const [notesPath, setNotesPath] = useState(() => localStorage.getItem("notesPath") ?? "");
   const handleNotesPathChange = useCallback((path: string) => {
     setNotesPath(path);
@@ -421,36 +459,59 @@ function AppMain({ currentUser, onLogout }: {
 
   return (
     <div className="app-container">
-      <Sidebar
+      <SidebarRail
         accounts={accounts}
         selectedView={selectedView}
         selectedBiz={selectedBiz}
         unreadCounts={unreadCounts}
-        isSidebarCollapsed={isSidebarCollapsed}
         isAdminMode={isAdminMode}
+        currentUserRole={currentUser.role}
+        isSettingsOpen={drawerState === "settings"}
         onSelectInbox={handleSelectInbox}
-        onSelectAccount={handleSelectAccount}
-        onSelectDiscarded={handleSelectDiscarded}
         onSelectFavorites={handleSelectFavorites}
-
-
-        onNavigateToCard={handleNavigateToCard}
-
+        onSelectDiscarded={handleSelectDiscarded}
+        onSelectAccount={handleSelectAccount}
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
-        userName={currentUser.email || currentUser.username}
-        currentUser={currentUser}
-        appVersion={appVersion}
-        sidebarWidth={sidebarWidth}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onToggleSettings={handleToggleSettings}
+        onMouseEnter={handleRailEnter}
+        onNavigateToCard={handleNavigateToCard}
       />
 
-      {/* Sidebar resizer */}
-      {!isSidebarCollapsed && (
-        <div
-          className={`resizer ${isResizingSidebar ? "resizing" : ""}`}
-          onMouseDown={startResizeSidebar}
-        />
-      )}
+      <SidebarDrawer
+        open={drawerState !== "idle"}
+        sticky={drawerState === "settings"}
+        onClose={handleCloseDrawer}
+        onMouseEnter={handleDrawerEnter}
+        onMouseLeave={handleDrawerLeave}
+      >
+        {drawerState === "nav" && (
+          <NavDrawerBody
+            accounts={accounts}
+            selectedView={selectedView}
+            selectedBiz={selectedBiz}
+            unreadCounts={unreadCounts}
+            userName={currentUser.email || currentUser.username}
+            appVersion={appVersion}
+            onSelectInbox={handleSelectInbox}
+            onSelectFavorites={handleSelectFavorites}
+            onSelectDiscarded={handleSelectDiscarded}
+            onSelectAccount={handleSelectAccount}
+          />
+        )}
+        {drawerState === "settings" && (
+          <SettingsDrawerBody
+            draft={appearance.draft}
+            autoSize={appearance.autoSize}
+            currentUserEmail={currentUser.email}
+            notesPath={notesPath}
+            appVersion={appVersion}
+            onNotesPathChange={handleNotesPathChange}
+            onChange={appearance.setDraft}
+            onReset={appearance.resetDefaults}
+            onLogout={onLogout}
+          />
+        )}
+      </SidebarDrawer>
 
       {/* Pane 2: List */}
       {selectedView === "search" ? (
@@ -531,20 +592,6 @@ function AppMain({ currentUser, onLogout }: {
           onOpenDrawer={() => setIsDrawerOpen(true)}
         />
       )}
-
-      {/* Settings Drawer */}
-      <SettingsDrawer
-        open={settingsOpen}
-        draft={appearance.draft}
-        autoSize={appearance.autoSize}
-        currentUserEmail={currentUser.email || currentUser.username}
-        notesPath={notesPath}
-        onNotesPathChange={handleNotesPathChange}
-        onClose={() => setSettingsOpen(false)}
-        onChange={appearance.setDraft}
-        onReset={appearance.resetDefaults}
-        onLogout={onLogout}
-      />
 
       {/* Article Drawer overlay */}
       <ArticleDrawer
