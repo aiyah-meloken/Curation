@@ -186,6 +186,11 @@ function AppMain({ currentUser, onLogout }: {
     cancelDrawerCloseTimer();
     setDrawerState("idle");
   };
+
+  // Clear any pending close timer if the component unmounts before
+  // the 200ms grace timer fires.
+  useEffect(() => () => cancelDrawerCloseTimer(), []);
+
   const [notesPath, setNotesPath] = useState(() => localStorage.getItem("notesPath") ?? "");
   const handleNotesPathChange = useCallback((path: string) => {
     setNotesPath(path);
