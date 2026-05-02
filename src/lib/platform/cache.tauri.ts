@@ -23,6 +23,10 @@ export interface CachedCard {
   digest: string | null;
   word_count: number | null;
   is_original: boolean | null;
+  /** JSON-encoded array of canonical entity name strings, exactly as stored
+   *  in the local SQLite TEXT column. Parse with `parseEntities()` from
+   *  `lib/cache.ts` (returns [] for null / malformed input). */
+  entities: string | null;
 }
 
 export interface CachedFavorite {

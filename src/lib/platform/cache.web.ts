@@ -52,6 +52,10 @@ export async function getInboxCards(
       digest: am.digest ?? null,
       word_count: null,
       is_original: null,
+      // /inbox returns entities as a JSON array; the on-disk shape (mirroring
+      // local SQLite TEXT column) stores it as a JSON-string. Re-stringify so
+      // both web + native code paths produce the same CachedCard shape.
+      entities: it.entities ? JSON.stringify(it.entities) : null,
     };
   });
 }

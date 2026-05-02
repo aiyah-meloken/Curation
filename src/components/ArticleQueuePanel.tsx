@@ -163,8 +163,9 @@ export function ArticleQueuePanel() {
           <select value={routingFilter} onChange={(e) => setRoutingFilter(e.target.value)}
             style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
             <option value="all">全部推送</option>
-            <option value="ai_curation">AI梳理</option>
-            <option value="original_push">原文推送</option>
+            <option value="ai_curation">AI 梳理</option>
+            <option value="original_content_with_pre_card">原文 + 阅前卡</option>
+            <option value="original_content_with_post_card">原文 + 阅后卡</option>
             <option value="discard">丢弃</option>
             <option value="none">未推送</option>
           </select>

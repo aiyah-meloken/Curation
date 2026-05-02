@@ -30,6 +30,9 @@ pub struct CardRow {
     pub digest: Option<String>,
     pub word_count: Option<i64>,
     pub is_original: Option<i64>,
+    /// JSON-encoded array of canonical entity name strings, e.g. `["Anthropic","Claude Mythos"]`.
+    /// Stored as TEXT in SQLite; the frontend parses it back to `string[]`.
+    pub entities: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,7 +148,8 @@ impl CacheDb {
                 cover_url TEXT,
                 digest TEXT,
                 word_count INTEGER,
-                is_original INTEGER
+                is_original INTEGER,
+                entities TEXT
             );
             CREATE TABLE IF NOT EXISTS articles (
                 article_id TEXT PRIMARY KEY,
@@ -235,6 +239,7 @@ impl CacheDb {
             ("word_count", "ALTER TABLE cards ADD COLUMN word_count INTEGER"),
             ("is_original", "ALTER TABLE cards ADD COLUMN is_original INTEGER"),
             ("subtype", "ALTER TABLE cards ADD COLUMN subtype TEXT"),
+            ("entities", "ALTER TABLE cards ADD COLUMN entities TEXT"),
         ] {
             let probe = format!("SELECT {} FROM cards LIMIT 0", name);
             if !conn.prepare(&probe).is_ok() {
@@ -320,7 +325,7 @@ impl CacheDb {
         let mut sql = String::from(
             "SELECT card_id, article_id, title, article_title, content_md, description, routing,
                     subtype, article_date, account, author, url, read_at, updated_at, publish_time,
-                    account_id, biz, cover_url, digest, word_count, is_original
+                    account_id, biz, cover_url, digest, word_count, is_original, entities
              FROM cards WHERE routing IS NOT NULL",
         );
         if let Some(_) = account {
@@ -357,6 +362,7 @@ impl CacheDb {
                     digest: row.get(18)?,
                     word_count: row.get(19)?,
                     is_original: row.get(20)?,
+                    entities: row.get(21)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -386,6 +392,7 @@ impl CacheDb {
                     digest: row.get(18)?,
                     word_count: row.get(19)?,
                     is_original: row.get(20)?,
+                    entities: row.get(21)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -693,12 +700,22 @@ impl CacheDb {
                 )
                 .ok();
             }
+            // Server sends entities as a JSON array; we store the JSON-stringified
+            // array as TEXT (frontend parses on the way out). Tolerate either an
+            // already-stringified value or a real JSON array in the payload.
+            let entities_json: Option<String> = match &card["entities"] {
+                serde_json::Value::Null => None,
+                serde_json::Value::String(s) => Some(s.clone()),
+                v @ serde_json::Value::Array(_) => Some(v.to_string()),
+                // Unexpected type — drop rather than panic.
+                _ => None,
+            };
             conn.execute(
                 "INSERT OR REPLACE INTO cards
                  (card_id, article_id, title, article_title, content_md, description, routing,
                   subtype, article_date, account, author, url, read_at, updated_at, publish_time,
-                  account_id, biz, cover_url, digest, word_count, is_original)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21)",
+                  account_id, biz, cover_url, digest, word_count, is_original, entities)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
                 rusqlite::params![
                     card_id,
                     card["article_id"].as_str().unwrap_or_default(),
@@ -721,6 +738,7 @@ impl CacheDb {
                     card["digest"].as_str(),
                     card["word_count"].as_i64(),
                     card["is_original"].as_bool().map(|b| if b { 1i64 } else { 0i64 }),
+                    entities_json,
                 ],
             )
             .map_err(|e| e.to_string())?;

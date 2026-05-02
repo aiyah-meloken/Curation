@@ -284,6 +284,10 @@ function AppMain({ currentUser, onLogout }: {
       article_id: selectedFavorite.article_id ?? "",
       title: selectedFavorite.title ?? "",
       description: selectedFavorite.description,
+      // Favorites endpoint doesn't yet carry entities; show empty rather
+      // than block on a separate fetch. ReaderPane no-renders the chip
+      // strip when entities is empty.
+      entities: [],
       routing: selectedFavorite.routing,
       subtype: null,
       article_date: null,
@@ -315,6 +319,7 @@ function AppMain({ currentUser, onLogout }: {
           article_id: f.article_id ?? "",
           title: f.title ?? "",
           description: f.description,
+          entities: [],
           routing: f.routing,
           subtype: null,
           article_date: f.article_meta?.publish_time ?? null,
@@ -468,6 +473,7 @@ function AppMain({ currentUser, onLogout }: {
                   article_id: d.article_id,
                   title: d.title,
                   description: null,
+                  entities: [],
                   routing: null,
                   subtype: null,
                   article_date: d.article_date,

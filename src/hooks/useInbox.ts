@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchDiscarded, fetchQueue } from "../lib/api";
 import type { InboxItem, DiscardedItem } from "../types";
-import { getInboxCards, markCardRead, markCardUnread as markUnreadLocal, markAllCardsRead as markAllLocal, searchCards } from "../lib/cache";
+import { getInboxCards, markCardRead, markCardUnread as markUnreadLocal, markAllCardsRead as markAllLocal, parseEntities, searchCards } from "../lib/cache";
 import type { CachedCard, SearchResult } from "../lib/cache";
 
 function cachedToInbox(c: CachedCard): InboxItem {
@@ -12,6 +12,7 @@ function cachedToInbox(c: CachedCard): InboxItem {
     article_id: c.article_id,
     title: c.title ?? "",
     description: desc ?? null,
+    entities: parseEntities(c.entities),
     routing: (c.routing as InboxItem["routing"]) ?? null,
     subtype: c.subtype ?? null,
     article_date: c.article_date,
@@ -212,6 +213,7 @@ export function useAnalyzingQueue(): InboxItem[] {
       article_id: q.article_id,
       title: q.article_title ?? "",
       description: null,
+      entities: [],
       routing: null,
       subtype: null,
       article_date: q.article_publish_time,

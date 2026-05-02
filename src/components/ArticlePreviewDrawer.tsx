@@ -13,9 +13,12 @@ function RoutingPill({ routing }: { routing: string | null }) {
     return <span style={{ background: "var(--bg-base)", color: "var(--text-faint)", padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>未推送</span>;
   }
   const m: Record<string, { text: string; bg: string; color: string }> = {
-    ai_curation:   { text: "AI梳理",  bg: "var(--bg-panel)", color: "var(--accent-green)" },
-    original_push: { text: "原文推送", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    ai_curation:   { text: "AI梳理",   bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    reading_guide: { text: "阅前导读", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    post_read:     { text: "阅后梳理", bg: "var(--bg-panel)", color: "var(--accent-gold)" },
     discard:       { text: "丢弃",     bg: "var(--bg-panel)", color: "var(--accent-gold)" },
+    // legacy: pre-2026-05-01 rows that haven't been migrated yet.
+    original_push: { text: "原文推送", bg: "var(--bg-panel)", color: "var(--accent-green)" },
   };
   const v = m[routing] ?? { text: routing, bg: "var(--bg-base)", color: "var(--text-faint)" };
   return <span style={{ background: v.bg, color: v.color, padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>{v.text}</span>;

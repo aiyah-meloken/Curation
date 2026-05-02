@@ -124,15 +124,64 @@ export interface ArticleMeta {
   digest?: string | null;
 }
 
+/**
+ * Routing taxonomy (post-2026-05-02):
+ *   - "ai_curation"                       — agent wrote a fresh card; replaces original
+ *   - "original_content_with_pre_card"    — agent shipped a 阅前导览卡 alongside the original
+ *   - "original_content_with_post_card"   — agent shipped a 阅后梳理卡 alongside the original
+ *   - null                                — pre-routing or in-flight item
+ *
+ * Earlier names ("original_push" / "reading_guide" / "post_read") are
+ * fully migrated by `2026-05-02_rename_to_original_content_with.sql`; UI
+ * does not need to handle them.
+ */
+export type Routing =
+  | "ai_curation"
+  | "original_content_with_pre_card"
+  | "original_content_with_post_card"
+  | null;
+
+/** Routings whose UX is "show original article + our agent-written card alongside". */
+export const ORIGINAL_ALONGSIDE_ROUTINGS: ReadonlyArray<Exclude<Routing, null>> =
+  ["original_content_with_pre_card", "original_content_with_post_card"];
+
+/** Inbox / header display title:
+ *   - ai_curation → card title (agent-written, replaces original)
+ *   - original_content_with_* → article title (reader is reading the original;
+ *     card title is auxiliary and shown only inside the card body)
+ *   - null / unknown routing → fall back to card title if any, else article title
+ */
+export function displayTitleFor(item: {
+  title: string;
+  routing: Routing;
+  article_meta: ArticleMeta;
+}): string {
+  if (
+    item.routing === "original_content_with_pre_card" ||
+    item.routing === "original_content_with_post_card"
+  ) {
+    return item.article_meta.title || item.title;
+  }
+  return item.title || item.article_meta.title;
+}
+
 export interface InboxItem {
   card_id: string | null;
   article_id: string;
   title: string;
   description: string | null;
-  routing: "ai_curation" | "original_push" | null;
-  // For original_push: "普通" (= reading_guide / 阅前) or "D5" (= post_read / 阅后).
-  // For ai_curation: a template name (event / paper / tool / ...).
-  // null for legacy cards inserted before the agent populated this field.
+  /** Canonical entity names extracted by the agent (companies, products,
+   *  papers, lab teams, …). Empty array for legacy / queued items. */
+  entities: string[];
+  routing: Routing;
+  /**
+   * Per-card template name (DB column reused, will be renamed `template`):
+   *   - ai_curation: one of {event/paper/security_cve/security_event/concept/
+   *     tool/company/data_report/interview/analysis}
+   *   - original_content_with_pre_card: "pre_card" (forced by routing)
+   *   - original_content_with_post_card: "post_card" (forced by routing)
+   *   - null for legacy / pre-routing rows
+   */
   subtype: string | null;
   article_date: string | null;
   read_at: string | null;
@@ -205,7 +254,7 @@ export interface FavoriteItem {
   created_at: string;
   title: string | null;
   description: string | null;
-  routing: "ai_curation" | "original_push" | null;
+  routing: Routing;
   article_id: string | null;
   article_title: string | null;
   article_account: string | null;

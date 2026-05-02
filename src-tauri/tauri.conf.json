@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Curation",
-  "version": "0.1.88",
+  "version": "0.1.89",
   "identifier": "com.zhuhuifeng.curation",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Curation：你的专属资讯助理",
+        "title": "Curation\uff1a\u4f60\u7684\u4e13\u5c5e\u8d44\u8baf\u52a9\u7406",
         "width": 1200,
         "height": 750
       }

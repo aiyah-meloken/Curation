@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useDeferredValue } from "react";
 import { Check, ChevronDown, ChevronRight, Loader2, Star } from "lucide-react";
-import type { InboxItem } from "../types";
+import type { InboxItem, Routing } from "../types";
+import { displayTitleFor } from "../types";
 import { groupByDateBucket, useInboxSearch } from "../hooks/useInbox";
 import type { DateGroup } from "../hooks/useInbox";
 import { useMarkAllRead, useMarkCardUnread } from "../hooks/useInbox";
@@ -24,7 +25,7 @@ interface InboxListProps {
   isFirstSync?: boolean;
 }
 
-function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus?: "pending" | "running" | null, isDiscarded?: boolean) {
+function routingTag(routing: Routing, queueStatus?: "pending" | "running" | null, isDiscarded?: boolean) {
   if (queueStatus) {
     return (
       <span className="inbox-tag" style={{ background: "var(--accent-gold-dim)", color: "var(--accent-gold)", display: "inline-flex", alignItems: "center", gap: 3 }}>
@@ -39,8 +40,11 @@ function routingTag(routing: "ai_curation" | "original_push" | null, queueStatus
   if (routing === "ai_curation") {
     return <span className="inbox-tag" style={{ color: "var(--accent-blue)" }}>AI总结</span>;
   }
-  if (routing === "original_push") {
-    return <span className="inbox-tag" style={{ color: "var(--accent-green)" }}>原文</span>;
+  if (routing === "original_content_with_pre_card") {
+    return <span className="inbox-tag" style={{ color: "var(--accent-green)" }}>阅前</span>;
+  }
+  if (routing === "original_content_with_post_card") {
+    return <span className="inbox-tag" style={{ color: "var(--accent-gold)" }}>阅后</span>;
   }
   return null;
 }
@@ -121,7 +125,7 @@ function InboxItemRow({
           <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
         )}
         <AcpRunningDot cardId={item.card_id ?? null} className="mt-[4px]" />
-        <span className="inbox-item-title" style={{ flex: 1 }}>{item.title}</span>
+        <span className="inbox-item-title" style={{ flex: 1 }}>{displayTitleFor(item)}</span>
         {routingTag(item.routing, item.queue_status, isDiscarded)}
       </div>
       {item.description && (
@@ -144,6 +148,7 @@ function searchResultToInbox(h: SearchResult): InboxItem {
     article_id: h.article_id,
     title: h.title ?? "",
     description: h.highlight,
+    entities: [],
     routing: null,
     subtype: null,
     article_date: h.article_date,

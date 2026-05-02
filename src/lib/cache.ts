@@ -21,6 +21,9 @@ export interface CachedCard {
   digest: string | null;
   word_count: number | null;
   is_original: boolean | null;
+  /** JSON-encoded array of canonical entity name strings, exactly as stored
+   *  in the local SQLite TEXT column. Parse with `parseEntities()` below. */
+  entities: string | null;
 }
 
 export interface CachedFavorite {
@@ -50,6 +53,22 @@ export interface CachedAccount {
   article_count: number | null;
   subscription_type: string | null;
   sync_count: number | null;
+}
+
+/**
+ * Parse a CachedCard.entities JSON-string into a string array.
+ * Returns [] for null / empty / malformed input — never throws — so a single
+ * bad row can't crash the inbox / drawer rendering.
+ */
+export function parseEntities(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((e): e is string => typeof e === "string" && e.trim().length > 0);
+  } catch {
+    return [];
+  }
 }
 
 export {

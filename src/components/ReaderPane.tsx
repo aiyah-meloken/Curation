@@ -18,17 +18,26 @@ import { AcpRunningDot } from "./AcpRunningDot";
 import { TauriOnly } from "./platform/TauriOnly";
 import { useChat, useAgentDetection } from "../hooks/useChat";
 import { useCardStatusStore } from "../lib/acp/cardStatusStore";
-import type { InboxItem, DiscardedItem } from "../types";
+import type { InboxItem, DiscardedItem, Routing } from "../types";
+import { ORIGINAL_ALONGSIDE_ROUTINGS } from "../types";
 
-function sourceBarTag(routing: "ai_curation" | "original_push" | null, isDiscarded: boolean) {
+/** True when the routing is one of the "show original article alongside our card" variants. */
+function showsOriginalAlongside(routing: Routing): boolean {
+  return routing != null && (ORIGINAL_ALONGSIDE_ROUTINGS as readonly string[]).includes(routing);
+}
+
+function sourceBarTag(routing: Routing, isDiscarded: boolean) {
   if (isDiscarded) {
     return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-red)" }}>丢弃</span>;
   }
   if (routing === "ai_curation") {
     return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-blue)" }}>AI总结</span>;
   }
-  if (routing === "original_push") {
-    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-green)" }}>原文</span>;
+  if (routing === "original_content_with_pre_card") {
+    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-green)" }}>阅前导读</span>;
+  }
+  if (routing === "original_content_with_post_card") {
+    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-gold)" }}>阅后梳理</span>;
   }
   return null;
 }
@@ -55,7 +64,7 @@ function SourceBar({
   cardId,
 }: {
   meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
-  routing: "ai_curation" | "original_push" | null;
+  routing: Routing;
   isDiscarded: boolean;
   onOpenDrawer?: () => void;
   cardId?: string;
@@ -95,6 +104,60 @@ function SourceBar({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Inline strip of entity chips, rendered above the card body.
+ *
+ * Sourced from `InboxItem.entities` (the agent's per-card entity extraction).
+ * Renders nothing when the list is empty so legacy / queued items stay clean.
+ */
+function EntityChips({ entities }: { entities: string[] }) {
+  if (!entities || entities.length === 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 6,
+        margin: "0 0 16px 0",
+        padding: "0",
+        alignItems: "center",
+      }}
+      aria-label="实体"
+    >
+      <span
+        style={{
+          fontSize: "0.7rem",
+          color: "var(--text-faint)",
+          letterSpacing: "0.05em",
+          marginRight: 4,
+          textTransform: "uppercase",
+          userSelect: "none",
+        }}
+      >
+        实体
+      </span>
+      {entities.map((e) => (
+        <span
+          key={e}
+          style={{
+            display: "inline-block",
+            padding: "2px 8px",
+            fontSize: "0.74rem",
+            lineHeight: 1.4,
+            color: "var(--text-secondary)",
+            background: "var(--bg-elev)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {e}
+        </span>
+      ))}
     </div>
   );
 }
@@ -216,29 +279,28 @@ export function ReaderPane({
 
     // Routing: cards come from selectedItem; discarded items have no card.
     const isDiscardedItem = !selectedItem && !!selectedDiscardedItem;
-    const routing: "ai_curation" | "original_push" | "discard" | null =
+    const routing: Routing | "discard" =
       isDiscardedItem ? "discard" : (selectedItem?.routing ?? null);
     const subtype = selectedItem?.subtype ?? null;
 
     const routingLabel =
-      routing === "ai_curation" ? "AI梳理"
-        : routing === "original_push" ? "原文推送"
+      routing === "ai_curation" ? "AI 梳理"
+        : routing === "original_content_with_pre_card" ? "原文 + 阅前卡"
+        : routing === "original_content_with_post_card" ? "原文 + 阅后卡"
         : routing === "discard" ? "丢弃"
         : "未知";
 
-    // 阅读焦点：AI梳理 → 卡片；原文推送 → 原文；丢弃 → 原文（读者只能看到原文）
+    // 阅读焦点：AI 梳理 → 卡片；原文推送（pre/post）→ 原文
     const focus = routing === "ai_curation" ? "卡片" : "原文";
 
-    // Card kind label, derived from routing + subtype.
-    // For original_push: "普通" → reading_guide / 阅前；"D5" → post_read / 阅后.
-    // For ai_curation: subtype is the template name (event / paper / tool / ...).
+    // Per-card template label (subtype DB column reused).
     let cardKindLabel = "—";
     if (routing === "ai_curation") {
-      cardKindLabel = subtype ? `AI梳理 主卡（${subtype}）` : "AI梳理 主卡";
-    } else if (routing === "original_push") {
-      if (subtype === "普通" || subtype === "reading_guide") cardKindLabel = "阅前卡片（reading_guide）";
-      else if (subtype === "D5" || subtype === "post_read") cardKindLabel = "阅后卡片（post_read)";
-      else cardKindLabel = "原文推送辅助卡";
+      cardKindLabel = subtype ? `AI 梳理（${subtype}）` : "AI 梳理";
+    } else if (routing === "original_content_with_pre_card") {
+      cardKindLabel = "阅前导读卡";
+    } else if (routing === "original_content_with_post_card") {
+      cardKindLabel = "阅后梳理卡";
     }
 
     // Article markdown — soft cap at 40k chars. Sized off the prod dataset:
@@ -276,15 +338,15 @@ export function ReaderPane({
 
 ## 路由分流背景
 
-每篇抓取到的原文都会被 AI 分析并路由到三条路径之一，读者在不同路由下的注意力分配不一样：
+每篇抓取到的原文都会被 AI 分析并路由到四条路径之一，读者在不同路由下的注意力分配不一样：
 
-- **AI梳理**：原文信息密度高但读起来累，AI 提炼出一张主卡片代替原文阅读。
+- **AI梳理**（ai_curation）：原文信息密度高但读起来累，AI 提炼出一张主卡片代替原文阅读。
   → 读者主要读卡片，原文是补充资料，遇到细节存疑时回查。
-- **原文推送**：原文本身值得逐字读（叙事/思想/一手材料），AI 在原文外围加辅助卡片：
-    - 阅前卡片（reading_guide）：进入原文前的导读，给问题、给框架。
-    - 阅后卡片（post_read）：读完原文的回顾/延伸/串联。
-  → 读者主要读原文，卡片用来准备和收尾。
-- **丢弃**：AI 判断信息密度低或与读者主题无关，不生成卡片；只有当读者主动展开"已丢弃"列表时才会看到这里的原文。
+- **阅前导读**（reading_guide）：原文本身值得逐字读（叙事/思想/一手材料），AI 在进入原文前给一份导读，提出问题与框架。
+  → 读者主要读原文，卡片是进入原文前的准备。
+- **阅后梳理**（post_read）：原文值得读但行文冗余，AI 在读完原文后给一份回顾/延伸/串联。
+  → 读者主要读原文，卡片是读完后的收尾。
+- **丢弃**（discard）：AI 判断信息密度低或与读者主题无关，不生成卡片；只有当读者主动展开"已丢弃"列表时才会看到这里的原文。
 
 ## 当前阅读上下文
 
@@ -303,7 +365,7 @@ ${articleBody}
 > 提示：上面 \`原文\` 是这张卡片对应的源文章，已附在此供你随时检索引用。
 > ${routing === "ai_curation"
         ? "读者此刻视线在 `卡片` 上；原文用于查证和扩展。"
-        : routing === "original_push"
+        : (routing === "original_content_with_pre_card" || routing === "original_content_with_post_card")
           ? "读者此刻视线在 `原文` 上，卡片只是辅助导读/回顾。"
           : "读者只看到原文（这篇被路由到丢弃，没有卡片）。"}
 
@@ -388,7 +450,9 @@ ${notesSection}
         article_id: selectedDiscardedItem.article_id,
         title: selectedDiscardedItem.title,
         description: null,
-        routing: null as "ai_curation" | "original_push" | null,
+        entities: [] as string[],
+        routing: null as Routing,
+        subtype: null as string | null,
         article_date: selectedDiscardedItem.article_date,
         read_at: null,
         queue_status: null as "pending" | "running" | null,
@@ -420,23 +484,28 @@ ${notesSection}
       />
       <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
         <div className="reader-content animate-in" style={{ paddingBottom: 140 }}>
-          {/* Card content (markdown) */}
+          {/* Card content (markdown). For "show original alongside" routings
+              (reading_guide / post_read / legacy original_push), label as
+              "AI 卡片" so the user can distinguish the two panes. */}
           {item.card_id && (
             <CardFrame
               chatActive={chatActive}
-              label={item.routing === "original_push" ? "AI 卡片" : undefined}
-              force={item.routing === "original_push"}
+              label={showsOriginalAlongside(item.routing) ? "AI 卡片" : undefined}
+              force={showsOriginalAlongside(item.routing)}
             >
+              <EntityChips entities={item.entities ?? []} />
               <CardContentView cardId={item.card_id} />
             </CardFrame>
           )}
 
-          {/* Original article HTML — for original_push or discarded or analyzing (no card) */}
-          {(item.routing === "original_push" || !item.card_id) && (
+          {/* Original article HTML — show alongside for reading_guide /
+              post_read / legacy original_push, or as the only content when
+              there's no card (discarded / analyzing). */}
+          {(showsOriginalAlongside(item.routing) || !item.card_id) && (
             <CardFrame
               chatActive={chatActive}
-              label={item.routing === "original_push" ? "原文" : undefined}
-              force={item.routing === "original_push"}
+              label={showsOriginalAlongside(item.routing) ? "原文" : undefined}
+              force={showsOriginalAlongside(item.routing)}
             >
               <ArticleHtmlView articleId={item.article_id} />
             </CardFrame>

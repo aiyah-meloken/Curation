@@ -64,8 +64,11 @@ export function routingPill(routing: string | null | undefined) {
   }
   const m: Record<string, { text: string; bg: string; color: string }> = {
     ai_curation:   { text: "AI梳理",   bg: "var(--bg-panel)", color: "var(--accent-green)" },
-    original_push: { text: "原文推送", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    reading_guide: { text: "阅前导读", bg: "var(--bg-panel)", color: "var(--accent-green)" },
+    post_read:     { text: "阅后梳理", bg: "var(--bg-panel)", color: "var(--accent-gold)" },
     discard:       { text: "丢弃",     bg: "var(--bg-panel)", color: "var(--accent-gold)" },
+    // legacy
+    original_push: { text: "原文推送", bg: "var(--bg-panel)", color: "var(--accent-green)" },
   };
   const v = m[routing] ?? { text: routing, bg: "var(--bg-base)", color: "var(--text-faint)" };
   return (
