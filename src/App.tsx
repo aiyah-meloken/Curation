@@ -165,7 +165,7 @@ function AppMain({ currentUser, onLogout }: {
   const search = useSearch();
 
   // Layout
-  const { isSidebarCollapsed, sidebarWidth, listWidth, isResizingSidebar, isResizingList, startResizeSidebar, startResizeList } = useLayout();
+  const { listWidth, isResizingList, startResizeList } = useLayout();
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [adminView, setAdminView] = useState<"management" | "queue" | "aggregation" | "invites" | "users" | "annotations">("management");
   const [notification, setNotification] = useState<string | null>(null);
