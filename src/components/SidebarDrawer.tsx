@@ -62,6 +62,10 @@ export function SidebarDrawer({
       className="drawer"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onBlur={(e) => {
+        // Only fire when focus leaves the drawer entirely (not moving between children).
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) onMouseLeave();
+      }}
     >
       {children}
     </aside>

@@ -459,6 +459,17 @@ function AppMain({ currentUser, onLogout }: {
     return () => window.removeEventListener("keydown", onKey);
   }, [isDrawerOpen]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        handleToggleSettings();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const isDiscardedView = selectedView === "discarded";
   const currentSelectedId = isDiscardedView ? selectedDiscardedId : selectedCardId;
 

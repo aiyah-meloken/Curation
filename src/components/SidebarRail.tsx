@@ -68,6 +68,7 @@ export function SidebarRail({
     <aside
       className="rail"
       onMouseEnter={onMouseEnter}
+      onFocus={onMouseEnter}
     >
       {/* Top: view glyphs */}
       <button
