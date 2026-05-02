@@ -1,15 +1,37 @@
 // curation-app/src/components/SidebarRail.tsx
 import { useState } from "react";
-import { Inbox, Star, Plus, Trash2, ShieldCheck, Settings, Library } from "lucide-react";
+import { Inbox, Star, Plus, Trash2, ShieldCheck, Settings, Library, Map as MapIcon, Hourglass } from "lucide-react";
 import { AddMenu } from "./AddMenu";
 import { SubscribeModal } from "./SubscribeModal";
 import { AddArticleModal } from "./AddArticleModal";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Account } from "../types";
+import type { Account, InboxItem } from "../types";
+import { useInbox } from "../hooks/useInbox";
+
+function isoDaysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function computeAtlasGlyphReadiness(
+  cards: InboxItem[] | undefined,
+): "ready" | "not_ready" {
+  if (!cards) return "not_ready";
+  const yesterday = isoDaysAgo(1);
+  const dayCards = cards.filter(
+    (c) => c.article_date === yesterday && c.routing != null,
+  );
+  if (dayCards.length === 0) return "not_ready";
+  const tagged = dayCards.filter(
+    (c) => (c.entities?.length ?? 0) > 0 && c.atlas_topic_id != null,
+  );
+  return tagged.length / dayCards.length >= 0.8 ? "ready" : "not_ready";
+}
 
 interface SidebarRailProps {
   accounts: Account[];
-  selectedView: "inbox" | "discarded" | "favorites" | "search" | "home";
+  selectedView: "inbox" | "discarded" | "favorites" | "search" | "home" | "atlas";
   selectedBiz: string | null;
   unreadCounts: Record<string, number>;
   isAdminMode: boolean;
@@ -23,6 +45,7 @@ interface SidebarRailProps {
   onToggleSubs: () => void;
   onToggleSettings: () => void;
   onNavigateToCard?: (cardId: string) => void;
+  onSelectAtlas?: () => void;
 }
 
 export function SidebarRail({
@@ -41,20 +64,38 @@ export function SidebarRail({
   onToggleSubs,
   onToggleSettings,
   onNavigateToCard,
+  onSelectAtlas,
 }: SidebarRailProps) {
   const queryClient = useQueryClient();
+  const { data: inboxCards } = useInbox();
+  const atlasReadiness = computeAtlasGlyphReadiness(inboxCards);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false);
 
   const totalUnread = unreadCounts["total"] ?? 0;
 
-  const railNavActive = (view: "inbox" | "favorites" | "discarded") =>
+  const railNavActive = (view: "inbox" | "favorites" | "discarded" | "atlas") =>
     selectedView === view && (view !== "inbox" || selectedBiz === null);
 
   return (
     <aside className="rail">
       {/* Top: view glyphs */}
+      {/* Atlas — always topmost */}
+      <button
+        className={`rail-glyph ${railNavActive("atlas") ? "active" : ""}`}
+        data-tooltip={atlasReadiness === "ready" ? "今日舆图" : "今日舆图待生成"}
+        aria-label={atlasReadiness === "ready" ? "今日舆图" : "今日舆图待生成"}
+        onClick={() => onSelectAtlas?.()}
+      >
+        <MapIcon size={18} />
+        {atlasReadiness === "not_ready" && (
+          <span className="rail-badge rail-badge-pending" aria-hidden>
+            <Hourglass size={8} />
+          </span>
+        )}
+      </button>
+
       <button
         className={`rail-glyph ${railNavActive("inbox") ? "active" : ""}`}
         data-tooltip="全部卡片"
