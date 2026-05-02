@@ -2273,3 +2273,52 @@ body {
   font-size: var(--fs-xs);
 }
 .drawer-sync-status { color: var(--accent-green); }
+
+/* Atlas takeover view chrome */
+.atlas-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  color: var(--atlas-ink-2);
+}
+.atlas-empty-icon { opacity: 0.5; }
+.atlas-empty-title {
+  font-family: "Charter", "Hoefler Text", Georgia, serif;
+  font-size: 18px;
+}
+.atlas-empty-date {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  opacity: 0.7;
+}
+
+.atlas-tabbar {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px;
+  background: transparent;
+  border-bottom: 1px solid var(--atlas-ink-2);
+  position: relative;
+}
+.atlas-tab {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--atlas-ink-2);
+  cursor: pointer;
+  transition: color 120ms ease-out, background 120ms ease-out;
+}
+.atlas-tab:hover { color: var(--atlas-ink); }
+.atlas-tab.active {
+  color: var(--atlas-ink);
+  border-color: var(--atlas-ink-2);
+  background: var(--atlas-vellum);
+}
