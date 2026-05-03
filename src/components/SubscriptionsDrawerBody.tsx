@@ -10,7 +10,7 @@ import type { Account } from "../types";
 
 interface SubscriptionsDrawerBodyProps {
   accounts: Account[];
-  selectedView: "inbox" | "discarded" | "favorites" | "search" | "home" | "atlas";
+  selectedView: "inbox" | "discarded" | "favorites" | "search" | "home" | "map";
   selectedBiz: string | null;
   unreadCounts: Record<string, number>;
   userName: string;

@@ -1,0 +1,184 @@
+// Atlas — hovering settlement label.
+// Sized for typical card metadata; tries to avoid going off-canvas via
+// `placeFloatingCard` from lib/geometry.ts.
+
+import type { MapCard, MapDSL } from "../types";
+
+type Props = {
+  card: MapCard;
+  dsl: MapDSL;
+  position: { x: number; y: number; anchor: "left" | "right" };
+  onMarkRead: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  /** Optional: clicking the card body opens the drawer with full content. */
+  onOpenDrawer?: () => void;
+};
+
+export function MapFloatingCard({
+  card,
+  dsl,
+  position,
+  onMarkRead,
+  onMouseEnter,
+  onMouseLeave,
+  onOpenDrawer,
+}: Props) {
+  const topic = dsl.topics.find((s) => s.id === card.topic?.id);
+  const domain = dsl.domains.find((b) => b.id === topic?.domain_id);
+  // source_count is always 1 in v1; hot indicator not used.
+  const isHot = false;
+  const account = card.article_meta?.account ?? "";
+
+  return (
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={(e) => {
+        // Click anywhere on the card body (except the Mark-Read button which
+        // stops propagation) → open drawer with full content.
+        if (onOpenDrawer) {
+          e.stopPropagation();
+          onOpenDrawer();
+        }
+      }}
+      style={{
+        position: "absolute",
+        left: position.x,
+        top: position.y,
+        width: "var(--map-popover-width)",
+        background: "var(--map-vellum)",
+        border: "1.5px solid var(--map-ink)",
+        padding: "14px 16px 12px",
+        boxShadow: "var(--map-shadow-pinned)",
+        fontFamily: "var(--map-serif)",
+        zIndex: 30,
+        pointerEvents: "auto",
+        cursor: onOpenDrawer ? "pointer" : "default",
+        animation: "map-fade-in 180ms cubic-bezier(.16,1,.3,1) both",
+      }}
+    >
+      {/* Arrow tail pointing back at the settlement */}
+      <ArrowTail anchor={position.anchor} />
+
+      <div
+        style={{
+          fontFamily: "var(--map-mono)",
+          fontSize: 9,
+          letterSpacing: "0.22em",
+          color: "var(--map-rust)",
+          textTransform: "uppercase",
+          marginBottom: 4,
+        }}
+      >
+        {domain?.label ?? "—"} · {topic?.label ?? "—"}
+      </div>
+      <h3
+        style={{
+          fontFamily: "var(--map-display)",
+          fontSize: 16,
+          fontWeight: 400,
+          margin: "0 0 6px",
+          lineHeight: 1.25,
+          color: "var(--map-ink)",
+        }}
+      >
+        {card.title}
+      </h3>
+      <p
+        style={{
+          fontFamily: "var(--map-serif)",
+          fontSize: 12.5,
+          color: "var(--map-ink-2)",
+          lineHeight: 1.55,
+          margin: "0 0 10px",
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+      >
+        {card.description ?? ""}
+      </p>
+      <div
+        style={{
+          fontFamily: "var(--map-serif)",
+          fontStyle: "italic",
+          fontSize: 11,
+          color: "var(--map-ink-2)",
+          borderTop: "1px dotted var(--map-ink-2)",
+          paddingTop: 8,
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>— {account || "—"}</span>
+        <span>{isHot ? "⚜ 多源汇" : "· 单源"}</span>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onMarkRead();
+        }}
+        style={{
+          marginTop: 10,
+          width: "100%",
+          fontFamily: "var(--map-mono)",
+          fontSize: 10,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          background: "var(--map-ink)",
+          color: "var(--map-vellum)",
+          border: "none",
+          padding: "8px 10px",
+          cursor: "pointer",
+          transition: "background .15s",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background =
+            "var(--map-rust)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background =
+            "var(--map-ink)";
+        }}
+      >
+        ✦ Marked As Read
+      </button>
+    </div>
+  );
+}
+
+function ArrowTail({ anchor }: { anchor: "left" | "right" }) {
+  const common: React.CSSProperties = {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    background: "var(--map-vellum)",
+    top: 22,
+  };
+  if (anchor === "left") {
+    return (
+      <span
+        style={{
+          ...common,
+          left: -8,
+          borderLeft: "1.5px solid var(--map-ink)",
+          borderBottom: "1.5px solid var(--map-ink)",
+          transform: "rotate(45deg)",
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      style={{
+        ...common,
+        right: -8,
+        borderTop: "1.5px solid var(--map-ink)",
+        borderRight: "1.5px solid var(--map-ink)",
+        transform: "rotate(45deg)",
+      }}
+    />
+  );
+}

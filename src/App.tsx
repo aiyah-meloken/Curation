@@ -20,7 +20,7 @@ import { AdminPane } from './components/AdminPane';
 import { InboxList } from './components/InboxList';
 import { ReaderPane } from './components/ReaderPane';
 import { SearchList } from './components/SearchList';
-import { AtlasShell } from './components/AtlasShell';
+import { MapShell } from './components/MapShell';
 import { useSearch } from './hooks/useSearch';
 import { ArticleDrawer } from './components/ArticleDrawer';
 import { LoginScreen } from './components/LoginScreen';
@@ -173,7 +173,7 @@ function AppMain({ currentUser, onLogout }: {
   }, []);
 
   // View state
-  const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites" | "search" | "home" | "atlas">("inbox");
+  const [selectedView, setSelectedView] = useState<"inbox" | "discarded" | "favorites" | "search" | "home" | "map">("inbox");
   const [selectedBiz, setSelectedBiz] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedDiscardedId, setSelectedDiscardedId] = useState<string | null>(null);
@@ -389,8 +389,8 @@ function AppMain({ currentUser, onLogout }: {
     setSelectedFavorite(null);
   }
 
-  function handleSelectAtlas() {
-    setSelectedView("atlas");
+  function handleSelectMap() {
+    setSelectedView("map");
     setSelectedCardId(null);
     setSelectedBiz(null);
   }
@@ -469,7 +469,7 @@ function AppMain({ currentUser, onLogout }: {
         onSelectInbox={handleSelectInbox}
         onSelectFavorites={handleSelectFavorites}
         onSelectDiscarded={handleSelectDiscarded}
-        onSelectAtlas={handleSelectAtlas}
+        onSelectMap={handleSelectMap}
         onToggleAdmin={() => setIsAdminMode((v) => !v)}
         onToggleSubs={handleToggleSubs}
         onToggleSettings={handleToggleSettings}
@@ -508,8 +508,8 @@ function AppMain({ currentUser, onLogout }: {
       </SidebarDrawer>
 
       {/* Atlas takeover: replaces both the list pane and reader pane entirely */}
-      {selectedView === "atlas" ? (
-        <AtlasShell />
+      {selectedView === "map" ? (
+        <MapShell />
       ) : (
       <>
       {/* Pane 2: List */}

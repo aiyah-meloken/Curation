@@ -14,7 +14,7 @@ function isoDaysAgo(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function computeAtlasGlyphReadiness(
+function computeMapGlyphReadiness(
   cards: InboxItem[] | undefined,
 ): "ready" | "not_ready" {
   if (!cards) return "not_ready";
@@ -24,14 +24,14 @@ function computeAtlasGlyphReadiness(
   );
   if (dayCards.length === 0) return "not_ready";
   const tagged = dayCards.filter(
-    (c) => (c.entities?.length ?? 0) > 0 && c.atlas_topic != null,
+    (c) => (c.entities?.length ?? 0) > 0 && c.topic != null,
   );
   return tagged.length / dayCards.length >= 0.8 ? "ready" : "not_ready";
 }
 
 interface SidebarRailProps {
   accounts: Account[];
-  selectedView: "inbox" | "discarded" | "favorites" | "search" | "home" | "atlas";
+  selectedView: "inbox" | "discarded" | "favorites" | "search" | "home" | "map";
   selectedBiz: string | null;
   unreadCounts: Record<string, number>;
   isAdminMode: boolean;
@@ -45,7 +45,7 @@ interface SidebarRailProps {
   onToggleSubs: () => void;
   onToggleSettings: () => void;
   onNavigateToCard?: (cardId: string) => void;
-  onSelectAtlas?: () => void;
+  onSelectMap?: () => void;
 }
 
 export function SidebarRail({
@@ -64,18 +64,18 @@ export function SidebarRail({
   onToggleSubs,
   onToggleSettings,
   onNavigateToCard,
-  onSelectAtlas,
+  onSelectMap,
 }: SidebarRailProps) {
   const queryClient = useQueryClient();
   const { data: inboxCards } = useInbox();
-  const atlasReadiness = computeAtlasGlyphReadiness(inboxCards);
+  const atlasReadiness = computeMapGlyphReadiness(inboxCards);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
   const [isAddArticleOpen, setIsAddArticleOpen] = useState(false);
 
   const totalUnread = unreadCounts["total"] ?? 0;
 
-  const railNavActive = (view: "inbox" | "favorites" | "discarded" | "atlas") =>
+  const railNavActive = (view: "inbox" | "favorites" | "discarded" | "map") =>
     selectedView === view && (view !== "inbox" || selectedBiz === null);
 
   return (
@@ -83,10 +83,10 @@ export function SidebarRail({
       {/* Top: view glyphs */}
       {/* Atlas — always topmost */}
       <button
-        className={`rail-glyph ${railNavActive("atlas") ? "active" : ""}`}
+        className={`rail-glyph ${railNavActive("map") ? "active" : ""}`}
         data-tooltip={atlasReadiness === "ready" ? "今日舆图" : "今日舆图待生成"}
         aria-label={atlasReadiness === "ready" ? "今日舆图" : "今日舆图待生成"}
-        onClick={() => onSelectAtlas?.()}
+        onClick={() => onSelectMap?.()}
       >
         <MapIcon size={18} />
         {atlasReadiness === "not_ready" && (

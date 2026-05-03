@@ -2290,36 +2290,36 @@ body {
 .drawer-sync-status { color: var(--accent-green); }
 
 /* Atlas takeover view chrome */
-.atlas-empty {
+.map-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
   gap: 12px;
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
 }
-.atlas-empty-icon { opacity: 0.5; }
-.atlas-empty-title {
+.map-empty-icon { opacity: 0.5; }
+.map-empty-title {
   font-family: "Charter", "Hoefler Text", Georgia, serif;
   font-size: 18px;
 }
-.atlas-empty-date {
+.map-empty-date {
   font-family: "SF Mono", Menlo, monospace;
   font-size: 12px;
   letter-spacing: 0.2em;
   opacity: 0.7;
 }
 
-.atlas-tabbar {
+.map-tabbar {
   display: flex;
   gap: 4px;
   padding: 12px 24px;
   background: transparent;
-  border-bottom: 1px solid var(--atlas-ink-2);
+  border-bottom: 1px solid var(--map-ink-2);
   position: relative;
 }
-.atlas-tab {
+.map-tab {
   padding: 6px 14px;
   background: transparent;
   border: 1px solid transparent;
@@ -2327,36 +2327,36 @@ body {
   font-family: "SF Mono", Menlo, monospace;
   font-size: 12px;
   letter-spacing: 0.18em;
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
   cursor: pointer;
   transition: color 120ms ease-out, background 120ms ease-out;
 }
-.atlas-tab:hover { color: var(--atlas-ink); }
-.atlas-tab.active {
-  color: var(--atlas-ink);
-  border-color: var(--atlas-ink-2);
-  background: var(--atlas-vellum);
+.map-tab:hover { color: var(--map-ink); }
+.map-tab.active {
+  color: var(--map-ink);
+  border-color: var(--map-ink-2);
+  background: var(--map-vellum);
 }
 /* "更早" tab wraps its custom date popover. */
-.atlas-tab-earlier-wrap {
+.map-tab-earlier-wrap {
   position: relative;
   display: inline-flex;
 }
 
 /* ===== Atlas date picker — navigator's almanac page ===== */
-.atlas-datepicker {
+.map-datepicker {
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
   width: 286px;
   padding: 18px 20px 14px;
-  background: var(--atlas-vellum);
-  color: var(--atlas-ink);
-  border: 1px solid var(--atlas-ink);
+  background: var(--map-vellum);
+  color: var(--map-ink);
+  border: 1px solid var(--map-ink);
   /* Double-line cartouche edge: outer 1px ink + inset hairline gold */
   box-shadow:
-    inset 0 0 0 3px var(--atlas-vellum),
-    inset 0 0 0 4px var(--atlas-ink-2),
+    inset 0 0 0 3px var(--map-vellum),
+    inset 0 0 0 4px var(--map-ink-2),
     0 16px 48px rgba(0, 0, 0, 0.6),
     0 4px 14px rgba(0, 0, 0, 0.45);
   font-family: "Charter", "Hoefler Text", "Noto Serif SC", Georgia, serif;
@@ -2373,7 +2373,7 @@ body {
   from { opacity: 0; transform: translateY(-4px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-[data-atlas-theme="dark"] .atlas-datepicker {
+[data-map-theme="dark"] .map-datepicker {
   background-image:
     repeating-linear-gradient(0deg, rgba(212, 160, 23, 0.05) 0 1px, transparent 1px 4px),
     repeating-linear-gradient(90deg, rgba(212, 160, 23, 0.03) 0 1px, transparent 1px 4px);
@@ -2384,7 +2384,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--atlas-ink-2);
+  border-bottom: 1px solid var(--map-ink-2);
   margin-bottom: 12px;
 }
 .adp-nav {
@@ -2394,12 +2394,12 @@ body {
   font-size: 22px;
   font-family: "Charter", Georgia, serif;
   line-height: 1;
-  color: var(--atlas-ink);
+  color: var(--map-ink);
   padding: 4px 12px;
   transition: color 140ms ease-out, transform 140ms ease-out;
 }
 .adp-nav:hover {
-  color: var(--atlas-gold);
+  color: var(--map-gold);
   transform: scale(1.2);
 }
 .adp-title { text-align: center; flex: 1; pointer-events: none; }
@@ -2408,7 +2408,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.32em;
-  color: var(--atlas-ink);
+  color: var(--map-ink);
   text-transform: uppercase;
   line-height: 1;
 }
@@ -2417,7 +2417,7 @@ body {
   font-family: "Cinzel", "Trajan Pro", serif;
   font-size: 10px;
   letter-spacing: 0.42em;
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
   line-height: 1;
 }
 
@@ -2432,11 +2432,11 @@ body {
   font-family: "SF Mono", Menlo, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.16em;
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
   padding: 4px 0;
 }
 .adp-weekday.weekend {
-  color: var(--atlas-rust);
+  color: var(--map-rust);
   opacity: 0.75;
 }
 
@@ -2452,7 +2452,7 @@ body {
   font-family: "Charter", "Hoefler Text", Georgia, serif;
   font-size: 13px;
   font-weight: 500;
-  color: var(--atlas-ink);
+  color: var(--map-ink);
   cursor: pointer;
   transition:
     background 140ms ease-out,
@@ -2465,28 +2465,28 @@ body {
   padding: 0;
 }
 .adp-cell:hover:not(.disabled):not(.selected) {
-  color: var(--atlas-gold);
-  border-color: var(--atlas-ink-2);
+  color: var(--map-gold);
+  border-color: var(--map-ink-2);
 }
 .adp-cell.disabled {
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
   opacity: 0.35;
   cursor: not-allowed;
   font-style: italic;
 }
 .adp-cell.today {
-  border-color: var(--atlas-gold);
+  border-color: var(--map-gold);
   border-style: dashed;
-  color: var(--atlas-gold);
+  color: var(--map-gold);
 }
 .adp-cell.selected {
-  background: var(--atlas-gold);
-  color: var(--atlas-paper);
+  background: var(--map-gold);
+  color: var(--map-paper);
   font-weight: 700;
-  border-color: var(--atlas-gold);
+  border-color: var(--map-gold);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
-[data-atlas-theme="dark"] .adp-cell.selected {
+[data-map-theme="dark"] .adp-cell.selected {
   color: #1a1410;
 }
 .adp-cell.pad {
@@ -2501,32 +2501,32 @@ body {
   gap: 8px;
   margin-top: 12px;
   padding-top: 8px;
-  border-top: 1px solid var(--atlas-ink-2);
+  border-top: 1px solid var(--map-ink-2);
 }
 .adp-footer-mark {
   font-size: 10px;
-  color: var(--atlas-rust);
+  color: var(--map-rust);
   opacity: 0.7;
 }
 .adp-footer-text {
   font-family: "Cinzel", "Trajan Pro", serif;
   font-size: 9px;
   letter-spacing: 0.28em;
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
   text-transform: lowercase;
   font-style: italic;
 }
-.atlas-shell {
+.map-shell {
   display: flex;
   flex-direction: column;
   flex: 1;
-  background: var(--atlas-paper);
-  color: var(--atlas-ink);
+  background: var(--map-paper);
+  color: var(--map-ink);
   overflow: hidden;
   min-width: 0;
 }
-.atlas-error,
-.atlas-loading {
+.map-error,
+.map-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2535,16 +2535,16 @@ body {
   gap: 8px;
   font-family: "Charter", "Hoefler Text", Georgia, serif;
   font-size: 18px;
-  color: var(--atlas-ink-2);
+  color: var(--map-ink-2);
   letter-spacing: 0.02em;
 }
-.atlas-error::before {
+.map-error::before {
   content: "✕";
   display: block;
   font-size: 22px;
   opacity: 0.5;
 }
-.atlas-loading::before {
+.map-loading::before {
   content: "·····";
   display: block;
   letter-spacing: 0.4em;

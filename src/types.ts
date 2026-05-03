@@ -165,8 +165,8 @@ export function displayTitleFor(item: {
   return item.title || item.article_meta.title;
 }
 
-/** Inline taxonomy reference on each inbox row — denormalized from atlas_topic + atlas_domain. */
-export interface AtlasTopicRef {
+/** Inline taxonomy reference on each inbox row — denormalized from topic + domain. */
+export interface TopicRef {
   id: string;
   label: string;
   domain_id: string;
@@ -182,8 +182,8 @@ export interface InboxItem {
   /** Canonical entity names extracted by the agent (companies, products,
    *  papers, lab teams, …). Empty array for legacy / queued items. */
   entities: string[];
-  /** Inline atlas taxonomy (denormalized from atlas_topic + atlas_domain). Nullable until tagging pipeline lands. */
-  atlas_topic?: AtlasTopicRef | null;
+  /** Inline map taxonomy (denormalized from topic + domain). Nullable until tagging pipeline lands. */
+  topic?: TopicRef | null;
   /** Estimated reading minutes (server-computed, on-the-fly). Used to size atlas settlements. */
   reading_minutes?: number;
   routing: Routing;

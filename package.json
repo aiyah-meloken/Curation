@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite",
     "dev:web": "vite --config vite.config.web.ts",
-    "dev:atlas": "vite --config vite.config.atlas.ts",
+    "dev:map": "vite --config vite.config.map.ts",
     "build": "tsc && vite build",
     "build:web": "tsc && vite build --config vite.config.web.ts",
-    "build:atlas": "tsc && vite build --config vite.config.atlas.ts",
+    "build:map": "tsc && vite build --config vite.config.map.ts",
     "preview": "vite preview",
     "preview:web": "vite preview --config vite.config.web.ts",
     "tauri": "tauri"
