@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import type { Article } from "../types";
 
@@ -120,50 +120,3 @@ export function useAnalysisStatus(articleId: string | null, currentStatus: strin
   });
 }
 
-/**
- * Optimistic updates operate on the single ARTICLES_KEY cache.
- * All filtered views (via select) automatically reflect the change.
- */
-export function useMarkRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (articleId: string) => {
-      await apiFetch(`/articles/${articleId}/read?status=1`, { method: "POST" });
-    },
-    onMutate: async (articleId) => {
-      await queryClient.cancelQueries({ queryKey: ARTICLES_KEY });
-      const previous = queryClient.getQueryData<Article[]>(ARTICLES_KEY);
-      queryClient.setQueryData<Article[]>(ARTICLES_KEY, (old) =>
-        old?.map(a => a.short_id === articleId ? { ...a, read_status: 1 } : a)
-      );
-      return { previous };
-    },
-    onError: (_err, _articleId, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(ARTICLES_KEY, context.previous);
-      }
-    },
-  });
-}
-
-export function useDismissArticle() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (articleId: string) => {
-      await apiFetch(`/articles/${articleId}/dismiss`, { method: "POST" });
-    },
-    onMutate: async (articleId) => {
-      await queryClient.cancelQueries({ queryKey: ARTICLES_KEY });
-      const previous = queryClient.getQueryData<Article[]>(ARTICLES_KEY);
-      queryClient.setQueryData<Article[]>(ARTICLES_KEY, (old) =>
-        old?.map(a => a.short_id === articleId ? { ...a, dismissed: 1 } : a)
-      );
-      return { previous };
-    },
-    onError: (_err, _articleId, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(ARTICLES_KEY, context.previous);
-      }
-    },
-  });
-}

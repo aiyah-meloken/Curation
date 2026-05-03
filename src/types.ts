@@ -34,8 +34,6 @@ export interface Article {
   rawHtml?: string;
   contentFormat?: "html" | "markdown";
   word_count?: number;
-  read_status?: number;
-  dismissed?: number;
   queue_status?: "pending" | "running" | "done" | "failed" | null;
   hashid?: string;
   idx?: string;
@@ -188,14 +186,20 @@ export interface InboxItem {
   reading_minutes?: number;
   routing: Routing;
   /**
-   * Per-card template name (DB column reused, will be renamed `template`):
+   * Per-card template name (article_cards.template column):
    *   - ai_curation: one of {event/paper/security_cve/security_event/concept/
    *     tool/company/data_report/interview/analysis}
    *   - original_content_with_pre_card: "pre_card" (forced by routing)
    *   - original_content_with_post_card: "post_card" (forced by routing)
    *   - null for legacy / pre-routing rows
    */
-  subtype: string | null;
+  template: string | null;
+  /**
+   * Agent's 3-5 sentence rationale for picking this template (manifest.json
+   * cards[i].template_reason). Surfaced in admin RunDetailDrawer for prompt
+   * tuning + decision audit. Not shown in user-facing card UI.
+   */
+  template_reason: string | null;
   article_date: string | null;
   read_at: string | null;
   queue_status: "pending" | "running" | null;
