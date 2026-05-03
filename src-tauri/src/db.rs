@@ -18,7 +18,7 @@ pub struct CardRow {
     pub routing: Option<String>,
     pub template: Option<String>,
     pub template_reason: Option<String>,
-    pub article_date: Option<String>,
+    pub card_date: Option<String>,
     pub account: Option<String>,
     pub author: Option<String>,
     pub url: Option<String>,
@@ -50,7 +50,7 @@ pub struct SearchResult {
     pub title: Option<String>,
     pub article_id: String,
     pub account: Option<String>,
-    pub article_date: Option<String>,
+    pub card_date: Option<String>,
     pub highlight: String,
     pub is_favorite: bool,
 }
@@ -138,7 +138,7 @@ impl CacheDb {
                 routing TEXT,
                 template TEXT,
                 template_reason TEXT,
-                article_date TEXT,
+                card_date TEXT,
                 account TEXT,
                 author TEXT,
                 url TEXT,
@@ -296,6 +296,16 @@ impl CacheDb {
             // we fall back to ignoring it — the column is unused.
             let _ = conn.execute("ALTER TABLE cards DROP COLUMN subtype", []);
         }
+        // One-shot rename: article_date → card_date (cards-redesign Phase 6 followup).
+        // SQLite ≥3.25 supports RENAME COLUMN; if the column is already named
+        // card_date (fresh install or already migrated) the statement silently
+        // fails and we carry on.
+        if conn.prepare("SELECT article_date FROM cards LIMIT 0").is_ok() {
+            let _ = conn.execute(
+                "ALTER TABLE cards RENAME COLUMN article_date TO card_date",
+                [],
+            );
+        }
         if reset_cursor {
             conn.execute("DELETE FROM sync_state WHERE key = 'last_sync_ts'", [])
                 .ok();
@@ -407,7 +417,7 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut sql = String::from(
             "SELECT card_id, article_id, title, article_title, content_md, description, routing,
-                    template, template_reason, article_date, account, author, url, read_at, updated_at, publish_time,
+                    template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                     account_id, biz, cover_url, digest, word_count, is_original, entities
              FROM cards WHERE routing IS NOT NULL",
         );
@@ -417,7 +427,7 @@ impl CacheDb {
         if unread_only {
             sql.push_str(" AND read_at IS NULL");
         }
-        sql.push_str(" ORDER BY article_date DESC, publish_time DESC");
+        sql.push_str(" ORDER BY card_date DESC, publish_time DESC");
 
         let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
 
@@ -433,7 +443,7 @@ impl CacheDb {
                     routing: row.get(6)?,
                     template: row.get(7)?,
                     template_reason: row.get(8)?,
-                    article_date: row.get(9)?,
+                    card_date: row.get(9)?,
                     account: row.get(10)?,
                     author: row.get(11)?,
                     url: row.get(12)?,
@@ -464,7 +474,7 @@ impl CacheDb {
                     routing: row.get(6)?,
                     template: row.get(7)?,
                     template_reason: row.get(8)?,
-                    article_date: row.get(9)?,
+                    card_date: row.get(9)?,
                     account: row.get(10)?,
                     author: row.get(11)?,
                     url: row.get(12)?,
@@ -621,7 +631,7 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
             .prepare(
-                "SELECT c.card_id, c.title, c.article_id, c.account, c.article_date,
+                "SELECT c.card_id, c.title, c.article_id, c.account, c.card_date,
                         snippet(cards_fts, 1, '<mark>', '</mark>', '...', 32),
                         CASE WHEN fav.item_id IS NOT NULL THEN 1 ELSE 0 END as is_fav
                  FROM cards_fts f
@@ -639,7 +649,7 @@ impl CacheDb {
                     title: row.get(1)?,
                     article_id: row.get(2)?,
                     account: row.get(3)?,
-                    article_date: row.get(4)?,
+                    card_date: row.get(4)?,
                     highlight: row.get(5)?,
                     is_favorite: row.get::<_, i32>(6)? != 0,
                 })
@@ -798,7 +808,7 @@ impl CacheDb {
             conn.execute(
                 "INSERT OR REPLACE INTO cards
                  (card_id, article_id, title, article_title, content_md, description, routing,
-                  template, template_reason, article_date, account, author, url, read_at, updated_at, publish_time,
+                  template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                   account_id, biz, cover_url, digest, word_count, is_original, entities)
                  VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
                 rusqlite::params![
@@ -811,7 +821,7 @@ impl CacheDb {
                     card["routing"].as_str(),
                     card["template"].as_str(),
                     card["template_reason"].as_str(),
-                    card["article_date"].as_str(),
+                    card["card_date"].as_str(),
                     card["account"].as_str(),
                     card["author"].as_str(),
                     card["url"].as_str(),
@@ -966,7 +976,7 @@ impl CacheDb {
             .prepare(
                 "SELECT card_id FROM cards
                  WHERE content_md IS NULL
-                 ORDER BY article_date DESC NULLS LAST, card_id
+                 ORDER BY card_date DESC NULLS LAST, card_id
                  LIMIT ?1",
             )
             .map_err(|e| e.to_string())?;
