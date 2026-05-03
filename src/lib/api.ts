@@ -3,7 +3,11 @@ function computeApiBase(): string {
   if (v && typeof v === "string" && v.length > 0) {
     return v.replace(/\/$/, "");
   }
-  return "http://127.0.0.1:8889";
+  // Production default. Local dev should override via .env's VITE_API_BASE
+  // (e.g. VITE_API_BASE=http://127.0.0.1:8889). HTTPS is required for macOS
+  // App Transport Security in packaged Tauri builds.
+  if (import.meta.env.DEV) return "http://127.0.0.1:8889";
+  return "https://curationcurationcuration.cc";
 }
 
 function computeWsBase(): string {
