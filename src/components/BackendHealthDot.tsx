@@ -15,7 +15,7 @@ export function BackendHealthDot() {
     const probe = async () => {
       const t0 = performance.now();
       try {
-        const r = await apiFetch("/admin/health");
+        const r = await apiFetch("/health");
         if (cancelled) return;
         if (r.ok) {
           setStatus("ok");
