@@ -15,7 +15,7 @@ export function useMapCards(date: string | null): {
   const inbox = useInbox();
   const data = useMemo(() => {
     if (!inbox.data || date == null) return undefined;
-    return inbox.data.filter((c) => c.article_date === date);
+    return inbox.data.filter((c) => c.card_date === date);
   }, [inbox.data, date]);
   return { data, isLoading: inbox.isLoading, isError: inbox.isError };
 }

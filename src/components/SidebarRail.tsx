@@ -21,7 +21,7 @@ function computeMapGlyphReadiness(
   if (!cards) return "not_ready";
   const yesterday = isoDaysAgo(1);
   const dayCards = cards.filter(
-    (c) => c.article_date === yesterday && c.routing != null,
+    (c) => c.card_date === yesterday && c.routing != null,
   );
   if (dayCards.length === 0) return "not_ready";
   const tagged = dayCards.filter(

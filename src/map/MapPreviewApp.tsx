@@ -182,7 +182,7 @@ function convertToMapCards(
       | null,
     template: null,
     template_reason: null,
-    article_date: tc.article_date,
+    card_date: tc.article_date,
     read_at: null,
     queue_status: null,
     article_meta: {

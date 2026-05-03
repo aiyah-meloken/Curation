@@ -40,7 +40,7 @@ export async function getInboxCards(
       routing: it.routing ?? null,
       template: it.template ?? null,
       template_reason: it.template_reason ?? null,
-      article_date: it.article_date ?? null,
+      card_date: it.card_date ?? null,
       account: am.account ?? null,
       author: am.author ?? null,
       url: am.url ?? null,

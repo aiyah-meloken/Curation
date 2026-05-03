@@ -100,7 +100,7 @@ export function SearchList({
               )}
               <div className="inbox-item-meta">
                 {item.account}
-                {item.article_date && <> · {formatDate(item.article_date)}</>}
+                {item.card_date && <> · {formatDate(item.card_date)}</>}
               </div>
             </div>
           ))

@@ -183,10 +183,10 @@ function CardContentView({ cardId }: { cardId: string }) {
   );
 }
 
-function ArticleHtmlView({ articleId }: { articleId: string }) {
+function ArticleHtmlView({ articleId, additionalContent }: { articleId: string; additionalContent?: string | null }) {
   const { data: articleData, isLoading } = useArticleContent(articleId);
 
-  if (isLoading) {
+  if (isLoading && !additionalContent) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
         加载中...
@@ -194,7 +194,7 @@ function ArticleHtmlView({ articleId }: { articleId: string }) {
     );
   }
 
-  const html = articleData?.rawHtml;
+  const html = additionalContent ?? articleData?.rawHtml;
   if (!html) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
@@ -444,7 +444,7 @@ ${notesSection}
         routing: null as Routing,
         template: null as string | null,
         template_reason: null as string | null,
-        article_date: selectedDiscardedItem.article_date,
+        card_date: selectedDiscardedItem.card_date,
         read_at: null,
         queue_status: null as "pending" | "running" | null,
         article_meta: selectedDiscardedItem.article_meta,
@@ -503,7 +503,7 @@ ${notesSection}
               label={showsOriginalAlongside(item.routing) ? "原文" : undefined}
               force={showsOriginalAlongside(item.routing)}
             >
-              <ArticleHtmlView articleId={item.article_id} />
+              <ArticleHtmlView articleId={item.article_id} additionalContent={item.additional_content} />
             </CardFrame>
           )}
 

@@ -16,7 +16,7 @@ function cachedToInbox(c: CachedCard): InboxItem {
     routing: (c.routing as InboxItem["routing"]) ?? null,
     template: c.template ?? null,
     template_reason: c.template_reason ?? null,
-    article_date: c.article_date,
+    card_date: c.card_date,
     read_at: c.read_at,
     queue_status: null,
     article_meta: {
@@ -24,7 +24,7 @@ function cachedToInbox(c: CachedCard): InboxItem {
       account: c.account ?? "",
       biz: c.biz ?? null,
       author: c.author,
-      publish_time: c.publish_time ?? c.article_date,
+      publish_time: c.publish_time ?? c.card_date,
       url: c.url ?? "",
       cover_url: c.cover_url,
       digest: c.digest,
@@ -113,7 +113,7 @@ export function useIsFirstSync(syncing: boolean): boolean {
   return syncing && (isLoading || (items !== undefined && items.length === 0));
 }
 
-export function groupByDateBucket<T extends { article_date: string | null }>(items: T[]): DateGroup<T>[] {
+export function groupByDateBucket<T extends { card_date: string | null }>(items: T[]): DateGroup<T>[] {
   const now = new Date();
   const today = startOfDay(now);
   const yesterday = new Date(today);
@@ -136,7 +136,7 @@ export function groupByDateBucket<T extends { article_date: string | null }>(ite
   };
 
   for (const item of items) {
-    const dateStr = item.article_date;
+    const dateStr = item.card_date;
     if (!dateStr) {
       buckets.older.push(item);
       continue;
@@ -218,7 +218,7 @@ export function useAnalyzingQueue(): InboxItem[] {
       routing: null,
       template: null,
       template_reason: null,
-      article_date: q.article_publish_time,
+      card_date: q.article_publish_time,
       read_at: null,
       queue_status: q.status === "pending" || q.status === "running" ? q.status : null,
       article_meta: {
