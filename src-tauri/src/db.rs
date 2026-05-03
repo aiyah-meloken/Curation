@@ -153,7 +153,7 @@ impl CacheDb {
                 is_original INTEGER,
                 entities TEXT
             );
-            CREATE TABLE IF NOT EXISTS articles (
+            CREATE TABLE IF NOT EXISTS wechat_articles (
                 article_id TEXT PRIMARY KEY,
                 content_html TEXT,
                 updated_at TEXT NOT NULL
@@ -176,7 +176,7 @@ impl CacheDb {
                 key TEXT PRIMARY KEY,
                 value TEXT
             );
-            CREATE TABLE IF NOT EXISTS accounts (
+            CREATE TABLE IF NOT EXISTS wechat_subscriptions (
                 id INTEGER PRIMARY KEY,
                 biz TEXT NOT NULL,
                 name TEXT,
@@ -187,7 +187,7 @@ impl CacheDb {
                 subscription_type TEXT DEFAULT 'subscribed',
                 sync_count INTEGER DEFAULT 0
             );
-            CREATE TABLE IF NOT EXISTS discoverable_accounts (
+            CREATE TABLE IF NOT EXISTS discoverable_wechat_accounts (
                 biz TEXT PRIMARY KEY,
                 name TEXT,
                 avatar_url TEXT,
@@ -202,6 +202,43 @@ impl CacheDb {
             ",
         )
         .map_err(|e| e.to_string())?;
+
+        // Rename legacy table names to mirror the server's wechat_* schema.
+        // Done before any of the column-level migrations below so probes that
+        // still reference the old names will fail naturally; we want everything
+        // downstream to see the new names.
+        for (old_name, new_name) in [
+            ("articles", "wechat_articles"),
+            ("accounts", "wechat_subscriptions"),
+            ("discoverable_accounts", "discoverable_wechat_accounts"),
+        ] {
+            let old_exists: bool = conn
+                .query_row(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1",
+                    [old_name],
+                    |_| Ok(true),
+                )
+                .unwrap_or(false);
+            let new_exists: bool = conn
+                .query_row(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1",
+                    [new_name],
+                    |_| Ok(true),
+                )
+                .unwrap_or(false);
+            if old_exists && !new_exists {
+                let sql = format!("ALTER TABLE {} RENAME TO {}", old_name, new_name);
+                let _ = conn.execute(&sql, []);
+            } else if old_exists && new_exists {
+                // Both exist (CREATE TABLE IF NOT EXISTS already ran). Drop the
+                // empty new one and rename the old one over it. CREATE just ran
+                // above this code, so the new table is empty by construction.
+                let drop_sql = format!("DROP TABLE {}", new_name);
+                let _ = conn.execute(&drop_sql, []);
+                let rename_sql = format!("ALTER TABLE {} RENAME TO {}", old_name, new_name);
+                let _ = conn.execute(&rename_sql, []);
+            }
+        }
 
         // Add publish_time if missing (migration for existing DBs)
         let has_col = conn
@@ -455,7 +492,7 @@ impl CacheDb {
     pub fn get_article_content(&self, article_id: &str) -> Result<Option<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
-            .prepare("SELECT content_html FROM articles WHERE article_id = ?1")
+            .prepare("SELECT content_html FROM wechat_articles WHERE article_id = ?1")
             .map_err(|e| e.to_string())?;
         let mut rows = stmt
             .query_map([article_id], |row| row.get::<_, String>(0))
@@ -589,7 +626,7 @@ impl CacheDb {
             .prepare(
                 "SELECT id, biz, name, avatar_url, description, last_monitored_at,
                         article_count, subscription_type, sync_count
-                 FROM accounts ORDER BY name",
+                 FROM wechat_subscriptions ORDER BY name",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
@@ -616,11 +653,11 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
         // Replace all — server is source of truth
-        conn.execute("DELETE FROM accounts", []).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM wechat_subscriptions", []).map_err(|e| e.to_string())?;
         let mut count = 0usize;
         for acct in accounts {
             conn.execute(
-                "INSERT INTO accounts (id, biz, name, avatar_url, description,
+                "INSERT INTO wechat_subscriptions (id, biz, name, avatar_url, description,
                  last_monitored_at, article_count, subscription_type, sync_count)
                  VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
                 rusqlite::params![
@@ -647,7 +684,7 @@ impl CacheDb {
         let mut stmt = conn
             .prepare(
                 "SELECT biz, name, avatar_url, description, account_type, already_subscribed
-                 FROM discoverable_accounts ORDER BY name",
+                 FROM discoverable_wechat_accounts ORDER BY name",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
@@ -670,11 +707,11 @@ impl CacheDb {
     pub fn upsert_discoverable_accounts(&self, accounts: &[serde_json::Value]) -> Result<usize, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM discoverable_accounts", []).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM discoverable_wechat_accounts", []).map_err(|e| e.to_string())?;
         let mut count = 0usize;
         for acct in accounts {
             conn.execute(
-                "INSERT INTO discoverable_accounts (biz, name, avatar_url, description, account_type, already_subscribed)
+                "INSERT INTO discoverable_wechat_accounts (biz, name, avatar_url, description, account_type, already_subscribed)
                  VALUES (?1,?2,?3,?4,?5,?6)",
                 rusqlite::params![
                     acct["biz"].as_str().unwrap_or_default(),
@@ -784,7 +821,7 @@ impl CacheDb {
         let mut count = 0usize;
         for article in articles {
             conn.execute(
-                "INSERT OR REPLACE INTO articles (article_id, content_html, updated_at)
+                "INSERT OR REPLACE INTO wechat_articles (article_id, content_html, updated_at)
                  VALUES (?1, ?2, ?3)",
                 rusqlite::params![
                     article["article_id"].as_str().unwrap_or_default(),
