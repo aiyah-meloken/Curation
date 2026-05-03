@@ -24,7 +24,7 @@ export function AtlasFloatingCard({
   onMouseLeave,
   onOpenDrawer,
 }: Props) {
-  const topic = dsl.topics.find((s) => s.id === card.atlas_topic_id);
+  const topic = dsl.topics.find((s) => s.id === card.atlas_topic?.id);
   const domain = dsl.domains.find((b) => b.id === topic?.domain_id);
   // source_count is always 1 in v1; hot indicator not used.
   const isHot = false;

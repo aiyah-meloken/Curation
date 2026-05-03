@@ -24,7 +24,8 @@ export type Topic = {
 };
 
 // ===== Cards = InboxItem itself =====
-// AtlasCard equals InboxItem (atlas_topic_id is on InboxItem). The atlas-only
+// AtlasCard equals InboxItem (atlas_topic is on InboxItem as an inline
+// AtlasTopicRef — denormalized from atlas_topic + atlas_domain). The atlas-only
 // computed/derived fields (formerly shared_entities, source_count) are now
 // derived at render time: shared_entities = entities; source_count = 1 (v1).
 export type AtlasCard = InboxItem;

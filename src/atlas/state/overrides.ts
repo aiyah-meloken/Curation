@@ -20,7 +20,7 @@ export type AtlasOverrides = {
    * parent domain (existing or new). The id+label part matches Topic.
    */
   newSmallDomains: Array<Topic & { big_domain_id: string }>;
-  /** Per-card override of `atlas_topic_id`, keyed by card_id. */
+  /** Per-card override of `atlas_topic` id, keyed by card_id. */
   cardAssignments: Record<string, string>;
 };
 
@@ -99,7 +99,7 @@ export function applyDslOverrides(base: AtlasDSL, o: AtlasOverrides): AtlasDSL {
   return { domains, topics };
 }
 
-/** Replace each card's `atlas_topic_id` if the user has assigned a new one. */
+/** Replace each card's `atlas_topic` id if the user has assigned a new one. */
 export function applyCardAssignments(
   cards: AtlasCard[],
   o: AtlasOverrides,
@@ -107,8 +107,17 @@ export function applyCardAssignments(
   if (Object.keys(o.cardAssignments).length === 0) return cards;
   return cards.map((c) => {
     const id = c.card_id;
-    if (id && o.cardAssignments[id]) {
-      return { ...c, atlas_topic_id: o.cardAssignments[id] };
+    const newTopicId = id ? o.cardAssignments[id] : undefined;
+    if (newTopicId) {
+      // Preserve existing atlas_topic shape but override the id (and leave
+      // label/domain fields as-is — preview DSL re-derives them from the DSL
+      // anyway; layout only reads atlas_topic?.id for grouping).
+      return {
+        ...c,
+        atlas_topic: c.atlas_topic
+          ? { ...c.atlas_topic, id: newTopicId }
+          : { id: newTopicId, label: newTopicId, domain_id: "", domain_label: "", domain_latin_label: null },
+      };
     }
     return c;
   });

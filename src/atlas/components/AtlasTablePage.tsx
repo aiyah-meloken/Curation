@@ -285,7 +285,7 @@ export function AtlasTablePage({
                 const isAggregate = false;
                 const isRead = !!c.read_at;
                 const cardKey = c.card_id ?? `idx-${i}`;
-                const bd = c.atlas_topic_id ? sd2bd.get(c.atlas_topic_id) : null;
+                const bd = c.atlas_topic?.id ? sd2bd.get(c.atlas_topic.id) : null;
                 const content = c.card_id ? cardContent[c.card_id] : null;
                 const expanded = expandedCardId === c.card_id;
                 return (
@@ -313,14 +313,14 @@ export function AtlasTablePage({
                       <Td>
                         {bd ? (
                           <CellSelect
-                            value={c.atlas_topic_id ?? ""}
+                            value={c.atlas_topic?.id ?? ""}
                             italic
                             options={dsl.topics
                               .filter((t) => t.domain_id === bd)
                               .map((t) => ({ value: t.id, label: t.label }))}
                             onChange={(next) => {
                               if (!c.card_id) return;
-                              if (next === c.atlas_topic_id) return;
+                              if (next === c.atlas_topic?.id) return;
                               reassignCard(c.card_id, next);
                             }}
                           />

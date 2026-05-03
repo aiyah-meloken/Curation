@@ -5,10 +5,30 @@
 //
 // Real fields: card_id, title, description, source account, article_date.
 // Mocked atlas tags (not in source data yet):
-//   atlas_topic_id, entities (formerly shared_entities), read.
+//   atlas_topic (inline AtlasTopicRef), entities (formerly shared_entities), read.
 // Note: source_count is always 1 in v1 (aggregate cards removed).
+//
+// TODO: update mock data shape after schema change — preview may be temporarily
+// broken content-wise (topic label / domain_label are stubs); main app
+// inbox-derived path is the source of truth and works correctly.
 
 import type { AtlasCard } from "../types";
+import type { AtlasTopicRef } from "../../types";
+
+// Minimal topic stub map (id → AtlasTopicRef) so mock data type-checks.
+// Labels are placeholders; real labels come from the server in production.
+const MOCK_TOPICS: Record<string, AtlasTopicRef> = {
+  pretrain:   { id: "pretrain",  label: "预训练",  domain_id: "ai_models", domain_label: "AI 模型", domain_latin_label: "AI MODELORVM" },
+  inference:  { id: "inference", label: "推理",    domain_id: "ai_models", domain_label: "AI 模型", domain_latin_label: "AI MODELORVM" },
+  vision:     { id: "vision",    label: "视觉",    domain_id: "ai_models", domain_label: "AI 模型", domain_latin_label: "AI MODELORVM" },
+  agent:      { id: "agent",     label: "Agent",   domain_id: "ai_products", domain_label: "AI 产品", domain_latin_label: "AI PRODUCTA" },
+  coding:     { id: "coding",    label: "编程助手", domain_id: "ai_products", domain_label: "AI 产品", domain_latin_label: "AI PRODUCTA" },
+  media:      { id: "media",     label: "多媒体",  domain_id: "ai_products", domain_label: "AI 产品", domain_latin_label: "AI PRODUCTA" },
+  paper:      { id: "paper",     label: "论文",    domain_id: "academic",    domain_label: "学术",    domain_latin_label: "ACADEMIA" },
+  review:     { id: "review",    label: "综述",    domain_id: "academic",    domain_label: "学术",    domain_latin_label: "ACADEMIA" },
+  attack:     { id: "attack",    label: "攻击手法", domain_id: "security",   domain_label: "AI 安全", domain_latin_label: "SECURITAS" },
+  survey:     { id: "survey",    label: "产业调研", domain_id: "industry",   domain_label: "产业观察", domain_latin_label: "INDUSTRIA" },
+};
 
 const mk = (
   partial: Pick<AtlasCard, "card_id" | "article_id" | "title" | "description"> & {
@@ -27,7 +47,13 @@ const mk = (
   routing: partial.routing ?? "ai_curation",
   subtype: null,
   entities: partial.entities,
-  atlas_topic_id: partial.atlas_topic_id,
+  atlas_topic: MOCK_TOPICS[partial.atlas_topic_id] ?? {
+    id: partial.atlas_topic_id,
+    label: partial.atlas_topic_id,
+    domain_id: "unknown",
+    domain_label: "Unknown",
+    domain_latin_label: null,
+  },
   article_date: "2026-04-26",
   read_at: partial.read ? "2026-04-26T20:00:00+08:00" : null,
   queue_status: null,

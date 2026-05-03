@@ -243,8 +243,8 @@ export function computeLayout(
   canvas: { width: number; height: number } = ATLAS_CANVAS,
   voyageOpts: VoyageOpts = {},
 ): AtlasLayout {
-  // Filter cards without an atlas_topic_id — they can't be placed on the map.
-  const validCards = cards.filter((c) => c.atlas_topic_id != null);
+  // Filter cards without an atlas_topic — they can't be placed on the map.
+  const validCards = cards.filter((c) => c.atlas_topic?.id != null);
 
   // Build topicsByDomain map: domain_id → Topic[] sorted by display_order.
   const topicsByDomain = new Map<string, Topic[]>();
@@ -264,7 +264,7 @@ export function computeLayout(
   const groups = new Map<string, AtlasCard[]>();
   for (const bd of dsl.domains) groups.set(bd.id, []);
   for (const c of validCards) {
-    const bd_id = topic_to_domain.get(c.atlas_topic_id!);
+    const bd_id = topic_to_domain.get(c.atlas_topic!.id);
     if (!bd_id) continue; // shouldn't happen — validate runs first
     groups.get(bd_id)!.push(c);
   }
@@ -285,7 +285,7 @@ export function computeLayout(
     const cardsBySid = new Map<string, AtlasCard[]>();
     for (const sid of topicIds) cardsBySid.set(sid, []);
     for (const c of bdCards) {
-      const list = cardsBySid.get(c.atlas_topic_id!);
+      const list = cardsBySid.get(c.atlas_topic!.id);
       if (list) list.push(c);
     }
     const filledSids = topicIds.filter(
@@ -918,7 +918,7 @@ function placeCardsInCircle(
 
     out.push({
       card_id: c.card_id!,
-      topic_id: c.atlas_topic_id!,
+      topic_id: c.atlas_topic?.id ?? "",
       x,
       y,
       radius: visualR,

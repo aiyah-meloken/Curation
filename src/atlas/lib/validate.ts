@@ -33,10 +33,10 @@ export function validate(dsl: AtlasDSL, cards: AtlasCard[]): void {
       }
       cardIds.add(c.card_id);
     }
-    if (c.atlas_topic_id != null && !topicIds.has(c.atlas_topic_id)) {
+    if (c.atlas_topic?.id != null && !topicIds.has(c.atlas_topic.id)) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[atlas/validate] card "${c.card_id ?? c.article_id}" has unknown atlas_topic_id "${c.atlas_topic_id}"`,
+        `[atlas/validate] card "${c.card_id ?? c.article_id}" has unknown atlas_topic.id "${c.atlas_topic.id}"`,
       );
     }
   }

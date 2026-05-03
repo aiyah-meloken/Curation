@@ -17,6 +17,7 @@ import {
   type AtlasOverrides,
 } from "./state/overrides";
 import type { ArticleContent, AtlasCard, AtlasDSL, Domain, Topic } from "./types";
+import type { AtlasTopicRef } from "../types";
 
 // D framework: single perspective `persona` (读者人格).
 // L1 = 读者的脸（创业故事 / 巨头博弈 / 技术深挖 / 工具新货 /
@@ -143,9 +144,27 @@ function filterEntitiesByLocalFrequency(
   return filtered;
 }
 
+function buildAtlasTopicRef(
+  tags: string[],
+  dsl: AtlasDSL,
+): AtlasTopicRef | null {
+  const topicId = tagToSmallDomainId(tags);
+  const topic = dsl.topics.find((t) => t.id === topicId);
+  if (!topic) return null;
+  const domain = dsl.domains.find((d) => d.id === topic.domain_id);
+  return {
+    id: topic.id,
+    label: topic.label,
+    domain_id: topic.domain_id,
+    domain_label: domain?.label ?? topic.domain_id,
+    domain_latin_label: domain?.latin_label ?? null,
+  };
+}
+
 function convertToAtlasCards(
   cards: typeof taggedCards,
   perspective: PerspectiveKey,
+  dsl: AtlasDSL,
 ): AtlasCard[] {
   const filteredEntities = filterEntitiesByLocalFrequency(cards);
   return cards.map((tc) => ({
@@ -175,7 +194,7 @@ function convertToAtlasCards(
       cover_url: null,
       digest: null,
     },
-    atlas_topic_id: tagToSmallDomainId(tc.tags[perspective] || []),
+    atlas_topic: buildAtlasTopicRef(tc.tags[perspective] || [], dsl),
     // reading_minutes not available from mock data; layout falls back to default radius.
     reading_minutes: undefined,
   }));
@@ -202,8 +221,8 @@ function MapTabContent({
   );
   const dsl = useMemo(() => deriveDsl(dateCards, perspective), [dateCards, perspective]);
   const cards = useMemo(
-    () => convertToAtlasCards(dateCards, perspective),
-    [dateCards, perspective],
+    () => convertToAtlasCards(dateCards, perspective, dsl),
+    [dateCards, perspective, dsl],
   );
 
   return (
@@ -293,11 +312,11 @@ export function AtlasPreviewApp() {
   };
 
   // "数据" tab data
-  const allCards = useMemo(
-    () => convertToAtlasCards(taggedCards, "persona"),
-    [],
-  );
   const allDsl = useMemo(() => deriveDsl(taggedCards, "persona"), []);
+  const allCards = useMemo(
+    () => convertToAtlasCards(taggedCards, "persona", allDsl),
+    [allDsl],
+  );
   const effectiveDsl = useMemo(
     () => applyDslOverrides(allDsl, overrides),
     [allDsl, overrides],

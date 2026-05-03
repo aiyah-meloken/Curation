@@ -24,7 +24,7 @@ function computeAtlasGlyphReadiness(
   );
   if (dayCards.length === 0) return "not_ready";
   const tagged = dayCards.filter(
-    (c) => (c.entities?.length ?? 0) > 0 && c.atlas_topic_id != null,
+    (c) => (c.entities?.length ?? 0) > 0 && c.atlas_topic != null,
   );
   return tagged.length / dayCards.length >= 0.8 ? "ready" : "not_ready";
 }
