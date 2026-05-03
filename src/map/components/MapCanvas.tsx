@@ -323,7 +323,7 @@ export function MapCanvas({
         favoritedIds={favoritedIds}
       />
 
-      <MapCartouche date={formatDate(cards[0]?.article_date ?? null)} />
+      <MapCartouche date={formatDate(cards[0]?.card_date ?? null)} />
       <MapLegend />
       <MapCompass />
       <MapEntityList

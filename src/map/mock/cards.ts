@@ -3,7 +3,7 @@
 // Source: curated subset of curation-dataset/dedup-set/original/2026-04-26/
 // (47 real cards), backed up at src/atlas/exploration/data/source-snapshot/.
 //
-// Real fields: card_id, title, description, source account, article_date.
+// Real fields: card_id, title, description, source account, card_date.
 // Mocked atlas tags (not in source data yet):
 //   atlas_topic (inline AtlasTopicRef), entities (formerly shared_entities), read.
 // Note: source_count is always 1 in v1 (aggregate cards removed).
@@ -55,7 +55,7 @@ const mk = (
     domain_label: "Unknown",
     domain_latin_label: null,
   },
-  article_date: "2026-04-26",
+  card_date: "2026-04-26",
   read_at: partial.read ? "2026-04-26T20:00:00+08:00" : null,
   queue_status: null,
   article_meta: {

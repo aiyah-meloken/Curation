@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, fetchCardsByDate, fetchAggregatedCards, fetchCardContent, fetchAggregatedCardContent } from "../lib/api";
+import { apiFetch, fetchCardsByDate, fetchCardContent } from "../lib/api";
 import { getCardContent } from "../lib/cache";
 
 export interface Card {
@@ -14,10 +14,11 @@ export interface Card {
 
 async function loadCardList(date: string | null, tab: "aggregated" | "source"): Promise<Card[]> {
   if (date) {
-    const resp = tab === "aggregated"
-      ? await fetchAggregatedCards(date)
-      : await fetchCardsByDate(date);
-    return resp.cards || [];
+    const resp = await fetchCardsByDate(date);
+    // For the "aggregated" tab, filter to deduped cards only.
+    const cards: Card[] = resp.cards || [];
+    if (tab === "aggregated") return cards.filter((c: any) => c.kind === "deduped");
+    return cards;
   }
   // "全部": aggregated requires date, source returns all
   if (tab === "aggregated") return [];
@@ -32,8 +33,7 @@ export async function loadCardContentData(cardId: string, tab: "aggregated" | "s
       return { content: local };
     }
   }
-  const fetcher = tab === "aggregated" ? fetchAggregatedCardContent : fetchCardContent;
-  return fetcher(cardId);
+  return fetchCardContent(cardId);
 }
 
 export function useCardList(date: string | null, tab: "aggregated" | "source", enabled: boolean) {
@@ -66,10 +66,7 @@ export function useMarkCardRead(date: string | null, tab: "aggregated" | "source
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (cardId: string) => {
-      const endpoint = tab === "aggregated"
-        ? `/aggregated-cards/${cardId}/read`
-        : `/cards/${cardId}/read`;
-      await apiFetch(endpoint, { method: "POST" });
+      await apiFetch(`/cards/${cardId}/read`, { method: "POST" });
     },
     onMutate: async (cardId) => {
       const key = ["cards", date, tab];

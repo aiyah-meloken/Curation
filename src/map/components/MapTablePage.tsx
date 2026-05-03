@@ -7,7 +7,7 @@
 //   atlas    大领域 · 赛道                — taxonomy (big_domain · small_domain)
 //   display  标题 · 描述                  — what the card says
 //   atlas    src_cnt · 共享实体           — aggregation + entity links
-//   meta     公众号 · article_date · created_at  — provenance
+//   meta     公众号 · card_date · created_at  — provenance
 //   state    已读                        — read state
 //   access   link · 正文                 — open external / expand md
 //
@@ -272,7 +272,7 @@ export function MapTablePage({
                 <Th width={90} group="atlas">src_cnt</Th>
                 <Th width={160} group="atlas">共享实体</Th>
                 <Th width={110} group="meta">公众号</Th>
-                <Th width={102} group="meta">article_date</Th>
+                <Th width={102} group="meta">card_date</Th>
                 <Th width={140} group="meta">created_at</Th>
                 <Th width={88} group="meta">已读</Th>
                 <Th width={66} group="meta">link</Th>
@@ -363,8 +363,8 @@ export function MapTablePage({
                       </Td>
                       {/* 8. 公众号 */}
                       <Td>{c.article_meta?.account ?? "—"}</Td>
-                      {/* 9. article_date */}
-                      <Td mono muted>{c.article_date}</Td>
+                      {/* 9. card_date */}
+                      <Td mono muted>{c.card_date}</Td>
                       {/* 10. created_at */}
                       <Td mono muted>
                         {c.article_meta?.publish_time?.slice(0, 19).replace("T", " ") ?? "—"}

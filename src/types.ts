@@ -200,17 +200,23 @@ export interface InboxItem {
    * tuning + decision audit. Not shown in user-facing card UI.
    */
   template_reason: string | null;
-  article_date: string | null;
+  card_date: string | null;
   read_at: string | null;
   queue_status: "pending" | "running" | null;
   article_meta: ArticleMeta;
+  /** Original article HTML for routing ∈ {discard, original_content_with_pre_card, original_content_with_post_card}. */
+  additional_content?: string | null;
+  /** 'initial' = standard card; 'deduped' = aggregate card replacing duplicates. */
+  kind?: "initial" | "deduped";
+  source_card_ids?: string[] | null;
+  source_article_ids?: string[];
 }
 
 export interface DiscardedItem {
   article_id: string;
   title: string;
   routing_reason: string;
-  article_date: string | null;
+  card_date: string | null;
   article_meta: ArticleMeta;
 }
 

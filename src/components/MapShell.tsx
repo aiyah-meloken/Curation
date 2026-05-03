@@ -97,11 +97,11 @@ export function MapShell() {
     return { data, isLoading: q.isLoading };
   };
 
-  // Earliest selectable date for the picker = oldest article_date in inbox cache.
+  // Earliest selectable date for the picker = oldest card_date in inbox cache.
   const earliest = useMemo(() => {
     if (!inbox.data || inbox.data.length === 0) return undefined;
     return inbox.data
-      .map((i) => i.article_date)
+      .map((i) => i.card_date)
       .filter((d): d is string => !!d)
       .sort()[0];
   }, [inbox.data]);

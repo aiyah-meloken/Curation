@@ -11,7 +11,7 @@ export interface CachedCard {
   routing: string | null;
   template: string | null;
   template_reason: string | null;
-  article_date: string | null;
+  card_date: string | null;
   account: string | null;
   author: string | null;
   url: string | null;
@@ -42,7 +42,7 @@ export interface SearchResult {
   title: string | null;
   article_id: string;
   account: string | null;
-  article_date: string | null;
+  card_date: string | null;
   highlight: string;
   is_favorite: boolean;
 }
@@ -99,7 +99,7 @@ export async function loadFavoriteItems(): Promise<FavoriteItem[]> {
               account: card.account ?? "",
               biz: card.biz ?? null,
               author: card.author ?? null,
-              publish_time: card.publish_time ?? card.article_date ?? null,
+              publish_time: card.publish_time ?? card.card_date ?? null,
               url: card.url ?? "",
               cover_url: card.cover_url,
               digest: card.digest,

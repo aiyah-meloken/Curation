@@ -107,15 +107,6 @@ export async function fetchCardsByDate(date: string) {
   return resp.json();
 }
 
-export async function fetchAggregatedCards(date: string) {
-  const resp = await apiFetch(`/aggregated-cards?date=${date}`);
-  return resp.json();
-}
-
-export async function fetchAggregatedCardContent(cardId: string) {
-  const resp = await apiFetch(`/aggregated-cards/${cardId}/content`);
-  return resp.json();
-}
 
 export async function triggerAggregation(date: string) {
   const resp = await apiFetch(`/aggregate?date=${date}`, { method: "POST" });
@@ -251,7 +242,7 @@ export interface AdminItemRow {
   article_id: string;
   title: string;
   routing: string | null;
-  article_date: string | null;
+  card_date: string | null;
   annotation_count: number;
   upvote_count: number;
   downvote_count: number;

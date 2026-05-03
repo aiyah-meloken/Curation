@@ -157,7 +157,7 @@ export function AdminAnnotationTab() {
                   textAlign: "center",
                 }}
               >
-                {c.article_date ? c.article_date.slice(0, 10) : "—"}
+                {c.card_date ? c.card_date.slice(0, 10) : "—"}
               </span>
               <span style={{ textAlign: "center" }}>{routingPill(c.routing)}</span>
               <span

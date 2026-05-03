@@ -155,7 +155,7 @@ function searchResultToInbox(h: SearchResult): InboxItem {
     routing: null,
     template: null,
     template_reason: null,
-    article_date: h.article_date,
+    card_date: h.card_date,
     read_at: null,
     queue_status: null,
     article_meta: {

@@ -9,7 +9,7 @@ export interface CachedCard {
   routing: string | null;
   template: string | null;
   template_reason: string | null;
-  article_date: string | null;
+  card_date: string | null;
   account: string | null;
   author: string | null;
   url: string | null;
@@ -39,7 +39,7 @@ export interface SearchResult {
   title: string | null;
   article_id: string;
   account: string | null;
-  article_date: string | null;
+  card_date: string | null;
   highlight: string;
   is_favorite: boolean;
 }

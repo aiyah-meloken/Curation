@@ -94,7 +94,7 @@ export function MapPreviewDrawer({ open, card, articleContent, onClose }: Props)
               }}
             >
               {card.article_meta?.account ?? "—"} ·{" "}
-              {(card.article_date ?? "").replace(/-/g, " · ")}
+              {(card.card_date ?? "").replace(/-/g, " · ")}
             </div>
             <h2
               style={{
