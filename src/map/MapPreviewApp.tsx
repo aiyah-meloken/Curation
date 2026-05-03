@@ -180,7 +180,8 @@ function convertToMapCards(
       | "original_content_with_pre_card"
       | "original_content_with_post_card"
       | null,
-    subtype: null,
+    template: null,
+    template_reason: null,
     article_date: tc.article_date,
     read_at: null,
     queue_status: null,

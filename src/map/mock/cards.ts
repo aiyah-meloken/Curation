@@ -45,7 +45,8 @@ const mk = (
   title: partial.title,
   description: partial.description,
   routing: partial.routing ?? "ai_curation",
-  subtype: null,
+  template: null,
+  template_reason: null,
   entities: partial.entities,
   topic: MOCK_TOPICS[partial.atlas_topic_id] ?? {
     id: partial.atlas_topic_id,

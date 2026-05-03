@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { fetchRun, fetchRunStream, fetchRunFiles, fetchRunFile } from "../lib/api";
+import { fetchRun, fetchRunCards, fetchRunStream, fetchRunFiles, fetchRunFile } from "../lib/api";
 import type { RunEntry, RunStreamLine } from "../types";
 
 function statusBadge(s: string) {
@@ -17,16 +17,14 @@ function logLevelColor(type: string) {
 }
 
 function OverviewTab({ run }: { run: RunEntry }) {
-  const { data: manifestContent } = useQuery({
-    queryKey: ["runManifest", run.id],
-    queryFn: () => fetchRunFile(run.id, "manifest.json").catch(() => null),
-    enabled: !!run.workspace_path,
+  // Cards come from /runs/{id}/cards (article_cards table). Replaces the
+  // legacy manifest.json artifact read — every field we render is now in
+  // structured DB columns.
+  const { data: cards } = useQuery({
+    queryKey: ["runCards", run.id],
+    queryFn: () => fetchRunCards(run.id),
+    enabled: !!run.id,
   });
-
-  let manifest: { routing?: string; routing_reason?: string; cards?: { file: string; title: string; description?: string; entities?: string[] }[] } | null = null;
-  if (manifestContent) {
-    try { manifest = JSON.parse(manifestContent); } catch { /* ignore */ }
-  }
 
   return (
     <div style={{ padding: 16 }}>
@@ -42,27 +40,30 @@ function OverviewTab({ run }: { run: RunEntry }) {
         </div>
       </div>
 
-      {manifestContent && (
-        <>
-          <h4 style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: "0 0 8px" }}>Manifest</h4>
-          <pre style={{ background: "var(--bg-panel)", borderRadius: 8, padding: 12, marginBottom: 16, fontFamily: "monospace", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", overflow: "auto", whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(manifest, null, 2)}
-          </pre>
-        </>
-      )}
-
-      {manifest?.cards && manifest.cards.length > 0 && (
+      {cards && cards.length > 0 && (
         <>
           <h4 style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: "0 0 8px" }}>产出卡片</h4>
-          {manifest.cards.map((c, i) => (
-            <div key={i} style={{ background: "var(--bg-panel)", borderRadius: 8, padding: "10px 12px", marginBottom: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: c.description || c.entities?.length ? 6 : 0 }}>
-                <span style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)" }}>{c.file}</span>
+          {cards.map((c) => (
+            <div key={c.card_id} style={{ background: "var(--bg-panel)", borderRadius: 8, padding: "10px 12px", marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)" }}>{c.card_id}</span>
+                {c.template && (
+                  <span style={{
+                    display: "inline-block", padding: "1px 6px", fontSize: "var(--fs-xs)",
+                    color: "var(--accent-gold-hi)", background: "var(--bg-elev)",
+                    border: "1px solid var(--border)", borderRadius: 3,
+                  }}>{c.template}</span>
+                )}
                 <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{c.title}</span>
               </div>
               {c.description && (
-                <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-xs)", lineHeight: 1.5, marginBottom: c.entities?.length ? 6 : 0 }}>
+                <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-xs)", lineHeight: 1.5, marginBottom: 6 }}>
                   {c.description}
+                </div>
+              )}
+              {c.template_reason && (
+                <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", lineHeight: 1.5, marginBottom: c.entities?.length ? 6 : 0, fontStyle: "italic" }}>
+                  模板理由：{c.template_reason}
                 </div>
               )}
               {c.entities && c.entities.length > 0 && (

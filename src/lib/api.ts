@@ -196,6 +196,19 @@ export async function setServingRun(articleId: string, runId: number) {
   return res.json();
 }
 
+export async function fetchRunCards(runId: number) {
+  const res = await apiFetch(`/runs/${runId}/cards`);
+  const json = await res.json();
+  return json.cards as Array<{
+    card_id: string;
+    title: string | null;
+    description: string | null;
+    entities: string[];
+    template: string | null;
+    template_reason: string | null;
+  }>;
+}
+
 export async function fetchRunStream(runId: number, offset = 0, limit = 500) {
   const res = await apiFetch(`/runs/${runId}/stream?offset=${offset}&limit=${limit}`);
   const json = await res.json();

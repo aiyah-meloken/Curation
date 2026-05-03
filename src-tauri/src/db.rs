@@ -16,7 +16,8 @@ pub struct CardRow {
     pub content_md: Option<String>,
     pub description: Option<String>,
     pub routing: Option<String>,
-    pub subtype: Option<String>,
+    pub template: Option<String>,
+    pub template_reason: Option<String>,
     pub article_date: Option<String>,
     pub account: Option<String>,
     pub author: Option<String>,
@@ -135,7 +136,8 @@ impl CacheDb {
                 content_md TEXT,
                 description TEXT,
                 routing TEXT,
-                subtype TEXT,
+                template TEXT,
+                template_reason TEXT,
                 article_date TEXT,
                 account TEXT,
                 author TEXT,
@@ -238,7 +240,8 @@ impl CacheDb {
             ("digest", "ALTER TABLE cards ADD COLUMN digest TEXT"),
             ("word_count", "ALTER TABLE cards ADD COLUMN word_count INTEGER"),
             ("is_original", "ALTER TABLE cards ADD COLUMN is_original INTEGER"),
-            ("subtype", "ALTER TABLE cards ADD COLUMN subtype TEXT"),
+            ("template", "ALTER TABLE cards ADD COLUMN template TEXT"),
+            ("template_reason", "ALTER TABLE cards ADD COLUMN template_reason TEXT"),
             ("entities", "ALTER TABLE cards ADD COLUMN entities TEXT"),
         ] {
             let probe = format!("SELECT {} FROM cards LIMIT 0", name);
@@ -246,6 +249,15 @@ impl CacheDb {
                 conn.execute(ddl, []).map_err(|e| e.to_string())?;
                 reset_cursor = true;
             }
+        }
+        // Drop the legacy `subtype` column if it lingers from a pre-2026-05-03
+        // schema. Its values were copied into `template` by the server backfill;
+        // for local dbs we just clear and re-sync (last_sync_ts already reset
+        // above when the new column got added).
+        if conn.prepare("SELECT subtype FROM cards LIMIT 0").is_ok() {
+            // SQLite ≥3.25 supports DROP COLUMN; if it fails (very old build)
+            // we fall back to ignoring it — the column is unused.
+            let _ = conn.execute("ALTER TABLE cards DROP COLUMN subtype", []);
         }
         if reset_cursor {
             conn.execute("DELETE FROM sync_state WHERE key = 'last_sync_ts'", [])
@@ -324,7 +336,7 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut sql = String::from(
             "SELECT card_id, article_id, title, article_title, content_md, description, routing,
-                    subtype, article_date, account, author, url, read_at, updated_at, publish_time,
+                    template, template_reason, article_date, account, author, url, read_at, updated_at, publish_time,
                     account_id, biz, cover_url, digest, word_count, is_original, entities
              FROM cards WHERE routing IS NOT NULL",
         );
@@ -348,21 +360,22 @@ impl CacheDb {
                     content_md: row.get(4)?,
                     description: row.get(5)?,
                     routing: row.get(6)?,
-                    subtype: row.get(7)?,
-                    article_date: row.get(8)?,
-                    account: row.get(9)?,
-                    author: row.get(10)?,
-                    url: row.get(11)?,
-                    read_at: row.get(12)?,
-                    updated_at: row.get(13)?,
-                    publish_time: row.get(14)?,
-                    account_id: row.get(15)?,
-                    biz: row.get(16)?,
-                    cover_url: row.get(17)?,
-                    digest: row.get(18)?,
-                    word_count: row.get(19)?,
-                    is_original: row.get(20)?,
-                    entities: row.get(21)?,
+                    template: row.get(7)?,
+                    template_reason: row.get(8)?,
+                    article_date: row.get(9)?,
+                    account: row.get(10)?,
+                    author: row.get(11)?,
+                    url: row.get(12)?,
+                    read_at: row.get(13)?,
+                    updated_at: row.get(14)?,
+                    publish_time: row.get(15)?,
+                    account_id: row.get(16)?,
+                    biz: row.get(17)?,
+                    cover_url: row.get(18)?,
+                    digest: row.get(19)?,
+                    word_count: row.get(20)?,
+                    is_original: row.get(21)?,
+                    entities: row.get(22)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -378,21 +391,22 @@ impl CacheDb {
                     content_md: row.get(4)?,
                     description: row.get(5)?,
                     routing: row.get(6)?,
-                    subtype: row.get(7)?,
-                    article_date: row.get(8)?,
-                    account: row.get(9)?,
-                    author: row.get(10)?,
-                    url: row.get(11)?,
-                    read_at: row.get(12)?,
-                    updated_at: row.get(13)?,
-                    publish_time: row.get(14)?,
-                    account_id: row.get(15)?,
-                    biz: row.get(16)?,
-                    cover_url: row.get(17)?,
-                    digest: row.get(18)?,
-                    word_count: row.get(19)?,
-                    is_original: row.get(20)?,
-                    entities: row.get(21)?,
+                    template: row.get(7)?,
+                    template_reason: row.get(8)?,
+                    article_date: row.get(9)?,
+                    account: row.get(10)?,
+                    author: row.get(11)?,
+                    url: row.get(12)?,
+                    read_at: row.get(13)?,
+                    updated_at: row.get(14)?,
+                    publish_time: row.get(15)?,
+                    account_id: row.get(16)?,
+                    biz: row.get(17)?,
+                    cover_url: row.get(18)?,
+                    digest: row.get(19)?,
+                    word_count: row.get(20)?,
+                    is_original: row.get(21)?,
+                    entities: row.get(22)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -713,9 +727,9 @@ impl CacheDb {
             conn.execute(
                 "INSERT OR REPLACE INTO cards
                  (card_id, article_id, title, article_title, content_md, description, routing,
-                  subtype, article_date, account, author, url, read_at, updated_at, publish_time,
+                  template, template_reason, article_date, account, author, url, read_at, updated_at, publish_time,
                   account_id, biz, cover_url, digest, word_count, is_original, entities)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
                 rusqlite::params![
                     card_id,
                     card["article_id"].as_str().unwrap_or_default(),
@@ -724,7 +738,8 @@ impl CacheDb {
                     card["content_md"].as_str(),
                     card["description"].as_str(),
                     card["routing"].as_str(),
-                    card["subtype"].as_str(),
+                    card["template"].as_str(),
+                    card["template_reason"].as_str(),
                     card["article_date"].as_str(),
                     card["account"].as_str(),
                     card["author"].as_str(),

@@ -271,7 +271,7 @@ export function ReaderPane({
     const isDiscardedItem = !selectedItem && !!selectedDiscardedItem;
     const routing: Routing | "discard" =
       isDiscardedItem ? "discard" : (selectedItem?.routing ?? null);
-    const subtype = selectedItem?.subtype ?? null;
+    const template = selectedItem?.template ?? null;
 
     const routingLabel =
       routing === "ai_curation" ? "AI 梳理"
@@ -283,10 +283,10 @@ export function ReaderPane({
     // 阅读焦点：AI 梳理 → 卡片；原文推送（pre/post）→ 原文
     const focus = routing === "ai_curation" ? "卡片" : "原文";
 
-    // Per-card template label (subtype DB column reused).
+    // Per-card template label (article_cards.template column).
     let cardKindLabel = "—";
     if (routing === "ai_curation") {
-      cardKindLabel = subtype ? `AI 梳理（${subtype}）` : "AI 梳理";
+      cardKindLabel = template ? `AI 梳理（${template}）` : "AI 梳理";
     } else if (routing === "original_content_with_pre_card") {
       cardKindLabel = "阅前导读卡";
     } else if (routing === "original_content_with_post_card") {
@@ -442,7 +442,8 @@ ${notesSection}
         description: null,
         entities: [] as string[],
         routing: null as Routing,
-        subtype: null as string | null,
+        template: null as string | null,
+        template_reason: null as string | null,
         article_date: selectedDiscardedItem.article_date,
         read_at: null,
         queue_status: null as "pending" | "running" | null,

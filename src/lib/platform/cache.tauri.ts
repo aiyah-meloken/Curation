@@ -9,7 +9,8 @@ export interface CachedCard {
   content_md: string | null;
   description: string | null;
   routing: string | null;
-  subtype: string | null;
+  template: string | null;
+  template_reason: string | null;
   article_date: string | null;
   account: string | null;
   author: string | null;
