@@ -305,8 +305,8 @@ export default function AggregationQueuePanel() {
                             )}
                           </span>
                           <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{run.backend}</span>
-                          <span style={{ color: STATUS_COLOR[run.overall_status] || "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
-                            {STATUS_LABEL[run.overall_status] || run.overall_status}
+                          <span style={{ color: STATUS_COLOR[run.status] || "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
+                            {STATUS_LABEL[run.status] || run.status}
                           </span>
                           <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtElapsed(run.elapsed_s)}</span>
                           <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtTime(run.created_at)}</span>

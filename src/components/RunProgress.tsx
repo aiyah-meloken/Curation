@@ -14,16 +14,9 @@ function fmt(s: number | null | undefined): string {
   return `${Math.floor(s / 60)}m${Math.round(s % 60)}s`;
 }
 
-/** Parse progress events from run.progress_log or live WebSocket events */
-function parseProgressEvents(run: AnalysisRun, liveEvents: ProgressEvent[]): ProgressEvent[] {
-  const fromLog: ProgressEvent[] = [];
-  if (run.progress_log) {
-    try {
-      const parsed = JSON.parse(run.progress_log);
-      if (Array.isArray(parsed)) fromLog.push(...parsed);
-    } catch {}
-  }
-  return liveEvents.length > 0 ? liveEvents : fromLog;
+/** Parse progress events from live WebSocket events (progress_log removed from schema) */
+function parseProgressEvents(_run: AnalysisRun, liveEvents: ProgressEvent[]): ProgressEvent[] {
+  return liveEvents;
 }
 
 interface StageInfo {
@@ -175,14 +168,14 @@ export function RunProgress({ run, onUpdate }: Props) {
   }, [run]);
 
   useEffect(() => {
-    if (!["pending", "running"].includes(run.overall_status)) return;
+    if (!["pending", "running"].includes(run.status)) return;
 
     const token = getAuthToken();
     if (!token) return;
 
     const wsBase = getWsBase();
     const qs = new URLSearchParams({ token });
-    const ws = new WebSocket(`${wsBase}/runs/${run.id}/progress?${qs.toString()}`);
+    const ws = new WebSocket(`${wsBase}/runs/${run.run_id}/progress?${qs.toString()}`);
     wsRef.current = ws;
 
     ws.onmessage = (e) => {
@@ -199,7 +192,7 @@ export function RunProgress({ run, onUpdate }: Props) {
           setLiveEvents(prev => [...prev, event]);
         } else if (event.type === "done" || event.type === "failed") {
           setLiveEvents(prev => [...prev, event]);
-          apiFetch(`/runs/${run.id}`)
+          apiFetch(`/runs/${run.run_id}`)
             .then(r => r.json())
             .then(resp => {
               if (resp.data) {
@@ -215,14 +208,18 @@ export function RunProgress({ run, onUpdate }: Props) {
     return () => {
       ws.close();
     };
-  }, [run.id, run.overall_status]);
+  }, [run.run_id, run.status]);
 
   const events = parseProgressEvents(localRun, liveEvents);
   const stages = deriveStages(events);
   const activities = extractActivities(events);
 
-  const isRunning = localRun.overall_status === "running";
+  const isRunning = localRun.status === "running";
   const showMinimalProgress = isRunning && stages.length === 0 && activities.length === 0;
+
+  const elapsedS = (localRun.started_at && localRun.completed_at)
+    ? (new Date(localRun.completed_at).getTime() - new Date(localRun.started_at).getTime()) / 1000
+    : null;
 
   return (
     <div className="space-y-0.5">
@@ -236,9 +233,9 @@ export function RunProgress({ run, onUpdate }: Props) {
         <StageRow key={stage.name} stage={stage} />
       ))}
       <ActivityLog activities={activities} />
-      {localRun.elapsed_s != null && localRun.elapsed_s > 0 && (
+      {elapsedS != null && elapsedS > 0 && (
         <div className="pt-1 text-right text-xs text-gray-500">
-          合计 {fmt(localRun.elapsed_s)}
+          合计 {fmt(elapsedS)}
         </div>
       )}
     </div>

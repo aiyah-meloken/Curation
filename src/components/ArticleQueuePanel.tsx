@@ -8,10 +8,15 @@ import {
 } from "../lib/api";
 import { ArticlePreviewDrawer } from "./ArticlePreviewDrawer";
 import { RunDetailDrawer } from "./RunDetailDrawer";
-import type { QueueEntry, RunEntry, AgentBackends } from "../types";
+import type { QueueEntry, Run, AgentBackends } from "../types";
 import {
   fmtTime, cmp, runStatusColor, statusLabel, routingPill, SortableHeader,
 } from "../lib/tableHelpers";
+
+function elapsedRun(run: Run): number | null {
+  if (!run.started_at || !run.completed_at) return null;
+  return (new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000;
+}
 
 type SortKey = "article_title" | "article_account" | "article_publish_time" | "status" | "routing" | "queued_at" | "started_at";
 
@@ -38,7 +43,7 @@ export function ArticleQueuePanel() {
   const [previewRouting, setPreviewRouting]      = useState<string | null>(null);
   const [detailRunId, setDetailRunId]            = useState<number | null>(null);
 
-  const { data: articleRuns = [], isLoading: loadingRuns } = useQuery<RunEntry[]>({
+  const { data: articleRuns = [], isLoading: loadingRuns } = useQuery<Run[]>({
     queryKey: ["articleRuns", expandedId],
     queryFn: () => fetchArticleRuns(expandedId!),
     enabled: !!expandedId,
@@ -273,28 +278,29 @@ export function ArticleQueuePanel() {
                         <span>Run ID</span><span>后端</span><span>状态</span><span>耗时</span><span>创建时间</span><span>推送</span><span></span>
                       </div>
                       {articleRuns.map((run) => {
-                        const isServing = run.id === entry.serving_run_id;
+                        const isServing = run.run_id === entry.serving_run_id;
+                        const e = elapsedRun(run);
                         return (
-                        <div key={run.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 70px 60px 100px 50px 30px", padding: "5px 0", borderBottom: "1px solid var(--bg-panel)", alignItems: "center" }}>
-                          <a onClick={() => setDetailRunId(run.id)}
+                        <div key={run.run_id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 70px 60px 100px 50px 30px", padding: "5px 0", borderBottom: "1px solid var(--bg-panel)", alignItems: "center" }}>
+                          <a onClick={() => setDetailRunId(run.run_id)}
                             style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)", cursor: "pointer", textDecoration: "none" }}>
-                            #{run.id}
+                            #{run.run_id}
                           </a>
                           <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{run.backend}</span>
-                          <span style={{ color: runStatusColor(run.overall_status), fontSize: "var(--fs-sm)" }}>{run.overall_status}</span>
-                          <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{run.elapsed_s ? `${run.elapsed_s.toFixed(1)}s` : "—"}</span>
+                          <span style={{ color: runStatusColor(run.status), fontSize: "var(--fs-sm)" }}>{run.status}</span>
+                          <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{e != null ? `${e.toFixed(1)}s` : "—"}</span>
                           <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtTime(run.created_at)}</span>
                           <span>
                             {isServing ? (
                               <Star size={12} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)" }} />
-                            ) : run.overall_status === "done" ? (
-                              <button onClick={() => servingMut.mutate({ aid: entry.article_id, rid: run.id })} title="设为推送版本"
+                            ) : run.status === "done" ? (
+                              <button onClick={() => servingMut.mutate({ aid: entry.article_id, rid: run.run_id })} title="设为推送版本"
                                 style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 0 }}>
                                 <Star size={12} />
                               </button>
                             ) : null}
                           </span>
-                          <button onClick={() => { if (confirm("删除此run?")) deleteMut.mutate(run.id); }}
+                          <button onClick={() => { if (confirm("删除此run?")) deleteMut.mutate(run.run_id); }}
                             style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", padding: 0 }}>
                             <Trash2 size={12} />
                           </button>

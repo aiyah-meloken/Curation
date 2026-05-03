@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { fetchRun, fetchRunCards, fetchRunStream, fetchRunFiles, fetchRunFile } from "../lib/api";
-import type { RunEntry, RunStreamLine } from "../types";
+import type { Run, RunStreamLine } from "../types";
+
+function elapsed(run: Run): number | null {
+  if (!run.started_at || !run.completed_at) return null;
+  return (new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000;
+}
 
 function statusBadge(s: string) {
   const colors: Record<string, string> = { done: "var(--accent-green)", failed: "var(--accent-red)", running: "var(--accent-gold)", pending: "var(--text-muted)" };
@@ -16,14 +21,14 @@ function logLevelColor(type: string) {
   return "var(--accent-blue)";
 }
 
-function OverviewTab({ run }: { run: RunEntry }) {
+function OverviewTab({ run }: { run: Run }) {
   // Cards come from /runs/{id}/cards (article_cards table). Replaces the
   // legacy manifest.json artifact read — every field we render is now in
   // structured DB columns.
   const { data: cards } = useQuery({
-    queryKey: ["runCards", run.id],
-    queryFn: () => fetchRunCards(run.id),
-    enabled: !!run.id,
+    queryKey: ["runCards", run.run_id],
+    queryFn: () => fetchRunCards(run.run_id),
+    enabled: !!run.run_id,
   });
 
   return (
@@ -31,8 +36,8 @@ function OverviewTab({ run }: { run: RunEntry }) {
       <div style={{ background: "var(--bg-panel)", borderRadius: 8, padding: 12, marginBottom: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: "var(--fs-sm)" }}>
           <div><span style={{ color: "var(--text-muted)" }}>后端：</span><span style={{ color: "var(--text-primary)" }}>{run.backend}</span></div>
-          <div><span style={{ color: "var(--text-muted)" }}>状态：</span>{statusBadge(run.overall_status)}</div>
-          <div><span style={{ color: "var(--text-muted)" }}>耗时：</span><span style={{ color: "var(--text-primary)" }}>{run.elapsed_s ? `${run.elapsed_s.toFixed(1)}s` : "—"}</span></div>
+          <div><span style={{ color: "var(--text-muted)" }}>状态：</span>{statusBadge(run.status)}</div>
+          <div><span style={{ color: "var(--text-muted)" }}>耗时：</span><span style={{ color: "var(--text-primary)" }}>{(() => { const e = elapsed(run); return e != null ? `${e.toFixed(1)}s` : "—"; })()}</span></div>
           <div><span style={{ color: "var(--text-muted)" }}>创建：</span><span style={{ color: "var(--text-primary)" }}>{run.created_at?.replace("T", " ").slice(0, 19)}</span></div>
           <div><span style={{ color: "var(--text-muted)" }}>路由：</span><span style={{ color: "var(--text-primary)" }}>{run.routing ?? "—"}</span></div>
           {run.routing_reason && <div style={{ gridColumn: "1/3" }}><span style={{ color: "var(--text-muted)" }}>路由原因：</span><span style={{ color: "var(--accent-gold-hi)" }}>{run.routing_reason}</span></div>}
@@ -84,11 +89,11 @@ function OverviewTab({ run }: { run: RunEntry }) {
         </>
       )}
 
-      {run.workspace_path && (
+      {run.workspace_id != null && (
         <>
           <h4 style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: "16px 0 8px" }}>Workspace</h4>
           <div style={{ background: "var(--bg-panel)", borderRadius: 8, padding: "8px 12px", fontFamily: "monospace", fontSize: "var(--fs-xs)", color: "var(--text-muted)", wordBreak: "break-all" }}>
-            {run.workspace_path}
+            workspace_id: {run.workspace_id}
           </div>
         </>
       )}
@@ -169,7 +174,7 @@ interface RunDetailDrawerProps {
 export function RunDetailDrawer({ runId, onClose }: RunDetailDrawerProps) {
   const [tab, setTab] = useState<"overview" | "stream" | "files">("overview");
 
-  const { data: run } = useQuery<RunEntry>({
+  const { data: run } = useQuery<Run>({
     queryKey: ["runDetail", runId],
     queryFn: () => fetchRun(runId!),
     enabled: !!runId,
@@ -191,9 +196,9 @@ export function RunDetailDrawer({ runId, onClose }: RunDetailDrawerProps) {
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "var(--fs-base)" }}>Run #{runId}</span>
-            {run && statusBadge(run.overall_status)}
+            {run && statusBadge(run.status)}
             {run && <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{run.backend}</span>}
-            {run?.elapsed_s && <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{run.elapsed_s.toFixed(1)}s</span>}
+            {run && (() => { const e = elapsed(run); return e != null ? <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>{e.toFixed(1)}s</span> : null; })()}
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
             <X size={18} />

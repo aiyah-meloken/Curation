@@ -46,16 +46,19 @@ export interface Article {
   create_time?: string;
 }
 
+/** @deprecated Use Run instead */
 export interface AnalysisRun {
-  id: number;
-  article_id: string;
+  run_id: number;
+  task_id: number;
   backend: string;
-  workspace_path: string;
-  overall_status: string;
-  elapsed_s: number | null;
-  progress_log: string | null;   // JSON array of progress events
+  workspace_id: number | null;
+  status: string;
   error_msg: string | null;
   created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  result: object | null;
+  updated_at: string;
 }
 
 export interface ProgressEvent {
@@ -99,7 +102,7 @@ export interface AggregationRunEntry {
   user_id: number;
   date: string;
   backend: string;
-  overall_status: string;
+  status: string;
   elapsed_s: number | null;
   error_msg: string | null;
   created_at: string;
@@ -243,19 +246,24 @@ export interface QueueEntry {
   updated_at: string;
 }
 
-export interface RunEntry {
-  id: number;
-  article_id: string;
+export interface Run {
+  run_id: number;
+  task_id: number;
   backend: string;
-  workspace_path: string | null;
-  overall_status: string;
-  elapsed_s: number | null;
+  workspace_id: number | null;
+  status: string;
   routing: string | null;
   routing_reason: string | null;
-  progress_log: string | null;
   error_msg: string | null;
   created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  result: object | null;
+  updated_at: string;
 }
+
+/** @deprecated Use Run instead */
+export type RunEntry = Run;
 
 export interface RunStreamLine {
   type: string;
