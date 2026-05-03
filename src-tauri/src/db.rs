@@ -358,7 +358,41 @@ impl CacheDb {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             );",
         )
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+        // 2026-05-04: server reassigned every card_id to a fresh ULID. Old
+        // local references (cards.card_id, chat_sessions.card_id, favorites
+        // for cards, fts content) now point at IDs that no longer exist on
+        // the server. Detect via a marker and do a hard local reset:
+        // wipe the card-side cache + chat (chat is local-only, but its
+        // card_id column references would be orphans), then drop
+        // last_sync_ts so the next /sync rebuilds everything.
+        const ULID_MIGRATION_MARKER: &str = "card_id_format_v2_ulid";
+        let ulid_done: bool = conn
+            .query_row(
+                "SELECT 1 FROM sync_state WHERE key = ?1",
+                [ULID_MIGRATION_MARKER],
+                |r| r.get::<_, i64>(0),
+            )
+            .is_ok();
+        if !ulid_done {
+            let _ = conn.execute_batch(
+                "DELETE FROM cards;
+                 DELETE FROM cards_fts;
+                 DELETE FROM wechat_articles;
+                 DELETE FROM favorites WHERE item_type = 'card';
+                 DELETE FROM chat_messages;
+                 DELETE FROM chat_sessions;
+                 DELETE FROM sync_state WHERE key = 'last_sync_ts';",
+            );
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
+                [ULID_MIGRATION_MARKER],
+            )
+            .ok();
+        }
+
+        Ok(())
     }
 
     // -----------------------------------------------------------------------
