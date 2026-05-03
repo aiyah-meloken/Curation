@@ -183,19 +183,11 @@ function CardContentView({ cardId }: { cardId: string }) {
   );
 }
 
-function ArticleHtmlView({ articleId, additionalContent }: { articleId: string; additionalContent?: string | null }) {
-  const { data: articleData, isLoading } = useArticleContent(articleId);
-
-  if (isLoading && !additionalContent) {
-    return (
-      <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
-        加载中...
-      </div>
-    );
-  }
-
-  const html = additionalContent ?? articleData?.rawHtml;
-  if (!html) {
+function ArticleHtmlView({ additionalContent }: { additionalContent?: string | null }) {
+  // additional_content is the original-article HTML attached to discard /
+  // original_content_with_* cards. New cards always have it; pre-redesign
+  // cards were backfilled. If still missing, the article was never fetched.
+  if (!additionalContent) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
         暂无原文内容
@@ -206,7 +198,7 @@ function ArticleHtmlView({ articleId, additionalContent }: { articleId: string; 
   return (
     <div
       className="rich-text-content"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: additionalContent }}
     />
   );
 }
@@ -448,6 +440,7 @@ ${notesSection}
         read_at: null,
         queue_status: null as "pending" | "running" | null,
         article_meta: selectedDiscardedItem.article_meta,
+        additional_content: selectedDiscardedItem.additional_content,
       } : null)
     : selectedItem;
 
@@ -503,7 +496,7 @@ ${notesSection}
               label={showsOriginalAlongside(item.routing) ? "原文" : undefined}
               force={showsOriginalAlongside(item.routing)}
             >
-              <ArticleHtmlView articleId={item.article_id} additionalContent={item.additional_content} />
+              <ArticleHtmlView additionalContent={item.additional_content} />
             </CardFrame>
           )}
 

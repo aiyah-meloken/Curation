@@ -216,6 +216,7 @@ export interface DiscardedItem {
   article_id: string;
   title: string;
   routing_reason: string;
+  additional_content: string | null;
   card_date: string | null;
   article_meta: ArticleMeta;
 }
