@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Inbox, Star, Plus, Trash2, ShieldCheck, Settings, Library, Map as MapIcon, Hourglass } from "lucide-react";
 import { AddMenu } from "./AddMenu";
+import { BackendHealthDot } from "./BackendHealthDot";
 import { SubscribeModal } from "./SubscribeModal";
 import { AddArticleModal } from "./AddArticleModal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -136,6 +137,9 @@ export function SidebarRail({
 
       {/* Bottom: + and ⚙ */}
       <div className="rail-bottom">
+        {currentUserRole === "admin" && (
+          <BackendHealthDot />
+        )}
         {currentUserRole === "admin" && !__IS_WEB__ && (
           <button
             className={`rail-glyph ${isAdminMode ? "active" : ""}`}

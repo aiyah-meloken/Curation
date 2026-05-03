@@ -1928,6 +1928,60 @@ body {
   gap: 4px;
 }
 
+/* Backend health dot — pulses to show liveness */
+.health-dot-wrap {
+  position: relative;
+  width: 36px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.health-dot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+.health-dot--ok {
+  animation: health-breathe 2.4s ease-in-out infinite;
+}
+.health-dot--down {
+  animation: health-blink 1s ease-in-out infinite;
+}
+.health-dot--loading {
+  opacity: 0.55;
+}
+@keyframes health-breathe {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1); }
+}
+@keyframes health-blink {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1;   }
+}
+.health-dot-wrap[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border-hairline);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 200;
+}
+.health-dot-wrap:hover::after { opacity: 1; }
+
 /* Drawer overlay (240px) */
 .drawer {
   position: absolute;
