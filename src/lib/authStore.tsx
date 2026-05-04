@@ -112,6 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRefreshToken(null);
     localStorage.removeItem(SESSION_KEY);
     dispatch({ type: "LOGOUT" });
+    // Web: wipe the IndexedDB cache so the next user doesn't see stale rows.
+    // Desktop: the encrypted SQLite is keyed off the user's cache_db_secret,
+    // so cross-user isolation already holds; nothing to clear here.
+    if (__IS_WEB__) {
+      void import("./platform/idb").then((m) => m.clearAll().catch(() => {}));
+    }
     // End Authing session — without this, clicking Login again silently
     // re-issues a token for the previous user (Authing SSO cookie still
     // valid). Redirects browser/webview to Authing's end_session URL,
