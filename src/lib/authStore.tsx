@@ -6,6 +6,7 @@ import React, {
   useReducer,
 } from "react";
 import { setAuthToken, setRefreshToken } from "./api";
+import { authingClient } from "./authing";
 
 export interface AppUser {
   id: number;
@@ -106,10 +107,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    // Clear local state first so the moment of redirect feels "logged out".
     setAuthToken(null);
     setRefreshToken(null);
     localStorage.removeItem(SESSION_KEY);
     dispatch({ type: "LOGOUT" });
+    // End Authing session — without this, clicking Login again silently
+    // re-issues a token for the previous user (Authing SSO cookie still
+    // valid). Redirects browser/webview to Authing's end_session URL,
+    // then back to the app origin where AuthProvider re-renders the
+    // login screen.
+    authingClient.logoutWithRedirect({ redirectUri: window.location.origin });
   }, []);
 
   return (
