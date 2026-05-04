@@ -448,3 +448,34 @@ export async function fetchCardSources(cardId: string): Promise<CardSource[]> {
   return res.json();
 }
 
+
+// ── Auto-dedup admin config ─────────────────────────────────────────────
+
+export interface DedupAutoConfig {
+  enabled: boolean;
+  last_run_date: string | null;
+  schedule: string;
+}
+
+export async function fetchDedupAutoConfig(): Promise<DedupAutoConfig> {
+  const res = await apiFetch("/dedup/auto-config");
+  return res.json();
+}
+
+export async function setDedupAutoConfig(enabled: boolean): Promise<{ enabled: boolean }> {
+  const res = await apiFetch("/dedup/auto-config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  return res.json();
+}
+
+export async function runDedupAutoNow(target_date?: string): Promise<unknown> {
+  const res = await apiFetch("/dedup/auto-run-now", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(target_date ? { target_date } : {}),
+  });
+  return res.json();
+}

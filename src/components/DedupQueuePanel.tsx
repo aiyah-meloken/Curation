@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, RotateCcw, Trash2, RefreshCw } from "lucide-react";
 import {
   fetchDedupQueue, deleteDedupQueueRow, dispatchDedup, retryDedupQueueRow,
+  fetchDedupAutoConfig, setDedupAutoConfig,
 } from "../lib/api";
 import type { DedupQueueRow } from "../types";
 import {
@@ -35,6 +36,17 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
   const dispatchMut = useMutation({
     mutationFn: (ids: number[]) => dispatchDedup(ids),
     onSuccess: () => { setSelected(new Set()); invalidate(); },
+  });
+
+  const { data: autoConfig } = useQuery({
+    queryKey: ["dedupAutoConfig"],
+    queryFn: fetchDedupAutoConfig,
+    refetchInterval: 5000,
+    staleTime: 2000,
+  });
+  const autoToggleMut = useMutation({
+    mutationFn: (enabled: boolean) => setDedupAutoConfig(enabled),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dedupAutoConfig"] }),
   });
 
   const retryMut = useMutation({
@@ -102,6 +114,18 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
         {running > 0 && <span style={{ color: "var(--accent-gold)" }}>运行中 <b>{running}</b></span>}
         {done    > 0 && <span style={{ color: "var(--accent-green)" }}>完成 <b>{done}</b></span>}
         {failed  > 0 && <span style={{ color: "var(--accent-red)" }}>失败 <b>{failed}</b></span>}
+        <div style={{ flex: 1 }} />
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+          title={autoConfig?.schedule ?? "daily 05:00 CST"}>
+          <input type="checkbox"
+            checked={!!autoConfig?.enabled}
+            disabled={autoToggleMut.isPending}
+            onChange={(e) => autoToggleMut.mutate(e.target.checked)} />
+          <span>每日5点自动 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>已启用</b> : "未启用"}</span>
+          {autoConfig?.last_run_date && (
+            <span style={{ color: "var(--text-faint)" }}>· 上次 {autoConfig.last_run_date}</span>
+          )}
+        </label>
       </div>
 
       {/* Controls bar */}
