@@ -122,8 +122,12 @@ export async function fetchDiscarded() {
   return resp.json();
 }
 
-export async function fetchQueue() {
-  const res = await apiFetch("/queue");
+export async function fetchQueue(opts: { all?: boolean } = {}) {
+  // Default: user-scoped queue (only entries for articles the user can
+  // see via subscription windows). all=true requires admin and returns
+  // the global queue — used by ArticleQueuePanel.
+  const path = opts.all ? "/queue?all=true" : "/queue";
+  const res = await apiFetch(path);
   const json = await res.json();
   return json.data;
 }

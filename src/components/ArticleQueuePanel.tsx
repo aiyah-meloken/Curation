@@ -23,7 +23,7 @@ type SortKey = "article_title" | "article_account" | "article_publish_time" | "s
 export function ArticleQueuePanel() {
   const qc = useQueryClient();
 
-  const { data: queue = [], refetch: refetchQueue, isFetching: queueFetching } = useQuery<QueueEntry[]>({ queryKey: ["articleQueue"], queryFn: fetchQueue, refetchInterval: 1000, staleTime: 500 });
+  const { data: queue = [], refetch: refetchQueue, isFetching: queueFetching } = useQuery<QueueEntry[]>({ queryKey: ["articleQueue"], queryFn: () => fetchQueue({ all: true }), refetchInterval: 1000, staleTime: 500 });
   const { data: strategy } = useQuery({ queryKey: ["analysisStrategy"], queryFn: fetchStrategy, refetchInterval: 1000, staleTime: 500 });
   const { data: backendsData } = useQuery<AgentBackends>({ queryKey: ["analysisBackends"], queryFn: fetchBackends, staleTime: 60_000 });
 
