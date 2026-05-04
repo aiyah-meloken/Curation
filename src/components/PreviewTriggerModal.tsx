@@ -11,15 +11,19 @@ interface AppUser {
 }
 
 function dateRange(start: string, end: string): string[] {
+  // String-based YYYY-MM-DD arithmetic to avoid timezone-induced drift across
+  // browsers in different timezones / DST boundaries. Inputs are 'YYYY-MM-DD'
+  // from <input type="date">; iterate in UTC to step a day cleanly.
   if (!start || !end) return [];
+  if (start > end) return [];
   const dates: string[] = [];
-  const cur = new Date(start);
-  const last = new Date(end);
-  // Guard: don't loop forever if start > end
-  if (cur > last) return [];
-  while (cur <= last) {
-    dates.push(cur.toISOString().slice(0, 10));
-    cur.setDate(cur.getDate() + 1);
+  let cur = start;
+  while (cur <= end) {
+    dates.push(cur);
+    const [y, m, d] = cur.split("-").map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d));
+    next.setUTCDate(next.getUTCDate() + 1);
+    cur = next.toISOString().slice(0, 10);
   }
   return dates;
 }

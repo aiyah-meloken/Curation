@@ -4,13 +4,15 @@ import tailwindcss from "@tailwindcss/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const isWebBuild = process.env.BUILD_TARGET === "web";
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [tailwindcss(), react()],
   define: {
-    __IS_WEB__: false,
-    __IS_TAURI__: true,
+    __IS_WEB__: isWebBuild,
+    __IS_TAURI__: !isWebBuild,
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

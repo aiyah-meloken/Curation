@@ -12,8 +12,13 @@ interface SourceCardsDrawerProps {
   cardId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  /** Called when user clicks "查看原文" on a source frame */
-  onOpenArticle: (articleId: string) => void;
+  /** Called when user clicks "查看原文" on a source frame.
+   *  articleTitle / articleUrl come from WechatArticle (title may be null). */
+  onOpenArticle: (
+    articleId: string,
+    articleTitle?: string | null,
+    articleUrl?: string | null,
+  ) => void;
 }
 
 export function SourceCardsDrawer({
@@ -89,7 +94,7 @@ export function SourceCardsDrawer({
               </div>
               {s.article && (
                 <button
-                  onClick={() => onOpenArticle(s.article!.short_id)}
+                  onClick={() => onOpenArticle(s.article!.short_id, s.article!.title, s.article!.url)}
                   style={{
                     marginTop: 12,
                     padding: "4px 10px",

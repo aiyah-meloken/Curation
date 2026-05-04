@@ -340,5 +340,6 @@ export interface CardSource {
     title: string | null;
     account: string | null;
     publish_time: string | null;
+    url: string;
   } | null;
 }

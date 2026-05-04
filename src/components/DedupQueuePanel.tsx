@@ -29,8 +29,8 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
       status: statusFilter === "all" ? undefined : statusFilter,
       date:   dateFilter || undefined,
     }),
-    refetchInterval: 1000,
-    staleTime: 500,
+    refetchInterval: 3000,
+    staleTime: 2000,
   });
 
   const dispatchMut = useMutation({

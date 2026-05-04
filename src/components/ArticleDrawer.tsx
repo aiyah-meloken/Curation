@@ -10,10 +10,20 @@ import type { InboxItem } from "../types";
 interface ArticleDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When `articleIdOverride` is set, `item` may be null — drawer renders
+   * just the article HTML without card-level chrome (siblings, favorites,
+   * description, entity chips). Used by SourceCardsDrawer to view a source
+   * card's article without that source being in the user's inbox. */
   item: InboxItem | null;
-  /** Other cards from the same article */
+  /** Other cards from the same article (ignored when articleIdOverride set) */
   siblingCards: InboxItem[];
   onSelectCard: (cardId: string) => void;
+  /** Force the drawer to fetch + show this article id, regardless of `item`. */
+  articleIdOverride?: string | null;
+  /** Header title shown when override is in use (no card context). */
+  articleTitleOverride?: string | null;
+  /** External URL shown in the "open in browser" button when override is in use. */
+  articleUrlOverride?: string | null;
 }
 
 export function ArticleDrawer({
@@ -22,8 +32,11 @@ export function ArticleDrawer({
   item,
   siblingCards,
   onSelectCard,
+  articleIdOverride,
+  articleTitleOverride,
+  articleUrlOverride,
 }: ArticleDrawerProps) {
-  const articleId = item?.article_id ?? null;
+  const articleId = articleIdOverride ?? item?.article_id ?? null;
   const { data: articleData, isLoading } = useArticleContent(articleId);
   const { state: authState } = useAuth();
   const isAdmin = authState.status === "authenticated" && authState.user.role === "admin";
@@ -41,9 +54,12 @@ export function ArticleDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !item) return null;
+  // Allow opening with only an article id (override mode used by SourceCardsDrawer).
+  if (!isOpen || (!item && !articleIdOverride)) return null;
 
   const html = articleData?.rawHtml;
+  const headerTitle = articleTitleOverride ?? "原文";
+  const externalUrl = articleUrlOverride ?? item?.article_meta.url ?? null;
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
@@ -55,17 +71,17 @@ export function ArticleDrawer({
               <X size={18} />
             </button>
             <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              原文
+              {headerTitle}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {articleId && (
               <FavoriteButton itemType="article" itemId={articleId} />
             )}
-            {isAdmin && (item.card_id || item.article_id) && (
+            {item && isAdmin && (item.card_id || item.article_id) && (
               <AdminAnnotationFlag cardId={item.card_id} articleId={item.article_id} />
             )}
-            {siblingCards.length > 1 && (
+            {item && siblingCards.length > 1 && (
               <div style={{ position: "relative" }}>
                 <select
                   value={item.card_id ?? ""}
@@ -87,19 +103,21 @@ export function ArticleDrawer({
                 </span>
               </div>
             )}
-            <button
-              className="btn-icon"
-              onClick={() => openExternal(item.article_meta.url)}
-              title="在浏览器打开"
-              style={{ padding: 4 }}
-            >
-              <ExternalLink size={16} />
-            </button>
+            {externalUrl && (
+              <button
+                className="btn-icon"
+                onClick={() => openExternal(externalUrl)}
+                title="在浏览器打开"
+                style={{ padding: 4 }}
+              >
+                <ExternalLink size={16} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Card metadata: description + entity chips */}
-        {(item.description || (item.entities && item.entities.length > 0)) && (
+        {/* Card metadata: description + entity chips (only in inbox-card mode) */}
+        {item && (item.description || (item.entities && item.entities.length > 0)) && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)" }}>
             {item.description && (
               <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.55, marginBottom: item.entities?.length ? 8 : 0 }}>
