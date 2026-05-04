@@ -66,7 +66,21 @@ export function useUnsubscribe() {
         throw new Error(j.detail || `HTTP ${res.status}`);
       }
     },
-    onSuccess: () => {
+    // Optimistic: move the row from subscribed → temporary in cache before the
+    // server round-trip returns. Without this the user waits for POST + a
+    // refetch of /accounts (two sequential round-trips) before the UI reacts.
+    onMutate: async (accountId: number) => {
+      await queryClient.cancelQueries({ queryKey: ["accounts"] });
+      const previous = queryClient.getQueryData<Account[]>(["accounts"]);
+      queryClient.setQueryData<Account[]>(["accounts"], (old) =>
+        old?.map((a) => a.id === accountId ? { ...a, subscription_type: "temporary" } : a)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["accounts"], ctx.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
   });
@@ -82,7 +96,18 @@ export function useResubscribe() {
         throw new Error(j.detail || `HTTP ${res.status}`);
       }
     },
-    onSuccess: () => {
+    onMutate: async (accountId: number) => {
+      await queryClient.cancelQueries({ queryKey: ["accounts"] });
+      const previous = queryClient.getQueryData<Account[]>(["accounts"]);
+      queryClient.setQueryData<Account[]>(["accounts"], (old) =>
+        old?.map((a) => a.id === accountId ? { ...a, subscription_type: "subscribed" } : a)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["accounts"], ctx.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
   });
