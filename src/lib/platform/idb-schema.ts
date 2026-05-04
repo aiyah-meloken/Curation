@@ -11,7 +11,17 @@ import type { DBSchema } from "idb";
 import type { CachedCard, CachedFavorite, CachedAccount } from "../cache";
 
 export const DB_NAME = "curation_cache";
-export const DB_VERSION = 1;
+// v2 (2026-05-04): server's /sync semantics changed from
+//   filter: card.updated_at > since
+// to
+//   filter: GREATEST(card.updated_at, cd.created_at, cd.read_at,
+//                    cd.favorited_at, cd.dismissed_at) >= since
+// Cards delivered by subscribe-time backfill or a re-run since the user
+// last synced with the OLD logic are stuck behind the user's
+// last_sync_ts cursor — they'll never surface incrementally because
+// their event_at < the stored cursor. Bump forces a cards/articles
+// wipe + last_sync_ts reset → next /sync pulls full state.
+export const DB_VERSION = 2;
 
 export interface ArticleContentRow {
   article_id: string;

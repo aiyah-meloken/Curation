@@ -20,7 +20,7 @@ let _dbPromise: Promise<IDBPDatabase<CurationCacheSchema>> | null = null;
 function getDb(): Promise<IDBPDatabase<CurationCacheSchema>> {
   if (!_dbPromise) {
     _dbPromise = openDB<CurationCacheSchema>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
+      upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           const cards = db.createObjectStore("cards", { keyPath: "card_id" });
           cards.createIndex("by_routing", "routing");
@@ -37,7 +37,21 @@ function getDb(): Promise<IDBPDatabase<CurationCacheSchema>> {
 
           db.createObjectStore("sync_state", { keyPath: "key" });
         }
-        // Future: if (oldVersion < 2) { ... wipe-and-resync, etc. ... }
+        if (oldVersion < 2) {
+          // 2026-05-04: server /sync filter changed (see schema comment).
+          // Wipe card-side state and last_sync_ts so next /sync rebuilds.
+          // Subscriptions can stay — they're rebuilt on demand from
+          // /accounts and don't depend on the new sync filter.
+          const wipe = (name: "cards" | "wechat_articles" | "favorites") => {
+            try { tx.objectStore(name).clear(); } catch { /* store may not exist on fresh installs */ }
+          };
+          wipe("cards");
+          wipe("wechat_articles");
+          wipe("favorites");
+          try {
+            tx.objectStore("sync_state").delete("last_sync_ts");
+          } catch { /* ditto */ }
+        }
       },
     });
   }
