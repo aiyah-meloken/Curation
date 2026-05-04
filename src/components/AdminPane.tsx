@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { AdminSubscriptionPanel } from "./AdminSubscriptionPanel";
 import { ArticleQueuePanel } from "./ArticleQueuePanel";
-import AggregationQueuePanel from "./AggregationQueuePanel";
+import { DedupQueuePanel } from "./DedupQueuePanel";
+import { DedupTasksPanel } from "./DedupTasksPanel";
+import { PreviewTriggerModal } from "./PreviewTriggerModal";
 import { InviteManagementPanel } from "./InviteManagementPanel";
 import { UserManagementPanel } from "./UserManagementPanel";
 import { AdminAnnotationTab } from "./AdminAnnotationTab";
@@ -101,7 +104,7 @@ export function AdminPane({
         ) : adminView === "queue" ? (
           <ArticleQueuePanel />
         ) : adminView === "aggregation" ? (
-          <AggregationQueuePanel />
+          <DedupAggregationSection />
         ) : adminView === "invites" ? (
           <InviteManagementPanel />
         ) : adminView === "annotations" ? (
@@ -111,5 +114,60 @@ export function AdminPane({
         )}
       </div>
     </>
+  );
+}
+
+function DedupAggregationSection() {
+  const [tab, setTab] = useState<"queue" | "tasks">("queue");
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{
+        display: "flex", gap: 8, padding: "8px 16px",
+        borderBottom: "1px solid var(--bg-panel)",
+        background: "var(--bg-base)",
+      }}>
+        <button
+          onClick={() => setTab("queue")}
+          style={{
+            padding: "4px 12px",
+            background: tab === "queue" ? "var(--accent-gold)" : "transparent",
+            color: tab === "queue" ? "#1a1208" : "var(--text-muted)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            fontSize: "var(--fs-sm)",
+            cursor: "pointer",
+          }}
+        >
+          队列
+        </button>
+        <button
+          onClick={() => setTab("tasks")}
+          style={{
+            padding: "4px 12px",
+            background: tab === "tasks" ? "var(--accent-gold)" : "transparent",
+            color: tab === "tasks" ? "#1a1208" : "var(--text-muted)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            fontSize: "var(--fs-sm)",
+            cursor: "pointer",
+          }}
+        >
+          子任务
+        </button>
+      </div>
+      <div style={{ flex: 1, overflow: "auto" }}>
+        {tab === "queue"
+          ? <DedupQueuePanel onOpenPreview={() => setPreviewOpen(true)} />
+          : <DedupTasksPanel />}
+      </div>
+      {previewOpen && (
+        <PreviewTriggerModal
+          onClose={() => setPreviewOpen(false)}
+          onSuccess={() => setPreviewOpen(false)}
+        />
+      )}
+    </div>
   );
 }
