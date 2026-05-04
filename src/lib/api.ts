@@ -26,6 +26,7 @@ function computeWsBase(): string {
 }
 
 import { refreshAccessToken } from "./refreshAuth";
+import type { DedupQueueRow, DedupTaskRow, DedupTaskRun, CardSource } from "../types";
 
 export const API_BASE = computeApiBase();
 export const WS_BASE = computeWsBase();
@@ -368,5 +369,82 @@ export async function fetchAdminCards(params: {
   if (!resp.ok) throw new Error(`fetchAdminCards ${resp.status}`);
   const body = await resp.json();
   return body.cards ?? [];
+}
+
+// ── Dedup admin endpoints ───────────────────────────────────────────────
+
+export async function fetchDedupQueue(params: {
+  user_id?: number;
+  date?: string;
+  status?: string;
+} = {}): Promise<DedupQueueRow[]> {
+  const qs = new URLSearchParams();
+  if (params.user_id !== undefined) qs.set("user_id", String(params.user_id));
+  if (params.date) qs.set("date", params.date);
+  if (params.status) qs.set("status", params.status);
+  const path = qs.toString() ? `/dedup/queue?${qs}` : "/dedup/queue";
+  const res = await apiFetch(path);
+  return res.json();
+}
+
+export async function deleteDedupQueueRow(id: number): Promise<void> {
+  await apiFetch(`/dedup/queue/${id}`, { method: "DELETE" });
+}
+
+export async function previewDedup(user_ids: number[], dates: string[]): Promise<{ summary: unknown[] }> {
+  const res = await apiFetch("/dedup/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_ids, dates }),
+  });
+  return res.json();
+}
+
+export async function dispatchDedup(queue_ids: number[]): Promise<{ results: unknown[] }> {
+  const res = await apiFetch("/dedup/dispatch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ queue_ids }),
+  });
+  return res.json();
+}
+
+export async function retryDedupQueueRow(id: number): Promise<unknown> {
+  const res = await apiFetch(`/dedup/queue/${id}/retry`, { method: "POST" });
+  return res.json();
+}
+
+export async function fetchDedupTasks(params: {
+  user_id?: number;
+  date?: string;
+  status?: string;
+} = {}): Promise<DedupTaskRow[]> {
+  const qs = new URLSearchParams();
+  if (params.user_id !== undefined) qs.set("user_id", String(params.user_id));
+  if (params.date) qs.set("date", params.date);
+  if (params.status) qs.set("status", params.status);
+  const path = qs.toString() ? `/dedup/tasks?${qs}` : "/dedup/tasks";
+  const res = await apiFetch(path);
+  return res.json();
+}
+
+export async function fetchDedupTaskRuns(taskId: number): Promise<DedupTaskRun[]> {
+  const res = await apiFetch(`/dedup/tasks/${taskId}/runs`);
+  return res.json();
+}
+
+export async function forceDedupTaskRun(taskId: number): Promise<{ run_id: number }> {
+  const res = await apiFetch(`/dedup/tasks/${taskId}/run`, { method: "POST" });
+  return res.json();
+}
+
+export async function fetchDedupTaskServing(taskId: number): Promise<DedupQueueRow[]> {
+  const res = await apiFetch(`/dedup/tasks/${taskId}/serving`);
+  return res.json();
+}
+
+export async function fetchCardSources(cardId: string): Promise<CardSource[]> {
+  const res = await apiFetch(`/cards/${cardId}/sources`);
+  return res.json();
 }
 

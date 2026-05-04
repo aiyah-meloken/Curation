@@ -292,3 +292,53 @@ export interface FavoriteItem {
   article_account: string | null;
   article_meta: ArticleMeta | null;
 }
+
+export interface DedupQueueRow {
+  id: number;
+  user_id: number;
+  card_date: string;
+  cluster_signature: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  task_id: number | null;
+  retry_count: number;
+  error_msg: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DedupTaskRow {
+  task_id: number;
+  signature: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  created_at: string;
+  served_count: number;
+  latest_run: {
+    run_id: number;
+    status: string;
+    started_at: string | null;
+    completed_at: string | null;
+  } | null;
+}
+
+export interface DedupTaskRun {
+  run_id: number;
+  backend: string | null;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  error_msg: string | null;
+}
+
+export interface CardSource {
+  card_id: string;
+  title: string;
+  description: string | null;
+  content: string | null;
+  source_article_ids: string[];
+  article: {
+    short_id: string;
+    title: string | null;
+    account: string | null;
+    publish_time: string | null;
+  } | null;
+}
