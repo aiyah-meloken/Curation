@@ -128,7 +128,24 @@ function InboxItemRow({
           <Star size={13} style={{ color: "var(--accent-gold)", fill: "var(--accent-gold)", flexShrink: 0, marginTop: 3 }} />
         )}
         <AcpRunningDot cardId={item.card_id ?? null} className="mt-[4px]" />
-        <span className="inbox-item-title" style={{ flex: 1 }}>{displayTitleFor(item)}</span>
+        <span className="inbox-item-title" style={{ flex: 1 }}>
+          {(item.kind === "aggregated" || item.kind === "residual" || item.kind === "deduped") &&
+           item.source_card_ids && item.source_card_ids.length > 0 && (
+            <span style={{
+              display: "inline-block",
+              fontSize: "0.7rem",
+              padding: "1px 5px",
+              background: "var(--bg-elev)",
+              color: "var(--accent-blue, var(--text-muted))",
+              borderRadius: 3,
+              marginRight: 6,
+              fontWeight: 500,
+            }}>
+              ↳ {item.source_card_ids.length}
+            </span>
+          )}
+          {displayTitleFor(item)}
+        </span>
         {routingTag(item.routing, item.queue_status, isDiscarded)}
       </div>
       {item.description && (

@@ -209,8 +209,8 @@ export interface InboxItem {
   article_meta: ArticleMeta;
   /** Original article HTML for routing ∈ {discard, original_content_with_pre_card, original_content_with_post_card}. */
   additional_content?: string | null;
-  /** 'initial' = standard card; 'deduped' = aggregate card replacing duplicates. */
-  kind?: "initial" | "deduped";
+  /** 'initial' = standard card; 'aggregated'/'residual'/'passthrough' = dedup product. 'deduped' is legacy alias for 'aggregated'. */
+  kind?: "initial" | "aggregated" | "passthrough" | "residual" | "deduped";
   source_card_ids?: string[] | null;
   source_article_ids?: string[];
 }
