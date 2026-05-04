@@ -4,7 +4,21 @@
 
 const DOMAIN = (import.meta.env.VITE_AUTHING_DOMAIN as string) || "https://curation.authing.cn";
 const APP_ID = import.meta.env.VITE_AUTHING_APP_ID as string;
-const REDIRECT_URI = import.meta.env.VITE_AUTHING_REDIRECT_URI as string;
+
+// Derive redirect_uri at runtime so a single bundle works for desktop
+// (tauri://localhost), desktop dev (http://localhost:1420), and the web
+// build (https://preview.curationcurationcuration.cc). Authing must have
+// all three whitelisted as Login URIs. Override with VITE_AUTHING_REDIRECT_URI
+// only if you really need a static redirect.
+function computeRedirectUri(): string {
+  const override = import.meta.env.VITE_AUTHING_REDIRECT_URI as string | undefined;
+  if (override) return override;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/auth/callback`;
+  }
+  return "http://localhost:1420/auth/callback";
+}
+const REDIRECT_URI = computeRedirectUri();
 
 export const AUTHING_SCOPE =
   "openid profile email phone offline_access username roles external_id extended_fields address";
@@ -208,6 +222,57 @@ function endSessionSilently(): void {
   fetch(url, { mode: "no-cors" }).catch(() => {});
 }
 
+/**
+ * End Authing's SSO cookie via a hidden iframe so the parent page stays
+ * on the Curation login screen. `fetch(... no-cors)` is unreliable for
+ * cross-site cookie clearing (third-party cookie restrictions), so we
+ * load /oidc/session/end inside an iframe — same-origin to Authing
+ * within the iframe, cookie gets cleared first-party — then redirect
+ * the iframe back to our origin via post_logout_redirect_uri. The
+ * parent never navigates.
+ *
+ * The iframe is removed either when it fires onload (the redirect back
+ * has resolved) or after a 4s timeout (in case Authing blocks framing
+ * with X-Frame-Options — cookie still gets cleared, we just can't
+ * detect completion).
+ */
+function endSessionInBackground(): Promise<void> {
+  return new Promise((resolve) => {
+    // post_logout_redirect_uri must already be whitelisted in Authing
+    // 退出登录回调 URL — using bare origin (already configured for the
+    // previous full-page logout flow). The iframe lands on our SPA's
+    // root briefly; the parent never navigates.
+    const params = new URLSearchParams({
+      client_id: APP_ID,
+      post_logout_redirect_uri: window.location.origin,
+    });
+    const url = `${DOMAIN}/oidc/session/end?${params.toString()}`;
+    console.log("[authing] endSessionInBackground via iframe");
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.setAttribute("aria-hidden", "true");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try { iframe.remove(); } catch { /* ignore */ }
+      resolve();
+    };
+    iframe.onload = () => {
+      // Fired when the iframe's location settles on the post-logout URL.
+      // Small delay so Authing's Set-Cookie header is fully processed.
+      setTimeout(finish, 100);
+    };
+    iframe.onerror = () => finish();
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    // Hard timeout in case X-Frame-Options blocks framing or Authing
+    // never fires onload — cookie is still cleared via the network
+    // fetch the browser issued, we just don't get confirmation.
+    setTimeout(finish, 4000);
+  });
+}
+
 function resetTransaction(): void {
   localStorage.removeItem(TX_KEY);
 }
@@ -224,6 +289,7 @@ export const authingClient = {
   handleRedirectCallback,
   logoutWithRedirect,
   endSessionSilently,
+  endSessionInBackground,
   resetTransaction,
   isRedirectCallback,
 };

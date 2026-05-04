@@ -118,12 +118,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (__IS_WEB__) {
       void import("./platform/idb").then((m) => m.clearAll().catch(() => {}));
     }
-    // End Authing session — without this, clicking Login again silently
-    // re-issues a token for the previous user (Authing SSO cookie still
-    // valid). Redirects browser/webview to Authing's end_session URL,
-    // then back to the app origin where AuthProvider re-renders the
-    // login screen.
-    authingClient.logoutWithRedirect({ redirectUri: window.location.origin });
+    // End Authing's SSO cookie in a hidden iframe — without this, clicking
+    // Login again silently re-issues a token for the previous user. Using
+    // an iframe (instead of full-page logoutWithRedirect) means the user
+    // stays on Curation's login screen rather than briefly seeing
+    // Authing's "logged out" UI.
+    authingClient.endSessionInBackground().catch(() => {});
   }, []);
 
   return (
