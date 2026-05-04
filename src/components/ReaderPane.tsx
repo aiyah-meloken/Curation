@@ -54,6 +54,7 @@ interface ReaderPaneProps {
   isHomeView?: boolean;
   cacheReady?: boolean;
   onOpenDrawer: () => void;
+  onOpenSources?: () => void;
   onOpenSubs?: () => void;
 }
 
@@ -62,14 +63,19 @@ function SourceBar({
   routing,
   isDiscarded,
   onOpenDrawer,
+  onOpenSources,
   cardId,
+  kind,
 }: {
   meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
   routing: Routing;
   isDiscarded: boolean;
   onOpenDrawer?: () => void;
+  onOpenSources?: () => void;
   cardId?: string;
+  kind?: string;
 }) {
+  const isAggregated = kind === "aggregated" || kind === "residual" || kind === "deduped";
   return (
     <div className="reader-source-bar">
       {/* Line 1: original title + tag */}
@@ -92,16 +98,28 @@ function SourceBar({
           {cardId && (
             <FavoriteButton itemType="card" itemId={cardId} />
           )}
-          {routing === "ai_curation" && onOpenDrawer && (
-            <button
-              onClick={onOpenDrawer}
-              style={{
-                background: "none", border: "1px solid var(--border)", borderRadius: 6,
-                color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
-              }}
-            >
-              查看原文
-            </button>
+          {routing === "ai_curation" && (
+            isAggregated && onOpenSources ? (
+              <button
+                onClick={onOpenSources}
+                style={{
+                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                  color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+                }}
+              >
+                查看原卡片
+              </button>
+            ) : onOpenDrawer ? (
+              <button
+                onClick={onOpenDrawer}
+                style={{
+                  background: "none", border: "1px solid var(--border)", borderRadius: 6,
+                  color: "var(--text-muted)", padding: "3px 10px", cursor: "pointer", fontSize: "0.76rem",
+                }}
+              >
+                查看原文
+              </button>
+            ) : null
           )}
         </div>
       </div>
@@ -210,6 +228,7 @@ export function ReaderPane({
   isHomeView,
   cacheReady,
   onOpenDrawer,
+  onOpenSources,
   onOpenSubs,
 }: ReaderPaneProps) {
   const { state: authState } = useAuth();
@@ -469,7 +488,9 @@ ${notesSection}
         routing={item.routing}
         isDiscarded={isDiscardedView}
         onOpenDrawer={item.routing === "ai_curation" ? onOpenDrawer : undefined}
+        onOpenSources={item.routing === "ai_curation" ? onOpenSources : undefined}
         cardId={item.card_id ?? undefined}
+        kind={(item as InboxItem).kind}
       />
       <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
         <div className="reader-content animate-in" style={{ paddingBottom: 140 }}>

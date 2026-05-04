@@ -23,6 +23,7 @@ import { SearchList } from './components/SearchList';
 import { MapShell } from './components/MapShell';
 import { useSearch } from './hooks/useSearch';
 import { ArticleDrawer } from './components/ArticleDrawer';
+import { SourceCardsDrawer } from './components/SourceCardsDrawer';
 import { LoginScreen } from './components/LoginScreen';
 import { AuthCallback } from './components/AuthCallback';
 import { useAuth } from './lib/authStore';
@@ -178,6 +179,7 @@ function AppMain({ currentUser, onLogout }: {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedDiscardedId, setSelectedDiscardedId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSourcesOpen, setIsSourcesOpen] = useState(false);
   const [selectedFavorite, setSelectedFavorite] = useState<FavoriteItem | null>(null);
   const { data: favoritesData } = useFavorites();
   const search = useSearch();
@@ -604,6 +606,7 @@ function AppMain({ currentUser, onLogout }: {
           isHomeView={selectedView === "home"}
           cacheReady={cacheReady}
           onOpenDrawer={() => setIsDrawerOpen(true)}
+          onOpenSources={() => setIsSourcesOpen(true)}
           onOpenSubs={handleToggleSubs}
         />
       )}
@@ -617,6 +620,21 @@ function AppMain({ currentUser, onLogout }: {
         item={selectedItem}
         siblingCards={siblingCards}
         onSelectCard={handleDrawerSelectCard}
+      />
+
+      {/* Source Cards Drawer — shown for aggregated/residual cards instead of ArticleDrawer */}
+      <SourceCardsDrawer
+        cardId={selectedItem?.card_id ?? null}
+        isOpen={isSourcesOpen}
+        onClose={() => setIsSourcesOpen(false)}
+        onOpenArticle={(_articleId) => {
+          setIsSourcesOpen(false);
+          // TODO(v2): navigate to the specific source article instead of the
+          // currently-selected aggregated item. Requires plumbing a per-source
+          // InboxItem lookup or a dedicated ArticleDrawer articleId prop.
+          // For v1, just open ArticleDrawer for the current selected item.
+          setIsDrawerOpen(true);
+        }}
       />
 
       {/* Toast notification */}
