@@ -31,7 +31,9 @@ export async function getInboxCards(
   biz?: string | null,
   unreadOnly?: boolean,
 ): Promise<CachedCard[]> {
-  return idb.readCards({ biz: biz ?? undefined, unreadOnly: unreadOnly ?? false });
+  const rows = await idb.readCards({ biz: biz ?? undefined, unreadOnly: unreadOnly ?? false });
+  console.log(`[cache.web] getInboxCards(biz=${biz ?? "null"}, unread=${unreadOnly ?? false}) → ${rows.length} rows`);
+  return rows;
 }
 
 export async function getFavorites(): Promise<CachedFavorite[]> {
@@ -83,20 +85,14 @@ export function searchCards(_query: string): Promise<SearchResult[]> {
 }
 
 export async function getCardContent(cardId: string): Promise<string | null> {
-  // Cards' content_md is denormalized into the cards store by /sync, so
-  // serve it from there. Fall back to the network on a true miss.
-  const all = await idb.readCards({});
-  const card = all.find((c) => c.card_id === cardId);
-  if (card?.content_md) return card.content_md;
-  const res = await apiFetch(`/cards/${encodeURIComponent(cardId)}/content`);
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`get_card_content failed: ${res.status}`);
-  const data = await res.json();
-  const content: string | null = data.content ?? null;
-  if (content && card) {
-    await idb.updateCardRow(cardId, { content_md: content });
-  }
-  return content;
+  // Direct PK lookup (cheap). content_md is filled lazily by setCardContent
+  // on first open and persisted, so the second open and beyond hit IDB only.
+  const card = await idb.getCardById(cardId);
+  return card?.content_md ?? null;
+}
+
+export async function setCardContent(cardId: string, contentMd: string): Promise<void> {
+  await idb.updateCardRow(cardId, { content_md: contentMd });
 }
 
 export async function getCachedAccounts(): Promise<CachedAccount[]> {
@@ -227,6 +223,9 @@ export async function runSync(): Promise<string[]> {
     if (data.cards && data.cards.length > 0) {
       await idb.writeCardDelta(data.cards);
       changed.add("cards");
+      console.log(`[sync.web] wrote ${data.cards.length} cards (cursor=${cursor}, has_more=${data.has_more})`);
+    } else {
+      console.log(`[sync.web] /sync batch had 0 cards (since=${since ?? "null"}, cursor=${cursor})`);
     }
 
     if (data.favorites && data.favorites.length > 0) {

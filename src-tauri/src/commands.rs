@@ -139,6 +139,15 @@ pub fn get_card_content(
 }
 
 #[tauri::command]
+pub fn set_card_content(
+    state: State<'_, AppState>,
+    card_id: String,
+    content_md: String,
+) -> Result<(), String> {
+    with_db(&state, |db| db.set_card_content(&card_id, &content_md))
+}
+
+#[tauri::command]
 pub fn get_cached_accounts(
     state: State<'_, AppState>,
 ) -> Result<Vec<AccountRow>, String> {

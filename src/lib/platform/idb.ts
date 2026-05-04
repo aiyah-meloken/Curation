@@ -89,8 +89,30 @@ export async function writeCardDelta(rows: CachedCard[]): Promise<void> {
   if (rows.length === 0) return;
   const db = await getDb();
   const tx = db.transaction("cards", "readwrite");
-  await Promise.all(rows.map((r) => tx.store.put(r)));
+  // Merge with existing row instead of full overwrite. /sync doesn't
+  // return content_md (server keeps the payload light; content is
+  // fetched lazily by getCardContent and persisted via updateCardRow).
+  // A naive `put(r)` would clobber content_md back to undefined on
+  // every sync — every card open would become a network call.
+  for (const r of rows) {
+    const existing = await tx.store.get(r.card_id);
+    if (existing) {
+      const merged: CachedCard = {
+        ...existing,
+        ...r,
+        content_md: r.content_md ?? existing.content_md,
+      };
+      await tx.store.put(merged);
+    } else {
+      await tx.store.put(r);
+    }
+  }
   await tx.done;
+}
+
+export async function getCardById(card_id: string): Promise<CachedCard | null> {
+  const db = await getDb();
+  return (await db.get("cards", card_id)) ?? null;
 }
 
 export async function updateCardRow(

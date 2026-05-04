@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, fetchCardsByDate, fetchCardContent } from "../lib/api";
-import { getCardContent } from "../lib/cache";
+import { getCardContent, setCardContent } from "../lib/cache";
 
 export interface Card {
   card_id: string;
@@ -33,7 +33,12 @@ export async function loadCardContentData(cardId: string, tab: "aggregated" | "s
       return { content: local };
     }
   }
-  return fetchCardContent(cardId);
+  const fresh = await fetchCardContent(cardId);
+  // Lazy-cache after first network fetch so subsequent opens are local-only.
+  if (tab === "source" && fresh?.content) {
+    try { await setCardContent(cardId, fresh.content); } catch { /* non-fatal */ }
+  }
+  return fresh;
 }
 
 export function useCardList(date: string | null, tab: "aggregated" | "source", enabled: boolean) {

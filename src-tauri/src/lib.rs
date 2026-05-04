@@ -355,6 +355,7 @@ pub fn run() {
             commands::mark_all_read,
             commands::toggle_favorite,
             commands::get_card_content,
+            commands::set_card_content,
             commands::get_cached_accounts,
             commands::save_cached_accounts,
             commands::get_cached_discoverable_accounts,

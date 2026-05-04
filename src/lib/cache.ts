@@ -85,6 +85,7 @@ export {
   markAllCardsRead,
   toggleFavoriteLocal,
   getCardContent,
+  setCardContent,
   getCachedAccounts,
   saveCachedAccounts,
   getCachedDiscoverableAccounts,

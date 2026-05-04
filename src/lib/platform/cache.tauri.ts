@@ -147,6 +147,10 @@ export function getCardContent(cardId: string): Promise<string | null> {
   return invoke("get_card_content", { cardId });
 }
 
+export function setCardContent(cardId: string, contentMd: string): Promise<void> {
+  return invoke("set_card_content", { cardId, contentMd });
+}
+
 export interface CachedAccount {
   id: number;
   biz: string;

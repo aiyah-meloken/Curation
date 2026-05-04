@@ -533,6 +533,20 @@ impl CacheDb {
         }
     }
 
+    /// Lazy-cache card content fetched from the server (frontend calls
+    /// this after a network round-trip on a cache miss). Updates only
+    /// content_md, leaves all other columns alone — pairs with the
+    /// upsert_cards UPSERT which COALESCEs content_md from existing.
+    pub fn set_card_content(&self, card_id: &str, content_md: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE cards SET content_md = ?1 WHERE card_id = ?2",
+            rusqlite::params![content_md, card_id],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub fn get_article_content(&self, article_id: &str) -> Result<Option<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
@@ -805,12 +819,42 @@ impl CacheDb {
                 // Unexpected type — drop rather than panic.
                 _ => None,
             };
+            // UPSERT — preserve content_md when the incoming row's value
+            // is NULL. /sync intentionally omits content_md to keep payloads
+            // small; content is fetched lazily on first card-open and stored
+            // here. A bare INSERT OR REPLACE would clobber the lazy-fetched
+            // value back to NULL on every sync, forcing a network round-trip
+            // for every subsequent open. Use `excluded` to refer to the
+            // would-be-inserted row in the DO UPDATE clause.
             conn.execute(
-                "INSERT OR REPLACE INTO cards
+                "INSERT INTO cards
                  (card_id, article_id, title, article_title, content_md, description, routing,
                   template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                   account_id, biz, cover_url, digest, word_count, is_original, entities)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)
+                 ON CONFLICT(card_id) DO UPDATE SET
+                   article_id      = excluded.article_id,
+                   title           = excluded.title,
+                   article_title   = excluded.article_title,
+                   content_md      = COALESCE(excluded.content_md, cards.content_md),
+                   description     = excluded.description,
+                   routing         = excluded.routing,
+                   template        = excluded.template,
+                   template_reason = excluded.template_reason,
+                   card_date       = excluded.card_date,
+                   account         = excluded.account,
+                   author          = excluded.author,
+                   url             = excluded.url,
+                   read_at         = excluded.read_at,
+                   updated_at      = excluded.updated_at,
+                   publish_time    = excluded.publish_time,
+                   account_id      = excluded.account_id,
+                   biz             = excluded.biz,
+                   cover_url       = excluded.cover_url,
+                   digest          = excluded.digest,
+                   word_count      = excluded.word_count,
+                   is_original     = excluded.is_original,
+                   entities        = excluded.entities",
                 rusqlite::params![
                     card_id,
                     card["article_id"].as_str().unwrap_or_default(),

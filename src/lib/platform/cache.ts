@@ -17,6 +17,7 @@ export const markCardUnread = impl.markCardUnread;
 export const markAllCardsRead = impl.markAllCardsRead;
 export const toggleFavoriteLocal = impl.toggleFavoriteLocal;
 export const getCardContent = impl.getCardContent;
+export const setCardContent = impl.setCardContent;
 export const getCachedAccounts = impl.getCachedAccounts;
 export const saveCachedAccounts = impl.saveCachedAccounts;
 export const getCachedDiscoverableAccounts = impl.getCachedDiscoverableAccounts;
