@@ -28,7 +28,12 @@ interface InboxListProps {
   onClearFilter?: () => void;
 }
 
-function routingTag(routing: Routing, queueStatus?: "pending" | "running" | null, isDiscarded?: boolean) {
+function routingTag(
+  routing: Routing,
+  queueStatus?: "pending" | "running" | null,
+  isDiscarded?: boolean,
+  kind?: string,
+) {
   if (queueStatus) {
     return (
       <span className="inbox-tag" style={{ background: "var(--accent-gold-dim)", color: "var(--accent-gold)", display: "inline-flex", alignItems: "center", gap: 3 }}>
@@ -41,7 +46,15 @@ function routingTag(routing: Routing, queueStatus?: "pending" | "running" | null
     return <span className="inbox-tag" style={{ color: "var(--accent-red)" }}>丢弃</span>;
   }
   if (routing === "ai_curation") {
-    return <span className="inbox-tag" style={{ color: "var(--accent-blue)" }}>AI总结</span>;
+    // Deduped/aggregated cards (cross-article merge or residual) read "AI总结";
+    // single-article ai_curation cards keep "AI梳理".
+    const isAggregate = kind === "deduped" || kind === "aggregated" || kind === "residual";
+    return (
+      <span className="inbox-tag"
+        style={{ color: isAggregate ? "var(--accent-blue)" : "var(--accent-green)" }}>
+        {isAggregate ? "AI总结" : "AI梳理"}
+      </span>
+    );
   }
   if (routing === "original_content_with_pre_card") {
     return <span className="inbox-tag" style={{ color: "var(--accent-green)" }}>阅前</span>;
@@ -146,7 +159,7 @@ function InboxItemRow({
           )}
           {displayTitleFor(item)}
         </span>
-        {routingTag(item.routing, item.queue_status, isDiscarded)}
+        {routingTag(item.routing, item.queue_status, isDiscarded, item.kind)}
       </div>
       {item.description && (
         <div className="inbox-item-desc">{item.description}</div>

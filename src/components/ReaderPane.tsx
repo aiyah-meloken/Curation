@@ -26,12 +26,19 @@ function showsOriginalAlongside(routing: Routing): boolean {
   return routing != null && (ORIGINAL_ALONGSIDE_ROUTINGS as readonly string[]).includes(routing);
 }
 
-function sourceBarTag(routing: Routing, isDiscarded: boolean) {
+function sourceBarTag(routing: Routing, isDiscarded: boolean, kind?: string) {
   if (isDiscarded) {
     return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-red)" }}>丢弃</span>;
   }
   if (routing === "ai_curation") {
-    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-blue)" }}>AI总结</span>;
+    // Distinguish single-article 梳理 from aggregated 总结
+    const isAggregate = kind === "deduped" || kind === "aggregated" || kind === "residual";
+    return (
+      <span className="inbox-tag"
+        style={{ fontSize: "0.72rem", color: isAggregate ? "var(--accent-blue)" : "var(--accent-green)" }}>
+        {isAggregate ? "AI总结" : "AI梳理"}
+      </span>
+    );
   }
   if (routing === "original_content_with_pre_card") {
     return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-green)" }}>阅前导读</span>;
@@ -85,7 +92,7 @@ function SourceBar({
           <span style={{ color: "var(--text-muted)" }}>原文标题：</span>
           {meta.title}
         </span>
-        {sourceBarTag(routing, isDiscarded)}
+        {sourceBarTag(routing, isDiscarded, kind)}
       </div>
       {/* Line 2: meta left, buttons right */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
