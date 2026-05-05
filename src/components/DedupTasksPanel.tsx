@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
 import {
   fetchDedupTasks, fetchDedupTaskRuns, fetchDedupTaskServing, forceDedupTaskRun,
+  fetchDedupAutoConfig, setDedupAutoConfig,
 } from "../lib/api";
 import type { DedupTaskRow, DedupTaskRun, DedupQueueRow } from "../types";
 import { fmtTime, statusLabel } from "../lib/tableHelpers";
@@ -99,6 +100,18 @@ export function DedupTasksPanel() {
     },
   });
 
+  const { data: cfg } = useQuery({
+    queryKey: ["dedupAutoConfig"],
+    queryFn: fetchDedupAutoConfig,
+    refetchInterval: 5000,
+    staleTime: 2000,
+  });
+  const cfgMut = useMutation({
+    mutationFn: (patch: Partial<{ auto_launch: boolean; max_concurrency: number }>) =>
+      setDedupAutoConfig(patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dedupAutoConfig"] }),
+  });
+
   const toggleExpand = (taskId: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -108,9 +121,11 @@ export function DedupTasksPanel() {
     });
   };
 
+  // Task statuses are pending/running/done/failed (no 'queued' on the Task
+  // itself; queued is at DedupQueue layer). Mirror article queue filter set.
   const chips: { key: string; label: string }[] = [
     { key: "all",     label: "全部" },
-    { key: "pending", label: "待处理" },
+    { key: "pending", label: "待执行" },
     { key: "running", label: "运行中" },
     { key: "done",    label: "完成" },
     { key: "failed",  label: "失败" },
@@ -118,6 +133,33 @@ export function DedupTasksPanel() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+
+      {/* Scheduler control bar (mirrors ArticleQueuePanel; controls execution
+          of queued rows). Tab1 controls cluster generation; this controls
+          how queued rows turn into Runs. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-base)", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+          title="开 = scheduler 拉 queued 行 spawn run；关 = 全停（队列里只标记不执行）">
+          <input type="checkbox"
+            checked={!!cfg?.auto_launch}
+            disabled={cfgMut.isPending}
+            onChange={(e) => cfgMut.mutate({ auto_launch: e.target.checked })} />
+          <span>调度 {cfg?.auto_launch ? <b style={{ color: "var(--accent-green)" }}>开</b> : <b style={{ color: "var(--accent-red)" }}>停</b>}</span>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}
+          title={`并发上限（硬顶 ${cfg?.max_concurrency_hard_cap ?? 2}）`}>
+          <span>并发</span>
+          <select
+            value={cfg?.max_concurrency ?? 1}
+            disabled={cfgMut.isPending || !cfg}
+            onChange={(e) => cfgMut.mutate({ max_concurrency: Number(e.target.value) })}
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-xs)" }}>
+            {Array.from({ length: cfg?.max_concurrency_hard_cap ?? 2 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {/* Controls bar */}
       <div style={{

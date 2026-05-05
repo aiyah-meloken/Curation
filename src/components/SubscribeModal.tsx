@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { httpsifyImg } from "../lib/img";
 import { X, Loader2, Plus, Check } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
@@ -182,7 +183,7 @@ export function SubscribeModal({ open, onClose, onSuccess, targetUserIds }: Prop
                       {checked && <Check size={12} color="#1a1208" />}
                     </div>
                     {a.avatar_url && (
-                      <img src={a.avatar_url} alt="" referrerPolicy="no-referrer"
+                      <img src={httpsifyImg(a.avatar_url) ?? undefined} alt="" referrerPolicy="no-referrer"
                            style={{ width: 28, height: 28, borderRadius: "50%" }} />
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>

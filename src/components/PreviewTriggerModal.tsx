@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { apiFetch, previewDedup } from "../lib/api";
 
@@ -44,6 +45,7 @@ export function PreviewTriggerModal({
   onClose: () => void;
   onSuccess?: () => void;
 }) {
+  const qc = useQueryClient();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
@@ -91,8 +93,10 @@ export function PreviewTriggerModal({
       const resp = await previewDedup(Array.from(selectedUsers), dates);
       const rows = (resp.summary as PreviewSummaryRow[]) || [];
       setResult(rows);
-      onSuccess?.(); // notify parent to refresh queue list, but keep modal open
-                     // so the admin can see the per-(user,date) breakdown
+      // Eagerly invalidate so admin sees rows immediately, not on next poll.
+      qc.invalidateQueries({ queryKey: ["dedupQueue"] });
+      qc.invalidateQueries({ queryKey: ["dedupTasks"] });
+      onSuccess?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "请求失败");
     } finally {

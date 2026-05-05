@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { httpsifyImg } from "../lib/img";
 import { RefreshCw, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDajialaBalance } from "../hooks/useDajialaBalance";
@@ -126,7 +127,7 @@ export function AdminSubscriptionPanel() {
                         cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
               {row.avatar_url && (
-                <img src={row.avatar_url} alt="" referrerPolicy="no-referrer"
+                <img src={httpsifyImg(row.avatar_url) ?? undefined} alt="" referrerPolicy="no-referrer"
                      style={{ width: 24, height: 24, borderRadius: "50%",
                               flexShrink: 0 }} />
               )}

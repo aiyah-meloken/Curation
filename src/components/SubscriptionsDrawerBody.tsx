@@ -1,6 +1,7 @@
 // curation-app/src/components/SubscriptionsDrawerBody.tsx
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Rss, FilePlus } from "lucide-react";
+import { httpsifyImg } from "../lib/img";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { SubscribeModal } from "./SubscribeModal";
 import { AddArticleModal } from "./AddArticleModal";
@@ -60,7 +61,7 @@ export function SubscriptionsDrawerBody({
         }}
       >
         <img
-          src={acc.avatar_url || "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07xvMibqLuWicX7Y16H1xP81v6B0Sraia9zK0dYniamHwJxiaGvH6v97K8K1icYibib9eA/0"}
+          src={httpsifyImg(acc.avatar_url) ?? "https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07xvMibqLuWicX7Y16H1xP81v6B0Sraia9zK0dYniamHwJxiaGvH6v97K8K1icYibib9eA/0"}
           alt={acc.name}
           referrerPolicy="no-referrer"
         />

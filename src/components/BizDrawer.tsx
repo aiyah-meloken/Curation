@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { httpsifyImg } from "../lib/img";
 import { X, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
@@ -51,7 +52,7 @@ export function BizDrawer({ biz, includeEnded, onClose }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: 10,
                         padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
             {biz.avatar_url && (
-              <img src={biz.avatar_url} alt="" referrerPolicy="no-referrer"
+              <img src={httpsifyImg(biz.avatar_url) ?? undefined} alt="" referrerPolicy="no-referrer"
                    style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0 }} />
             )}
             <div style={{ flex: 1, minWidth: 0 }}>

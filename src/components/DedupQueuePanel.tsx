@@ -38,8 +38,8 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
       status: statusFilter === "all" ? undefined : statusFilter,
       date:   dateFilter || undefined,
     }),
-    refetchInterval: 3000,
-    staleTime: 2000,
+    refetchInterval: 2000,
+    staleTime: 1000,
   });
 
   // User lookup so the group rows can display username/email instead of raw id.
@@ -154,35 +154,16 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
         {totalDone    > 0 && <span style={{ color: "var(--accent-green)" }}>完成 <b>{totalDone}</b></span>}
         {totalFailed  > 0 && <span style={{ color: "var(--accent-red)" }}>失败 <b>{totalFailed}</b></span>}
         <div style={{ flex: 1 }} />
-        {/* Scheduler control: auto_launch (gate the whole loop) + max_concurrency */}
-        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
-          title="开 = scheduler 拉 queued 行 spawn run；关 = 全停（只标记不执行）">
-          <input type="checkbox"
-            checked={!!autoConfig?.auto_launch}
-            disabled={autoToggleMut.isPending}
-            onChange={(e) => autoToggleMut.mutate({ auto_launch: e.target.checked })} />
-          <span>调度 {autoConfig?.auto_launch ? <b style={{ color: "var(--accent-green)" }}>开</b> : <b style={{ color: "var(--accent-red)" }}>停</b>}</span>
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 4 }}
-          title={`并发上限（硬顶 ${autoConfig?.max_concurrency_hard_cap ?? 2}）`}>
-          <span>并发</span>
-          <select
-            value={autoConfig?.max_concurrency ?? 1}
-            disabled={autoToggleMut.isPending || !autoConfig}
-            onChange={(e) => autoToggleMut.mutate({ max_concurrency: Number(e.target.value) })}
-            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-xs)" }}>
-            {Array.from({ length: autoConfig?.max_concurrency_hard_cap ?? 2 }, (_, i) => i + 1).map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </label>
+        {/* Tab1 controls only the cluster auto-preview (whether 5am batch
+            generates clusters & enqueues them). Execution scheduler controls
+            (auto_launch / max_concurrency) live on Tab2. */}
         <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
           title={autoConfig?.schedule ?? "daily 05:00 CST"}>
           <input type="checkbox"
             checked={!!autoConfig?.enabled}
             disabled={autoToggleMut.isPending}
             onChange={(e) => autoToggleMut.mutate({ enabled: e.target.checked })} />
-          <span>每日5点 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>开</b> : "关"}</span>
+          <span>每日5点自动入队 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>开</b> : <b style={{ color: "var(--text-muted)" }}>关</b>}</span>
           {autoConfig?.last_run_date && (
             <span style={{ color: "var(--text-faint)" }}>· {autoConfig.last_run_date}</span>
           )}
