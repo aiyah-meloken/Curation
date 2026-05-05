@@ -71,6 +71,7 @@ interface ReaderPaneProps {
 }
 
 function SourceBar({
+  title,
   meta,
   routing,
   isDiscarded,
@@ -81,6 +82,7 @@ function SourceBar({
   sourceCount,
   cardDate,
 }: {
+  title: string;
   meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
   routing: Routing;
   isDiscarded: boolean;
@@ -101,7 +103,7 @@ function SourceBar({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
           <AcpRunningDot cardId={cardId ?? null} />
-          {isAggregated ? "聚合总结" : (
+          {isAggregated ? title : (
             <>
               <span style={{ color: "var(--text-muted)" }}>原文标题：</span>
               {meta.title}
@@ -514,6 +516,7 @@ ${notesSection}
     <main className="reader-pane" style={{ position: "relative", overflow: "hidden" }}>
       <SourceBar
         meta={item.article_meta}
+        title={item.title}
         routing={item.routing}
         isDiscarded={isDiscardedView}
         onOpenDrawer={item.routing === "ai_curation" ? onOpenDrawer : undefined}

@@ -151,8 +151,12 @@ export function ArticleDrawer({
         {/* Content */}
         <div className="drawer-content">
           {isLoading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
-              加载中...
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid var(--border)", borderTopColor: "var(--accent-blue)", animation: "spin 0.9s linear infinite" }} />
+              <div>正在加载原文…</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-faint)" }}>
+                原文内容较大时需要几秒钟
+              </div>
             </div>
           ) : html ? (
             <div
