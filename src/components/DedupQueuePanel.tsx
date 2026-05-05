@@ -19,7 +19,7 @@ interface AdminUser {
 
 type SortKey = "user_id" | "card_date" | "cluster_count" | "status" | "created_at" | "updated_at";
 const GROUP_COLS = "minmax(180px,1fr) 120px 90px 130px 100px 100px 110px";
-const CLUSTER_COLS = "70px minmax(220px,1fr) 90px 90px 120px 120px 96px";
+const CLUSTER_COLS = "70px minmax(180px,1fr) 110px 90px 90px 120px 120px 96px";
 
 interface DedupQueueGroup {
   key: string;
@@ -51,6 +51,35 @@ function groupStatusSummary(rows: DedupQueueRow[]) {
     .filter(([s]) => counts[s] > 0)
     .map(([s, label]) => `${label} ${counts[s]}`)
     .join(" · ");
+}
+
+function decisionLabel(row: DedupQueueRow) {
+  const d = row.last_decision;
+  if (!d) return { text: "未判决", color: "var(--text-faint)" };
+  if (d.status === "failed") return { text: "判决失败", color: "var(--accent-red)" };
+  if (d.status !== "done") return { text: "判决中", color: "var(--accent-gold)" };
+  const labels: Record<string, { text: string; color: string }> = {
+    unified: { text: "统一聚合", color: "var(--accent-green)" },
+    mixed: { text: "部分聚合", color: "var(--accent-gold)" },
+    independent: { text: "互不相似", color: "var(--text-muted)" },
+  };
+  return labels[d.verdict ?? ""] ?? { text: d.verdict ?? "已完成", color: "var(--text-muted)" };
+}
+
+function decisionTitle(row: DedupQueueRow) {
+  const d = row.last_decision;
+  if (!d) return "暂无 run 判决";
+  const parts = [
+    `run #${d.run_id}`,
+    d.verdict ? `verdict: ${d.verdict}` : null,
+    `outputs: ${d.outputs_count}`,
+    `aggregated: ${d.aggregated_count}`,
+    `passthrough: ${d.passthrough_count}`,
+    `residual: ${d.residual_count}`,
+    d.error_msg ? `error: ${d.error_msg}` : null,
+    d.rationale || null,
+  ].filter(Boolean);
+  return parts.join("\n");
 }
 
 export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }) {
@@ -272,7 +301,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
               {isOpen && (
                 <div style={{ background: "var(--bg-panel)", borderTop: "1px solid var(--bg-panel)", padding: "6px 16px 6px 36px" }}>
                   <div style={{ display: "grid", gridTemplateColumns: CLUSTER_COLS, color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
-                    <span>Queue ID</span><span>Signature</span><span style={{ textAlign: "center" }}>状态</span><span style={{ textAlign: "center" }}>Task</span><span style={{ textAlign: "center" }}>入队</span><span style={{ textAlign: "center" }}>更新</span><span style={{ textAlign: "center" }}>操作</span>
+                    <span>Queue ID</span><span>Signature</span><span style={{ textAlign: "center" }}>判决</span><span style={{ textAlign: "center" }}>状态</span><span style={{ textAlign: "center" }}>Task</span><span style={{ textAlign: "center" }}>入队</span><span style={{ textAlign: "center" }}>更新</span><span style={{ textAlign: "center" }}>操作</span>
                   </div>
                   {group.rows.map((row) => (
                     <div key={row.id} style={{ display: "grid", gridTemplateColumns: CLUSTER_COLS, padding: "5px 0", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
@@ -281,6 +310,14 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
                         style={{ fontFamily: "monospace", color: "var(--accent-blue)", cursor: "pointer", textDecoration: "none", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.cluster_signature}
                       </a>
+                      {(() => {
+                        const label = decisionLabel(row);
+                        return (
+                          <span title={decisionTitle(row)} style={{ color: label.color, fontSize: "var(--fs-sm)", textAlign: "center", cursor: "help" }}>
+                            {label.text}
+                          </span>
+                        );
+                      })()}
                       <span style={{ textAlign: "center" }}>{statusLabel(row.status, row.error_msg, row.retry_count)}</span>
                       <span style={{ color: row.task_id != null ? "var(--accent-blue)" : "var(--text-faint)", fontSize: "var(--fs-sm)", textAlign: "center" }}>
                         {row.task_id != null ? `#${row.task_id}` : "—"}

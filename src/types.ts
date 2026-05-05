@@ -306,6 +306,18 @@ export interface DedupQueueRow {
   task_id: number | null;
   retry_count: number;
   error_msg: string | null;
+  last_decision?: {
+    run_id: number;
+    status: string;
+    verdict: "unified" | "mixed" | "independent" | string | null;
+    rationale: string | null;
+    outputs_count: number;
+    aggregated_count: number;
+    passthrough_count: number;
+    residual_count: number;
+    error_msg: string | null;
+    completed_at: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }
