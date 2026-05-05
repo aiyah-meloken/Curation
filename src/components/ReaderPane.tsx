@@ -54,6 +54,11 @@ function formatTime(t: string | null) {
   return t.replace("T", " ").slice(0, 16);
 }
 
+function formatDate(t: string | null) {
+  if (!t) return "";
+  return t.replace("T", " ").slice(0, 10);
+}
+
 interface ReaderPaneProps {
   selectedItem: InboxItem | null;
   selectedDiscardedItem: DiscardedItem | null;
@@ -73,6 +78,8 @@ function SourceBar({
   onOpenSources,
   cardId,
   kind,
+  sourceCount,
+  cardDate,
 }: {
   meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
   routing: Routing;
@@ -81,25 +88,40 @@ function SourceBar({
   onOpenSources?: () => void;
   cardId?: string;
   kind?: string;
+  sourceCount?: number;
+  cardDate?: string | null;
 }) {
   const isAggregated = kind === "aggregated" || kind === "residual" || kind === "deduped";
+  const aggregateMeta = sourceCount && sourceCount > 0
+    ? `聚合 ${sourceCount} 张相似卡片${formatDate(cardDate ?? null) ? ` · ${formatDate(cardDate ?? null)}` : ""}`
+    : `聚合相似卡片${formatDate(cardDate ?? null) ? ` · ${formatDate(cardDate ?? null)}` : ""}`;
   return (
     <div className="reader-source-bar">
       {/* Line 1: original title + tag */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
         <span style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.88rem", flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
           <AcpRunningDot cardId={cardId ?? null} />
-          <span style={{ color: "var(--text-muted)" }}>原文标题：</span>
-          {meta.title}
+          {isAggregated ? "聚合总结" : (
+            <>
+              <span style={{ color: "var(--text-muted)" }}>原文标题：</span>
+              {meta.title}
+            </>
+          )}
         </span>
         {sourceBarTag(routing, isDiscarded, kind)}
       </div>
       {/* Line 2: meta left, buttons right */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-          <span>{meta.account}</span>
-          {meta.author && <><span>·</span><span>{meta.author}</span></>}
-          {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
+          {isAggregated ? (
+            <span>{aggregateMeta}</span>
+          ) : (
+            <>
+              <span>{meta.account}</span>
+              {meta.author && <><span>·</span><span>{meta.author}</span></>}
+              {meta.publish_time && <><span>·</span><span>{formatTime(meta.publish_time)}</span></>}
+            </>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           {cardId && (
@@ -498,6 +520,8 @@ ${notesSection}
         onOpenSources={item.routing === "ai_curation" ? onOpenSources : undefined}
         cardId={item.card_id ?? undefined}
         kind={(item as InboxItem).kind}
+        sourceCount={(item as InboxItem).source_card_ids?.length ?? 0}
+        cardDate={item.card_date}
       />
       <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
         <div className="reader-content animate-in" style={{ paddingBottom: 140 }}>

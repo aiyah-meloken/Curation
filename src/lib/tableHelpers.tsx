@@ -32,6 +32,7 @@ export function statusLabel(
 ) {
   const m: Record<string, { text: string; color: string }> = {
     pending:  { text: "待处理", color: "var(--text-muted)" },
+    queued:   { text: "已排队", color: "var(--accent-blue)" },
     running:  { text: "运行中", color: "var(--accent-gold)" },
     done:     { text: "完成",   color: "var(--accent-green)" },
     failed:   { text: "失败",   color: "var(--accent-red)" },

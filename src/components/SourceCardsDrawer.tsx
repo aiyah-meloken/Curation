@@ -63,20 +63,21 @@ export function SourceCardsDrawer({
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
-      <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="drawer-panel" onClick={(e) => e.stopPropagation()} style={{ overflow: "hidden" }}>
         <header style={{
           position: "sticky", top: 0, zIndex: 1,
           background: "var(--bg-base)",
           borderBottom: "1px solid var(--bg-panel)",
           padding: "12px 16px",
           display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexShrink: 0,
         }}>
           <div style={{ fontWeight: 500 }}>原卡片（{sources.length}）</div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
             <X size={18} />
           </button>
         </header>
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, flex: 1, minHeight: 0, overflowY: "auto" }}>
           {isLoading && (
             <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>加载中…</div>
           )}

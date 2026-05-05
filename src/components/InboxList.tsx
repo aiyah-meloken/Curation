@@ -70,11 +70,6 @@ function formatTime(t: string | null) {
   return t.replace("T", " ").slice(0, 16);
 }
 
-function formatDate(t: string | null) {
-  if (!t) return "";
-  return t.replace("T", " ").slice(0, 10);
-}
-
 function isAggregateKind(kind?: string) {
   return kind === "aggregated" || kind === "residual" || kind === "deduped";
 }
@@ -142,7 +137,7 @@ function InboxItemRow({
   const isAggregated = isAggregateKind(item.kind);
   const sourceCount = item.source_card_ids?.length ?? 0;
   const metaText = isAggregated && sourceCount > 0
-    ? `聚合 ${sourceCount} 张卡片${formatDate(item.card_date) ? ` · ${formatDate(item.card_date)}` : ""}`
+    ? `聚合 ${sourceCount} 张相似卡片`
     : `${item.article_meta.account}${item.article_meta.publish_time ? ` · ${formatTime(item.article_meta.publish_time)}` : ""}`;
   return (
     <div
@@ -156,21 +151,6 @@ function InboxItemRow({
         )}
         <AcpRunningDot cardId={item.card_id ?? null} className="mt-[4px]" />
         <span className="inbox-item-title" style={{ flex: 1 }}>
-          {isAggregated &&
-           item.source_card_ids && item.source_card_ids.length > 0 && (
-            <span style={{
-              display: "inline-block",
-              fontSize: "0.7rem",
-              padding: "1px 5px",
-              background: "var(--bg-elev)",
-              color: "var(--accent-blue, var(--text-muted))",
-              borderRadius: 3,
-              marginRight: 6,
-              fontWeight: 500,
-            }}>
-              ↳ {item.source_card_ids.length}
-            </span>
-          )}
           {displayTitleFor(item)}
         </span>
         {routingTag(item.routing, item.queue_status, isDiscarded, item.kind)}

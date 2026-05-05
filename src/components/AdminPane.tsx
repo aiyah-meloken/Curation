@@ -140,7 +140,7 @@ function DedupAggregationSection() {
             cursor: "pointer",
           }}
         >
-          队列
+          预聚合
         </button>
         <button
           onClick={() => setTab("tasks")}

@@ -17,15 +17,48 @@ interface AdminUser {
   is_active: boolean;
 }
 
-type SortKey = "user_id" | "card_date" | "cluster_signature" | "status" | "task_id" | "created_at" | "updated_at";
-const COLS = "minmax(150px,1fr) 100px 130px 80px 80px 90px 90px 96px";
+type SortKey = "user_id" | "card_date" | "cluster_count" | "status" | "created_at" | "updated_at";
+const GROUP_COLS = "minmax(180px,1fr) 120px 90px 130px 100px 100px 110px";
+const CLUSTER_COLS = "70px minmax(220px,1fr) 90px 90px 120px 120px 96px";
+
+interface DedupQueueGroup {
+  key: string;
+  user_id: number;
+  card_date: string;
+  rows: DedupQueueRow[];
+  status: DedupQueueRow["status"];
+  created_at: string;
+  updated_at: string;
+}
+
+function groupStatus(rows: DedupQueueRow[]): DedupQueueRow["status"] {
+  const order: DedupQueueRow["status"][] = ["failed", "running", "queued", "pending", "done"];
+  return order.find((s) => rows.some((r) => r.status === s)) ?? "done";
+}
+
+function groupStatusSummary(rows: DedupQueueRow[]) {
+  const counts = rows.reduce<Record<string, number>>((acc, r) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  return [
+    ["failed", "失败"],
+    ["running", "运行中"],
+    ["queued", "已排队"],
+    ["pending", "待派发"],
+    ["done", "完成"],
+  ]
+    .filter(([s]) => counts[s] > 0)
+    .map(([s, label]) => `${label} ${counts[s]}`)
+    .join(" · ");
+}
 
 export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }) {
   const qc = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter]     = useState<string>("");
-  const [expandedId, setExpandedId]     = useState<number | null>(null);
+  const [expandedKey, setExpandedKey]   = useState<string | null>(null);
   const [sortKey, setSortKey]           = useState<SortKey>("created_at");
   const [sortDir, setSortDir]           = useState<"asc" | "desc">("desc");
 
@@ -82,9 +115,29 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dedupAutoConfig"] }),
   });
 
-  const filtered = useMemo(() => {
+  const grouped = useMemo<DedupQueueGroup[]>(() => {
+    const byKey = new Map<string, DedupQueueRow[]>();
+    for (const row of queue) {
+      const key = `${row.user_id}:${row.card_date}`;
+      const rows = byKey.get(key);
+      if (rows) rows.push(row);
+      else byKey.set(key, [row]);
+    }
+    const groups = Array.from(byKey.entries()).map(([key, rows]) => ({
+      key,
+      user_id: rows[0].user_id,
+      card_date: rows[0].card_date,
+      rows: rows.slice().sort((a, b) => cmp(a.cluster_signature, b.cluster_signature)),
+      status: groupStatus(rows),
+      created_at: rows.reduce((min, r) => cmp(r.created_at, min) < 0 ? r.created_at : min, rows[0].created_at),
+      updated_at: rows.reduce((max, r) => cmp(r.updated_at, max) > 0 ? r.updated_at : max, rows[0].updated_at),
+    }));
     const dir = sortDir === "asc" ? 1 : -1;
-    return queue.slice().sort((a, b) => cmp((a as any)[sortKey], (b as any)[sortKey]) * dir);
+    return groups.sort((a, b) => {
+      const av = sortKey === "cluster_count" ? a.rows.length : (a as any)[sortKey];
+      const bv = sortKey === "cluster_count" ? b.rows.length : (b as any)[sortKey];
+      return cmp(av, bv) * dir;
+    });
   }, [queue, sortDir, sortKey]);
 
   const toggleSort = (k: SortKey) => {
@@ -160,13 +213,12 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
       </div>
 
       <div style={{ flex: 1, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: COLS, padding: "6px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1, alignItems: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: GROUP_COLS, padding: "6px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--fs-xs)", fontWeight: 500, position: "sticky", top: 0, zIndex: 1, alignItems: "center" }}>
           {([
             ["user_id", "用户", false],
             ["card_date", "日期", true],
-            ["cluster_signature", "Signature", true],
+            ["cluster_count", "Clusters", true],
             ["status", "状态", true],
-            ["task_id", "Task", true],
             ["created_at", "入队时间", true],
             ["updated_at", "更新时间", true],
           ] as [SortKey, string, boolean][]).map(([k, label, center]) => (
@@ -179,81 +231,92 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
           <span style={{ textAlign: "center" }}>操作</span>
         </div>
 
-        {filtered.map((row) => {
-          const u = userById.get(row.user_id);
-          const isOpen = expandedId === row.id;
+        {grouped.map((group) => {
+          const u = userById.get(group.user_id);
+          const isOpen = expandedKey === group.key;
+          const pendingIds = group.rows.filter((r) => r.status === "pending").map((r) => r.id);
           return (
-            <div key={row.id} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
-              <div style={{ display: "grid", gridTemplateColumns: COLS, padding: "8px 16px", alignItems: "center" }}>
+            <div key={group.key} style={{ borderBottom: "1px solid var(--bg-panel)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: GROUP_COLS, padding: "8px 16px", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
                   <span
-                    onClick={() => setExpandedId(isOpen ? null : row.id)}
+                    onClick={() => setExpandedKey(isOpen ? null : group.key)}
                     style={{ cursor: "pointer", color: "var(--text-muted)", flexShrink: 0, width: 16 }}
                   >
                     {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </span>
                   <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {u ? (u.username || u.email) : `user #${row.user_id}`}
+                    {u ? (u.username || u.email) : `user #${group.user_id}`}
                   </span>
-                  <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-xs)", flexShrink: 0 }}>#{row.user_id}</span>
+                  <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-xs)", flexShrink: 0 }}>#{group.user_id}</span>
                 </div>
-                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{row.card_date}</span>
-                <a onClick={() => setDrawerSig(row.cluster_signature)}
-                  style={{ color: "var(--accent-blue)", cursor: "pointer", textDecoration: "none", fontFamily: "monospace", fontSize: "var(--fs-xs)", textAlign: "center" }}>
-                  {row.cluster_signature.slice(0, 12)}
-                </a>
-                <span style={{ textAlign: "center" }}>{statusLabel(row.status, row.error_msg, row.retry_count)}</span>
-                <span style={{ color: row.task_id != null ? "var(--accent-blue)" : "var(--text-faint)", fontSize: "var(--fs-sm)", textAlign: "center" }}>
-                  {row.task_id != null ? `#${row.task_id}` : "—"}
-                </span>
-                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{fmtTime(row.created_at)}</span>
-                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{fmtTime(row.updated_at)}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{group.card_date}</span>
+                <span style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)", textAlign: "center", fontWeight: 600 }}>{group.rows.length}</span>
+                <span title={groupStatusSummary(group.rows)} style={{ textAlign: "center" }}>{statusLabel(group.status)}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{fmtTime(group.created_at)}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{fmtTime(group.updated_at)}</span>
                 <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                  {row.status === "pending" && (
-                    <button onClick={() => dispatchMut.mutate([row.id])} title="加入调度队列"
+                  {pendingIds.length > 0 && (
+                    <button onClick={() => dispatchMut.mutate(pendingIds)} title={`派发 ${pendingIds.length} 个待派发 cluster`}
                       style={{ background: "none", border: "none", color: "var(--accent-green)", cursor: "pointer", padding: 2 }}>
                       <Play size={14} />
                     </button>
                   )}
-                  {(row.status === "done" || row.status === "failed") && (
-                    <button onClick={() => retryMut.mutate(row.id)} title="重试"
-                      style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
-                      <RotateCcw size={14} />
-                    </button>
-                  )}
-                  <button onClick={() => setDrawerSig(row.cluster_signature)} title="查看原卡片"
+                  <button onClick={() => setExpandedKey(isOpen ? null : group.key)} title={isOpen ? "收起" : "展开 clusters"}
                     style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
-                    <Eye size={14} />
-                  </button>
-                  <button onClick={() => { if (confirm("删除此队列行?")) deleteMut.mutate(row.id); }} title="删除"
-                    style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", padding: 2 }}>
-                    <Trash2 size={14} />
+                    {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
                 </div>
               </div>
 
               {isOpen && (
                 <div style={{ background: "var(--bg-panel)", borderTop: "1px solid var(--bg-panel)", padding: "6px 16px 6px 36px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 90px 90px 120px", color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--bg-panel)" }}>
-                    <span>Queue ID</span><span>Signature</span><span>状态</span><span>Task</span><span>错误</span>
+                  <div style={{ display: "grid", gridTemplateColumns: CLUSTER_COLS, color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
+                    <span>Queue ID</span><span>Signature</span><span style={{ textAlign: "center" }}>状态</span><span style={{ textAlign: "center" }}>Task</span><span style={{ textAlign: "center" }}>入队</span><span style={{ textAlign: "center" }}>更新</span><span style={{ textAlign: "center" }}>操作</span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 90px 90px 120px", padding: "5px 0", alignItems: "center" }}>
-                    <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>#{row.id}</span>
-                    <span style={{ fontFamily: "monospace", color: "var(--text-primary)", fontSize: "var(--fs-sm)" }}>{row.cluster_signature}</span>
-                    <span>{statusLabel(row.status, row.error_msg, row.retry_count)}</span>
-                    <span style={{ color: row.task_id != null ? "var(--accent-blue)" : "var(--text-faint)", fontSize: "var(--fs-sm)" }}>
-                      {row.task_id != null ? `#${row.task_id}` : "—"}
-                    </span>
-                    <span style={{ color: row.error_msg ? "var(--accent-red)" : "var(--text-faint)", fontSize: "var(--fs-xs)" }}>
-                      {row.error_msg ?? "—"}
-                    </span>
-                  </div>
+                  {group.rows.map((row) => (
+                    <div key={row.id} style={{ display: "grid", gridTemplateColumns: CLUSTER_COLS, padding: "5px 0", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                      <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>#{row.id}</span>
+                      <a onClick={() => setDrawerSig(row.cluster_signature)}
+                        style={{ fontFamily: "monospace", color: "var(--accent-blue)", cursor: "pointer", textDecoration: "none", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {row.cluster_signature}
+                      </a>
+                      <span style={{ textAlign: "center" }}>{statusLabel(row.status, row.error_msg, row.retry_count)}</span>
+                      <span style={{ color: row.task_id != null ? "var(--accent-blue)" : "var(--text-faint)", fontSize: "var(--fs-sm)", textAlign: "center" }}>
+                        {row.task_id != null ? `#${row.task_id}` : "—"}
+                      </span>
+                      <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{fmtTime(row.created_at)}</span>
+                      <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{fmtTime(row.updated_at)}</span>
+                      <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                        {row.status === "pending" && (
+                          <button onClick={() => dispatchMut.mutate([row.id])} title="加入调度队列"
+                            style={{ background: "none", border: "none", color: "var(--accent-green)", cursor: "pointer", padding: 2 }}>
+                            <Play size={14} />
+                          </button>
+                        )}
+                        {(row.status === "done" || row.status === "failed") && (
+                          <button onClick={() => retryMut.mutate(row.id)} title="重试"
+                            style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
+                            <RotateCcw size={14} />
+                          </button>
+                        )}
+                        <button onClick={() => setDrawerSig(row.cluster_signature)} title="查看原卡片"
+                          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}>
+                          <Eye size={14} />
+                        </button>
+                        <button onClick={() => { if (confirm("删除此 cluster?")) deleteMut.mutate(row.id); }} title="删除"
+                          style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", padding: 2 }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           );
         })}
-        {filtered.length === 0 && (
+        {grouped.length === 0 && (
           <div style={{ padding: 40, textAlign: "center", color: "var(--text-faint)" }}>暂无数据</div>
         )}
       </div>
