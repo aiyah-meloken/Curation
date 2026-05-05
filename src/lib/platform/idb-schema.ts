@@ -21,7 +21,10 @@ export const DB_NAME = "curation_cache";
 // last_sync_ts cursor — they'll never surface incrementally because
 // their event_at < the stored cursor. Bump forces a cards/articles
 // wipe + last_sync_ts reset → next /sync pulls full state.
-export const DB_VERSION = 2;
+// v3 (2026-05-05): local cache now stores dedup metadata and removes
+// superseded source cards when a deduped card arrives. Clear card state so
+// clients with stale source cards rebuild from server visibility.
+export const DB_VERSION = 3;
 
 export interface ArticleContentRow {
   article_id: string;

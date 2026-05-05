@@ -103,6 +103,27 @@ test("cards: sorts by card_date desc", async () => {
   assert.deepEqual(rows.map((r) => r.card_id), ["newB", "midC", "oldA"]);
 });
 
+test("cards: deduped delta replaces source cards and keeps source metadata", async () => {
+  await writeCardDelta([
+    card("srcA", { title: "source A" }),
+    card("srcB", { title: "source B" }),
+  ]);
+  await writeCardDelta([
+    card("dedupC", {
+      kind: "deduped",
+      source_card_ids: ["srcA", "srcB"],
+      source_article_ids: ["art-srcA", "art-srcB"],
+      title: "deduped",
+    }),
+  ]);
+
+  const rows = await readCards({});
+  assert.deepEqual(rows.map((r) => r.card_id), ["dedupC"]);
+  assert.equal(rows[0].kind, "deduped");
+  assert.deepEqual(rows[0].source_card_ids, ["srcA", "srcB"]);
+  assert.deepEqual(rows[0].source_article_ids, ["art-srcA", "art-srcB"]);
+});
+
 test("updateCardRow: patches existing row", async () => {
   await writeCardDelta([card("01A", { read_at: null })]);
   await updateCardRow("01A", { read_at: "2026-05-04T12:00:00Z" });

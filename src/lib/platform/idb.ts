@@ -52,6 +52,11 @@ function getDb(): Promise<IDBPDatabase<CurationCacheSchema>> {
             tx.objectStore("sync_state").delete("last_sync_ts");
           } catch { /* ditto */ }
         }
+        if (oldVersion < 3) {
+          try { tx.objectStore("cards").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("wechat_articles").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("sync_state").delete("last_sync_ts"); } catch { /* store may not exist */ }
+        }
       },
     });
   }
@@ -89,6 +94,7 @@ export async function writeCardDelta(rows: CachedCard[]): Promise<void> {
   if (rows.length === 0) return;
   const db = await getDb();
   const tx = db.transaction("cards", "readwrite");
+  const superseded = new Set<string>();
   // Merge with existing row instead of full overwrite. /sync doesn't
   // return content_md (server keeps the payload light; content is
   // fetched lazily by getCardContent and persisted via updateCardRow).
@@ -106,6 +112,14 @@ export async function writeCardDelta(rows: CachedCard[]): Promise<void> {
     } else {
       await tx.store.put(r);
     }
+    if (r.kind === "deduped" && Array.isArray(r.source_card_ids)) {
+      for (const sourceId of r.source_card_ids) {
+        if (sourceId !== r.card_id) superseded.add(sourceId);
+      }
+    }
+  }
+  for (const sourceId of superseded) {
+    await tx.store.delete(sourceId);
   }
   await tx.done;
 }

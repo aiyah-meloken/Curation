@@ -3,6 +3,31 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+fn decode_string_array(raw: Option<String>) -> Option<Vec<String>> {
+    let s = raw?;
+    serde_json::from_str::<Vec<String>>(&s).ok()
+}
+
+fn encode_string_array(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Array(_) => Some(value.to_string()),
+        _ => None,
+    }
+}
+
+fn value_string_array(value: &serde_json::Value) -> Vec<String> {
+    match value {
+        serde_json::Value::Array(items) => items
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect(),
+        serde_json::Value::String(s) => serde_json::from_str::<Vec<String>>(s).unwrap_or_default(),
+        _ => Vec::new(),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Row types
 // ---------------------------------------------------------------------------
@@ -11,6 +36,9 @@ use std::sync::Mutex;
 pub struct CardRow {
     pub card_id: String,
     pub article_id: String,
+    pub kind: Option<String>,
+    pub source_card_ids: Option<Vec<String>>,
+    pub source_article_ids: Option<Vec<String>>,
     pub title: Option<String>,
     pub article_title: Option<String>,
     pub content_md: Option<String>,
@@ -131,6 +159,9 @@ impl CacheDb {
             CREATE TABLE IF NOT EXISTS cards (
                 card_id TEXT PRIMARY KEY,
                 article_id TEXT NOT NULL,
+                kind TEXT,
+                source_card_ids TEXT,
+                source_article_ids TEXT,
                 title TEXT,
                 article_title TEXT,
                 content_md TEXT,
@@ -245,11 +276,8 @@ impl CacheDb {
             .prepare("SELECT publish_time FROM cards LIMIT 0")
             .is_ok();
         if !has_col {
-            conn.execute(
-                "ALTER TABLE cards ADD COLUMN publish_time TEXT",
-                [],
-            )
-            .map_err(|e| e.to_string())?;
+            conn.execute("ALTER TABLE cards ADD COLUMN publish_time TEXT", [])
+                .map_err(|e| e.to_string())?;
         }
 
         // Add article_title if missing (migration for existing DBs)
@@ -257,11 +285,8 @@ impl CacheDb {
             .prepare("SELECT article_title FROM cards LIMIT 0")
             .is_ok();
         if !has_article_title {
-            conn.execute(
-                "ALTER TABLE cards ADD COLUMN article_title TEXT",
-                [],
-            )
-            .map_err(|e| e.to_string())?;
+            conn.execute("ALTER TABLE cards ADD COLUMN article_title TEXT", [])
+                .map_err(|e| e.to_string())?;
         }
 
         // Additive migrations for the 5 article fields added mid-project.
@@ -271,15 +296,36 @@ impl CacheDb {
         // never backfill the new columns).
         let mut reset_cursor = false;
         for (name, ddl) in [
-            ("account_id", "ALTER TABLE cards ADD COLUMN account_id INTEGER"),
+            (
+                "account_id",
+                "ALTER TABLE cards ADD COLUMN account_id INTEGER",
+            ),
             ("biz", "ALTER TABLE cards ADD COLUMN biz TEXT"),
             ("cover_url", "ALTER TABLE cards ADD COLUMN cover_url TEXT"),
             ("digest", "ALTER TABLE cards ADD COLUMN digest TEXT"),
-            ("word_count", "ALTER TABLE cards ADD COLUMN word_count INTEGER"),
-            ("is_original", "ALTER TABLE cards ADD COLUMN is_original INTEGER"),
+            (
+                "word_count",
+                "ALTER TABLE cards ADD COLUMN word_count INTEGER",
+            ),
+            (
+                "is_original",
+                "ALTER TABLE cards ADD COLUMN is_original INTEGER",
+            ),
             ("template", "ALTER TABLE cards ADD COLUMN template TEXT"),
-            ("template_reason", "ALTER TABLE cards ADD COLUMN template_reason TEXT"),
+            (
+                "template_reason",
+                "ALTER TABLE cards ADD COLUMN template_reason TEXT",
+            ),
             ("entities", "ALTER TABLE cards ADD COLUMN entities TEXT"),
+            ("kind", "ALTER TABLE cards ADD COLUMN kind TEXT"),
+            (
+                "source_card_ids",
+                "ALTER TABLE cards ADD COLUMN source_card_ids TEXT",
+            ),
+            (
+                "source_article_ids",
+                "ALTER TABLE cards ADD COLUMN source_article_ids TEXT",
+            ),
         ] {
             let probe = format!("SELECT {} FROM cards LIMIT 0", name);
             if !conn.prepare(&probe).is_ok() {
@@ -300,7 +346,10 @@ impl CacheDb {
         // SQLite ≥3.25 supports RENAME COLUMN; if the column is already named
         // card_date (fresh install or already migrated) the statement silently
         // fails and we carry on.
-        if conn.prepare("SELECT article_date FROM cards LIMIT 0").is_ok() {
+        if conn
+            .prepare("SELECT article_date FROM cards LIMIT 0")
+            .is_ok()
+        {
             let _ = conn.execute(
                 "ALTER TABLE cards RENAME COLUMN article_date TO card_date",
                 [],
@@ -333,7 +382,8 @@ impl CacheDb {
                 )
                 .unwrap_or(0);
             if stale > 0 {
-                conn.execute("DELETE FROM sync_state WHERE key = 'last_sync_ts'", []).ok();
+                conn.execute("DELETE FROM sync_state WHERE key = 'last_sync_ts'", [])
+                    .ok();
             }
             conn.execute(
                 "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
@@ -402,6 +452,33 @@ impl CacheDb {
             .ok();
         }
 
+        // 2026-05-05: dedup visibility became cache-enforced. Older local
+        // caches may still hold source cards that the server now supersedes.
+        // Clear card-side state once so /sync rebuilds from current delivery
+        // visibility and carries kind/source_* metadata.
+        const DEDUP_CACHE_MARKER: &str = "dedup_cache_replacement_v1";
+        let dedup_done: bool = conn
+            .query_row(
+                "SELECT 1 FROM sync_state WHERE key = ?1",
+                [DEDUP_CACHE_MARKER],
+                |r| r.get::<_, i64>(0),
+            )
+            .is_ok();
+        if !dedup_done {
+            let _ = conn.execute_batch(
+                "DELETE FROM cards;
+                 DELETE FROM cards_fts;
+                 DELETE FROM wechat_articles;
+                 DELETE FROM favorites WHERE item_type = 'card';
+                 DELETE FROM sync_state WHERE key = 'last_sync_ts';",
+            );
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
+                [DEDUP_CACHE_MARKER],
+            )
+            .ok();
+        }
+
         Ok(())
     }
 
@@ -416,7 +493,8 @@ impl CacheDb {
     ) -> Result<Vec<CardRow>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut sql = String::from(
-            "SELECT card_id, article_id, title, article_title, content_md, description, routing,
+            "SELECT card_id, article_id, kind, source_card_ids, source_article_ids,
+                    title, article_title, content_md, description, routing,
                     template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                     account_id, biz, cover_url, digest, word_count, is_original, entities
              FROM cards WHERE routing IS NOT NULL",
@@ -436,27 +514,30 @@ impl CacheDb {
                 Ok(CardRow {
                     card_id: row.get(0)?,
                     article_id: row.get(1)?,
-                    title: row.get(2)?,
-                    article_title: row.get(3)?,
-                    content_md: row.get(4)?,
-                    description: row.get(5)?,
-                    routing: row.get(6)?,
-                    template: row.get(7)?,
-                    template_reason: row.get(8)?,
-                    card_date: row.get(9)?,
-                    account: row.get(10)?,
-                    author: row.get(11)?,
-                    url: row.get(12)?,
-                    read_at: row.get(13)?,
-                    updated_at: row.get(14)?,
-                    publish_time: row.get(15)?,
-                    account_id: row.get(16)?,
-                    biz: row.get(17)?,
-                    cover_url: row.get(18)?,
-                    digest: row.get(19)?,
-                    word_count: row.get(20)?,
-                    is_original: row.get(21)?,
-                    entities: row.get(22)?,
+                    kind: row.get(2)?,
+                    source_card_ids: decode_string_array(row.get::<_, Option<String>>(3)?),
+                    source_article_ids: decode_string_array(row.get::<_, Option<String>>(4)?),
+                    title: row.get(5)?,
+                    article_title: row.get(6)?,
+                    content_md: row.get(7)?,
+                    description: row.get(8)?,
+                    routing: row.get(9)?,
+                    template: row.get(10)?,
+                    template_reason: row.get(11)?,
+                    card_date: row.get(12)?,
+                    account: row.get(13)?,
+                    author: row.get(14)?,
+                    url: row.get(15)?,
+                    read_at: row.get(16)?,
+                    updated_at: row.get(17)?,
+                    publish_time: row.get(18)?,
+                    account_id: row.get(19)?,
+                    biz: row.get(20)?,
+                    cover_url: row.get(21)?,
+                    digest: row.get(22)?,
+                    word_count: row.get(23)?,
+                    is_original: row.get(24)?,
+                    entities: row.get(25)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -467,27 +548,30 @@ impl CacheDb {
                 Ok(CardRow {
                     card_id: row.get(0)?,
                     article_id: row.get(1)?,
-                    title: row.get(2)?,
-                    article_title: row.get(3)?,
-                    content_md: row.get(4)?,
-                    description: row.get(5)?,
-                    routing: row.get(6)?,
-                    template: row.get(7)?,
-                    template_reason: row.get(8)?,
-                    card_date: row.get(9)?,
-                    account: row.get(10)?,
-                    author: row.get(11)?,
-                    url: row.get(12)?,
-                    read_at: row.get(13)?,
-                    updated_at: row.get(14)?,
-                    publish_time: row.get(15)?,
-                    account_id: row.get(16)?,
-                    biz: row.get(17)?,
-                    cover_url: row.get(18)?,
-                    digest: row.get(19)?,
-                    word_count: row.get(20)?,
-                    is_original: row.get(21)?,
-                    entities: row.get(22)?,
+                    kind: row.get(2)?,
+                    source_card_ids: decode_string_array(row.get::<_, Option<String>>(3)?),
+                    source_article_ids: decode_string_array(row.get::<_, Option<String>>(4)?),
+                    title: row.get(5)?,
+                    article_title: row.get(6)?,
+                    content_md: row.get(7)?,
+                    description: row.get(8)?,
+                    routing: row.get(9)?,
+                    template: row.get(10)?,
+                    template_reason: row.get(11)?,
+                    card_date: row.get(12)?,
+                    account: row.get(13)?,
+                    author: row.get(14)?,
+                    url: row.get(15)?,
+                    read_at: row.get(16)?,
+                    updated_at: row.get(17)?,
+                    publish_time: row.get(18)?,
+                    account_id: row.get(19)?,
+                    biz: row.get(20)?,
+                    cover_url: row.get(21)?,
+                    digest: row.get(22)?,
+                    word_count: row.get(23)?,
+                    is_original: row.get(24)?,
+                    entities: row.get(25)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -571,10 +655,7 @@ impl CacheDb {
         .map_err(|e| e.to_string())?;
         conn.execute(
             "INSERT INTO sync_queue (action, payload, created_at) VALUES ('mark_read', ?1, ?2)",
-            rusqlite::params![
-                serde_json::json!({"card_id": card_id}).to_string(),
-                read_at,
-            ],
+            rusqlite::params![serde_json::json!({"card_id": card_id}).to_string(), read_at,],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -590,10 +671,7 @@ impl CacheDb {
         .map_err(|e| e.to_string())?;
         conn.execute(
             "INSERT INTO sync_queue (action, payload, created_at) VALUES ('mark_unread', ?1, ?2)",
-            rusqlite::params![
-                serde_json::json!({"card_id": card_id}).to_string(),
-                now,
-            ],
+            rusqlite::params![serde_json::json!({"card_id": card_id}).to_string(), now,],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -709,9 +787,11 @@ impl CacheDb {
 
     pub fn upsert_accounts(&self, accounts: &[serde_json::Value]) -> Result<usize, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
+        conn.execute_batch("BEGIN TRANSACTION")
+            .map_err(|e| e.to_string())?;
         // Replace all — server is source of truth
-        conn.execute("DELETE FROM wechat_subscriptions", []).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM wechat_subscriptions", [])
+            .map_err(|e| e.to_string())?;
         let mut count = 0usize;
         for acct in accounts {
             conn.execute(
@@ -762,10 +842,15 @@ impl CacheDb {
         Ok(rows)
     }
 
-    pub fn upsert_discoverable_accounts(&self, accounts: &[serde_json::Value]) -> Result<usize, String> {
+    pub fn upsert_discoverable_accounts(
+        &self,
+        accounts: &[serde_json::Value],
+    ) -> Result<usize, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM discoverable_wechat_accounts", []).map_err(|e| e.to_string())?;
+        conn.execute_batch("BEGIN TRANSACTION")
+            .map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM discoverable_wechat_accounts", [])
+            .map_err(|e| e.to_string())?;
         let mut count = 0usize;
         for acct in accounts {
             conn.execute(
@@ -793,10 +878,21 @@ impl CacheDb {
 
     pub fn upsert_cards(&self, cards: &[serde_json::Value]) -> Result<usize, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
+        conn.execute_batch("BEGIN TRANSACTION")
+            .map_err(|e| e.to_string())?;
         let mut count = 0usize;
+        let mut superseded_source_ids: Vec<String> = Vec::new();
         for card in cards {
             let card_id = card["card_id"].as_str().unwrap_or_default();
+            let source_card_ids_json = encode_string_array(&card["source_card_ids"]);
+            let source_article_ids_json = encode_string_array(&card["source_article_ids"]);
+            if card["kind"].as_str() == Some("deduped") {
+                for source_id in value_string_array(&card["source_card_ids"]) {
+                    if source_id != card_id {
+                        superseded_source_ids.push(source_id);
+                    }
+                }
+            }
             // Delete old FTS entry (get rowid first)
             if let Ok(rowid) = conn.query_row(
                 "SELECT rowid FROM cards WHERE card_id = ?1",
@@ -813,11 +909,7 @@ impl CacheDb {
             // array as TEXT (frontend parses on the way out). Tolerate either an
             // already-stringified value or a real JSON array in the payload.
             let entities_json: Option<String> = match &card["entities"] {
-                serde_json::Value::Null => None,
-                serde_json::Value::String(s) => Some(s.clone()),
-                v @ serde_json::Value::Array(_) => Some(v.to_string()),
-                // Unexpected type — drop rather than panic.
-                _ => None,
+                v => encode_string_array(v),
             };
             // UPSERT — preserve content_md when the incoming row's value
             // is NULL. /sync intentionally omits content_md to keep payloads
@@ -828,12 +920,16 @@ impl CacheDb {
             // would-be-inserted row in the DO UPDATE clause.
             conn.execute(
                 "INSERT INTO cards
-                 (card_id, article_id, title, article_title, content_md, description, routing,
+                 (card_id, article_id, kind, source_card_ids, source_article_ids,
+                  title, article_title, content_md, description, routing,
                   template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                   account_id, biz, cover_url, digest, word_count, is_original, entities)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26)
                  ON CONFLICT(card_id) DO UPDATE SET
                    article_id      = excluded.article_id,
+                   kind            = excluded.kind,
+                   source_card_ids = excluded.source_card_ids,
+                   source_article_ids = excluded.source_article_ids,
                    title           = excluded.title,
                    article_title   = excluded.article_title,
                    content_md      = COALESCE(excluded.content_md, cards.content_md),
@@ -858,6 +954,9 @@ impl CacheDb {
                 rusqlite::params![
                     card_id,
                     card["article_id"].as_str().unwrap_or_default(),
+                    card["kind"].as_str(),
+                    source_card_ids_json,
+                    source_article_ids_json,
                     card["title"].as_str(),
                     card["article_title"].as_str(),
                     card["content_md"].as_str(),
@@ -899,6 +998,23 @@ impl CacheDb {
                 .ok();
             }
             count += 1;
+        }
+        superseded_source_ids.sort();
+        superseded_source_ids.dedup();
+        for source_id in superseded_source_ids {
+            if let Ok(rowid) = conn.query_row(
+                "SELECT rowid FROM cards WHERE card_id = ?1",
+                [source_id.as_str()],
+                |r| r.get::<_, i64>(0),
+            ) {
+                conn.execute(
+                    "DELETE FROM cards_fts WHERE rowid = ?1",
+                    rusqlite::params![rowid],
+                )
+                .ok();
+            }
+            conn.execute("DELETE FROM cards WHERE card_id = ?1", [source_id.as_str()])
+                .map_err(|e| e.to_string())?;
         }
         conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
         Ok(count)
@@ -1033,7 +1149,12 @@ impl CacheDb {
     }
 
     /// Write content_md for a card and update its FTS entry.
-    pub fn update_card_content(&self, card_id: &str, content_md: &str, updated_at: &str) -> Result<(), String> {
+    pub fn update_card_content(
+        &self,
+        card_id: &str,
+        content_md: &str,
+        updated_at: &str,
+    ) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute(
             "UPDATE cards SET content_md = ?1, updated_at = ?2 WHERE card_id = ?3",
@@ -1061,11 +1182,7 @@ impl CacheDb {
                 .flatten();
             conn.execute(
                 "INSERT INTO cards_fts (rowid, title, content_md) VALUES (?1, ?2, ?3)",
-                rusqlite::params![
-                    rowid,
-                    title.as_deref().unwrap_or_default(),
-                    content_md,
-                ],
+                rusqlite::params![rowid, title.as_deref().unwrap_or_default(), content_md,],
             )
             .ok();
         }
@@ -1191,10 +1308,7 @@ impl CacheDb {
         Ok(rows)
     }
 
-    pub fn get_card_id_for_session(
-        &self,
-        session_id: &str,
-    ) -> Result<Option<String>, String> {
+    pub fn get_card_id_for_session(&self, session_id: &str) -> Result<Option<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
             .prepare("SELECT card_id FROM chat_sessions WHERE session_id = ?1")
@@ -1238,5 +1352,4 @@ impl CacheDb {
         .map_err(|e| e.to_string())?;
         Ok(())
     }
-
 }

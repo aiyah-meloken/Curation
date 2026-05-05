@@ -4,6 +4,9 @@ import type { FavoriteItem } from "../../types";
 export interface CachedCard {
   card_id: string;
   article_id: string;
+  kind?: string | null;
+  source_card_ids?: string[] | null;
+  source_article_ids?: string[] | null;
   title: string | null;
   article_title: string | null;
   content_md: string | null;

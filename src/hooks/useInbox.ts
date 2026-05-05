@@ -10,6 +10,9 @@ function cachedToInbox(c: CachedCard): InboxItem {
   return {
     card_id: c.card_id,
     article_id: c.article_id,
+    kind: (c.kind as InboxItem["kind"]) ?? undefined,
+    source_card_ids: c.source_card_ids ?? null,
+    source_article_ids: c.source_article_ids ?? undefined,
     title: c.title ?? "",
     description: desc ?? null,
     entities: parseEntities(c.entities),
