@@ -1,12 +1,13 @@
 {
   "name": "curation",
   "private": true,
-  "version": "0.2.27",
+  "version": "0.2.28",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:web": "vite --config vite.config.web.ts",
     "dev:map": "vite --config vite.config.map.ts",
+    "generate:logo": "python3 scripts/generate_logo_assets.py",
     "build": "tsc && vite build",
     "build:web": "VITE_AUTHING_REDIRECT_URI= tsc && VITE_AUTHING_REDIRECT_URI= vite build --config vite.config.web.ts",
     "build:map": "tsc && vite build --config vite.config.map.ts",
