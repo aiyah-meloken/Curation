@@ -59,8 +59,8 @@ jobs:
           VITE_AUTHING_REDIRECT_URI: ${{ vars.VITE_AUTHING_REDIRECT_URI }}
         with:
           args: ${{ matrix.args }}
-          tagName: v__VERSION__
-          releaseName: 'v__VERSION__'
+          tagName: ${{ github.ref_name }}
+          releaseName: ${{ github.ref_name }}
           releaseBody: |
             ## Downloads
 
