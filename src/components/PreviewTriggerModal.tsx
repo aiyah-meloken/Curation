@@ -10,6 +10,15 @@ interface AppUser {
   is_active: boolean;
 }
 
+interface PreviewSummaryRow {
+  user_id: number;
+  date: string;
+  n_candidates: number;
+  n_singletons: number;
+  n_forced_singletons: number;
+  queue_ids: number[];
+}
+
 function dateRange(start: string, end: string): string[] {
   // String-based YYYY-MM-DD arithmetic to avoid timezone-induced drift across
   // browsers in different timezones / DST boundaries. Inputs are 'YYYY-MM-DD'
@@ -42,6 +51,7 @@ export function PreviewTriggerModal({
   const [endDate, setEndDate] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<PreviewSummaryRow[] | null>(null);
 
   useEffect(() => {
     apiFetch("/users")
@@ -78,15 +88,20 @@ export function PreviewTriggerModal({
 
     setSubmitting(true);
     try {
-      await previewDedup(Array.from(selectedUsers), dates);
-      onSuccess?.();
-      onClose();
+      const resp = await previewDedup(Array.from(selectedUsers), dates);
+      const rows = (resp.summary as PreviewSummaryRow[]) || [];
+      setResult(rows);
+      onSuccess?.(); // notify parent to refresh queue list, but keep modal open
+                     // so the admin can see the per-(user,date) breakdown
     } catch (e) {
       setError(e instanceof Error ? e.message : "请求失败");
     } finally {
       setSubmitting(false);
     }
   };
+
+  const totalCandidates = result?.reduce((s, r) => s + r.n_candidates, 0) ?? 0;
+  const userById = new Map(users.map((u) => [u.id, u]));
 
   return (
     /* Overlay */
@@ -225,6 +240,53 @@ export function PreviewTriggerModal({
           <div style={{ color: "var(--accent-red)", fontSize: "var(--fs-xs)" }}>{error}</div>
         )}
 
+        {/* Result summary (post-submit) */}
+        {result && (
+          <div style={{
+            border: "1px solid var(--border)", borderRadius: 4,
+            background: "var(--bg-base)", padding: 10,
+            display: "flex", flexDirection: "column", gap: 6,
+            maxHeight: 200, overflowY: "auto",
+          }}>
+            <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
+              触发结果：共 {result.length} 组 (user × 日期)，
+              入队 cluster 总数{" "}
+              <b style={{ color: totalCandidates > 0 ? "var(--accent-green)" : "var(--text-faint)" }}>
+                {totalCandidates}
+              </b>
+              {totalCandidates === 0 && "（说明：该范围内没有跨文章可合并的事件）"}
+            </div>
+            <table style={{ fontSize: "var(--fs-xs)", borderCollapse: "collapse" }}>
+              <thead style={{ color: "var(--text-faint)" }}>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "2px 6px" }}>用户</th>
+                  <th style={{ textAlign: "left", padding: "2px 6px" }}>日期</th>
+                  <th style={{ textAlign: "right", padding: "2px 6px" }}>cluster</th>
+                  <th style={{ textAlign: "right", padding: "2px 6px" }}>独立卡</th>
+                  <th style={{ textAlign: "right", padding: "2px 6px" }}>无法分析</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.map((r) => {
+                  const u = userById.get(r.user_id);
+                  return (
+                    <tr key={`${r.user_id}-${r.date}`}>
+                      <td style={{ padding: "2px 6px" }}>{u?.username || u?.email || `#${r.user_id}`}</td>
+                      <td style={{ padding: "2px 6px", fontFamily: "monospace" }}>{r.date}</td>
+                      <td style={{ padding: "2px 6px", textAlign: "right",
+                        color: r.n_candidates > 0 ? "var(--accent-green)" : "var(--text-faint)",
+                        fontWeight: r.n_candidates > 0 ? 600 : 400,
+                      }}>{r.n_candidates}</td>
+                      <td style={{ padding: "2px 6px", textAlign: "right", color: "var(--text-muted)" }}>{r.n_singletons}</td>
+                      <td style={{ padding: "2px 6px", textAlign: "right", color: "var(--text-muted)" }}>{r.n_forced_singletons}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* Actions */}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
           <button onClick={onClose}
@@ -233,21 +295,34 @@ export function PreviewTriggerModal({
               color: "var(--text-muted)", borderRadius: 4,
               padding: "5px 16px", cursor: "pointer", fontSize: "var(--fs-sm)",
             }}>
-            取消
+            {result ? "关闭" : "取消"}
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            style={{
-              background: submitting ? "var(--bg-base)" : "var(--accent-gold)",
-              border: "none", borderRadius: 4,
-              color: submitting ? "var(--text-muted)" : "#fff",
-              padding: "5px 16px",
-              cursor: submitting ? "default" : "pointer",
-              fontSize: "var(--fs-sm)", fontWeight: 500,
-            }}>
-            {submitting ? "提交中…" : "触发"}
-          </button>
+          {!result && (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{
+                background: submitting ? "var(--bg-base)" : "var(--accent-gold)",
+                border: "none", borderRadius: 4,
+                color: submitting ? "var(--text-muted)" : "#fff",
+                padding: "5px 16px",
+                cursor: submitting ? "default" : "pointer",
+                fontSize: "var(--fs-sm)", fontWeight: 500,
+              }}>
+              {submitting ? "提交中…" : "触发"}
+            </button>
+          )}
+          {result && (
+            <button
+              onClick={() => { setResult(null); setError(null); }}
+              style={{
+                background: "var(--bg-base)", border: "1px solid var(--border)",
+                color: "var(--text-primary)", borderRadius: 4,
+                padding: "5px 16px", cursor: "pointer", fontSize: "var(--fs-sm)",
+              }}>
+              再触发一次
+            </button>
+          )}
         </div>
       </div>
     </div>
