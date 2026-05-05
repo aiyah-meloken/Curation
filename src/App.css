@@ -233,7 +233,15 @@ body {
   letter-spacing: -0.01em;
 }
 
-.markdown-body h3,
+.markdown-body h3 {
+  font-family: var(--font-ui);
+  color: var(--accent-gold-hi) !important;
+  border-bottom: none !important;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  font-weight: 700;
+}
+
 .markdown-body h4 {
   font-family: var(--font-ui);
   color: var(--text-primary) !important;
