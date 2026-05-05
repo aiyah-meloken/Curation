@@ -298,7 +298,11 @@ export interface DedupQueueRow {
   user_id: number;
   card_date: string;
   cluster_signature: string;
-  status: 'pending' | 'running' | 'done' | 'failed';
+  /** pending: previewed, awaiting admin dispatch.
+   *  queued:  admin/auto requested dispatch, scheduler will pick up.
+   *  running: scheduler spawned a Run for the linked Task.
+   *  done/failed: terminal. */
+  status: 'pending' | 'queued' | 'running' | 'done' | 'failed';
   task_id: number | null;
   retry_count: number;
   error_msg: string | null;

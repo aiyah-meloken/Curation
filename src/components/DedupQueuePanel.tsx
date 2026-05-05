@@ -72,7 +72,8 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
     staleTime: 2000,
   });
   const autoToggleMut = useMutation({
-    mutationFn: (enabled: boolean) => setDedupAutoConfig(enabled),
+    mutationFn: (patch: Partial<{ enabled: boolean; auto_launch: boolean; max_concurrency: number }>) =>
+      setDedupAutoConfig(patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dedupAutoConfig"] }),
   });
 
@@ -83,6 +84,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
     card_date: string;
     rows: DedupQueueRow[];
     pending: number;
+    queued: number;
     running: number;
     done: number;
     failed: number;
@@ -94,11 +96,12 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
       let g = map.get(key);
       if (!g) {
         g = { key, user_id: r.user_id, card_date: r.card_date, rows: [],
-              pending: 0, running: 0, done: 0, failed: 0 };
+              pending: 0, queued: 0, running: 0, done: 0, failed: 0 };
         map.set(key, g);
       }
       g.rows.push(r);
       if (r.status === "pending") g.pending++;
+      else if (r.status === "queued") g.queued++;
       else if (r.status === "running") g.running++;
       else if (r.status === "done") g.done++;
       else if (r.status === "failed") g.failed++;
@@ -124,13 +127,15 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
 
   // Header summaries
   const totalPending = queue.filter((r) => r.status === "pending").length;
+  const totalQueued  = queue.filter((r) => r.status === "queued").length;
   const totalRunning = queue.filter((r) => r.status === "running").length;
   const totalDone    = queue.filter((r) => r.status === "done").length;
   const totalFailed  = queue.filter((r) => r.status === "failed").length;
 
   const chips: { key: string; label: string }[] = [
     { key: "all",     label: "全部" },
-    { key: "pending", label: "待处理" },
+    { key: "pending", label: "待派发" },
+    { key: "queued",  label: "已排队" },
     { key: "running", label: "运行中" },
     { key: "done",    label: "完成" },
     { key: "failed",  label: "失败" },
@@ -143,20 +148,43 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-base)", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
         <span>共 {queue.length} 条 ({groups.length} 组)</span>
         <span style={{ color: "var(--border)" }}>|</span>
-        {totalPending > 0 && <span>待处理 <b style={{ color: "var(--text-primary)" }}>{totalPending}</b></span>}
+        {totalPending > 0 && <span>待派发 <b style={{ color: "var(--text-primary)" }}>{totalPending}</b></span>}
+        {totalQueued  > 0 && <span style={{ color: "var(--accent-blue)" }}>已排队 <b>{totalQueued}</b></span>}
         {totalRunning > 0 && <span style={{ color: "var(--accent-gold)" }}>运行中 <b>{totalRunning}</b></span>}
         {totalDone    > 0 && <span style={{ color: "var(--accent-green)" }}>完成 <b>{totalDone}</b></span>}
         {totalFailed  > 0 && <span style={{ color: "var(--accent-red)" }}>失败 <b>{totalFailed}</b></span>}
         <div style={{ flex: 1 }} />
-        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+        {/* Scheduler control: auto_launch (gate the whole loop) + max_concurrency */}
+        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+          title="开 = scheduler 拉 queued 行 spawn run；关 = 全停（只标记不执行）">
+          <input type="checkbox"
+            checked={!!autoConfig?.auto_launch}
+            disabled={autoToggleMut.isPending}
+            onChange={(e) => autoToggleMut.mutate({ auto_launch: e.target.checked })} />
+          <span>调度 {autoConfig?.auto_launch ? <b style={{ color: "var(--accent-green)" }}>开</b> : <b style={{ color: "var(--accent-red)" }}>停</b>}</span>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}
+          title={`并发上限（硬顶 ${autoConfig?.max_concurrency_hard_cap ?? 2}）`}>
+          <span>并发</span>
+          <select
+            value={autoConfig?.max_concurrency ?? 1}
+            disabled={autoToggleMut.isPending || !autoConfig}
+            onChange={(e) => autoToggleMut.mutate({ max_concurrency: Number(e.target.value) })}
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-xs)" }}>
+            {Array.from({ length: autoConfig?.max_concurrency_hard_cap ?? 2 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
           title={autoConfig?.schedule ?? "daily 05:00 CST"}>
           <input type="checkbox"
             checked={!!autoConfig?.enabled}
             disabled={autoToggleMut.isPending}
-            onChange={(e) => autoToggleMut.mutate(e.target.checked)} />
-          <span>每日5点自动 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>已启用</b> : "未启用"}</span>
+            onChange={(e) => autoToggleMut.mutate({ enabled: e.target.checked })} />
+          <span>每日5点 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>开</b> : "关"}</span>
           {autoConfig?.last_run_date && (
-            <span style={{ color: "var(--text-faint)" }}>· 上次 {autoConfig.last_run_date}</span>
+            <span style={{ color: "var(--text-faint)" }}>· {autoConfig.last_run_date}</span>
           )}
         </label>
       </div>
@@ -230,6 +258,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
                 <span style={{ display: "flex", gap: 12, fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                   <span>{g.rows.length} cluster</span>
                   {g.pending > 0 && <span>· 待 <b style={{ color: "var(--text-primary)" }}>{g.pending}</b></span>}
+                  {g.queued  > 0 && <span style={{ color: "var(--accent-blue)" }}>· 排 <b>{g.queued}</b></span>}
                   {g.running > 0 && <span style={{ color: "var(--accent-gold)" }}>· 跑 <b>{g.running}</b></span>}
                   {g.done    > 0 && <span style={{ color: "var(--accent-green)" }}>· 完 <b>{g.done}</b></span>}
                   {g.failed  > 0 && <span style={{ color: "var(--accent-red)" }}>· 败 <b>{g.failed}</b></span>}
@@ -238,7 +267,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
                   <button
                     onClick={() => dispatchGroup(g)}
                     disabled={g.pending === 0 || dispatchMut.isPending}
-                    title="派发该组所有待处理"
+                    title="将该组所有待派发行加入调度队列"
                     style={{
                       background: g.pending > 0 ? "var(--accent-green)" : "var(--bg-panel)",
                       border: "1px solid var(--border)",
@@ -278,7 +307,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
                       <Eye size={12} /> 查看原卡片
                     </button>
                     {row.status === "pending" && (
-                      <button onClick={() => dispatchMut.mutate([row.id])} title="派发"
+                      <button onClick={() => dispatchMut.mutate([row.id])} title="加入调度队列"
                         style={{ background: "none", border: "none", color: "var(--accent-green)", cursor: "pointer", padding: 2 }}>
                         <Play size={14} />
                       </button>

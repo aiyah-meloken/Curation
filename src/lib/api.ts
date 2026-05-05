@@ -455,6 +455,9 @@ export interface DedupAutoConfig {
   enabled: boolean;
   last_run_date: string | null;
   schedule: string;
+  auto_launch: boolean;
+  max_concurrency: number;
+  max_concurrency_hard_cap: number;
 }
 
 export async function fetchDedupAutoConfig(): Promise<DedupAutoConfig> {
@@ -462,11 +465,13 @@ export async function fetchDedupAutoConfig(): Promise<DedupAutoConfig> {
   return res.json();
 }
 
-export async function setDedupAutoConfig(enabled: boolean): Promise<{ enabled: boolean }> {
+export async function setDedupAutoConfig(
+  patch: Partial<{ enabled: boolean; auto_launch: boolean; max_concurrency: number }>,
+): Promise<DedupAutoConfig> {
   const res = await apiFetch("/dedup/auto-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify(patch),
   });
   return res.json();
 }
