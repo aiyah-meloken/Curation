@@ -6,9 +6,10 @@ import {
   fetchDedupAutoConfig, setDedupAutoConfig,
 } from "../lib/api";
 import type { DedupTaskRow, DedupTaskRun, DedupQueueRow } from "../types";
-import { fmtTime, statusLabel } from "../lib/tableHelpers";
+import { fmtTime, runStatusColor, statusLabel } from "../lib/tableHelpers";
+import { RunDetailDrawer } from "./RunDetailDrawer";
 
-function TaskRunHistory({ taskId }: { taskId: number }) {
+function TaskRunHistory({ taskId, onOpenRun }: { taskId: number; onOpenRun: (runId: number) => void }) {
   const { data: runs = [], isLoading } = useQuery<DedupTaskRun[]>({
     queryKey: ["dedupTaskRuns", taskId],
     queryFn: () => fetchDedupTaskRuns(taskId),
@@ -19,16 +20,23 @@ function TaskRunHistory({ taskId }: { taskId: number }) {
   if (runs.length === 0) return <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-xs)" }}>暂无运行记录</span>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 70px 90px 100px", color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--bg-panel)" }}>
+        <span>Run ID</span><span>后端</span><span>状态</span><span>开始时间</span><span>完成时间</span>
+      </div>
       {runs.map((r) => (
-        <div key={r.run_id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
-          <span style={{ fontFamily: "monospace", color: "var(--accent-blue)" }}>#{r.run_id}</span>
-          <span style={{ color: "var(--text-faint)" }}>{r.backend ?? "—"}</span>
-          {statusLabel(r.status, r.error_msg)}
-          <span>{fmtTime(r.started_at)}</span>
+        <div key={r.run_id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 70px 90px 100px", padding: "5px 0", borderBottom: "1px solid var(--bg-panel)", alignItems: "center" }}>
+          <a onClick={() => onOpenRun(r.run_id)}
+            style={{ color: "var(--accent-blue)", fontSize: "var(--fs-sm)", cursor: "pointer", textDecoration: "none" }}>
+            #{r.run_id}
+          </a>
+          <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.backend ?? "—"}</span>
+          <span style={{ color: runStatusColor(r.status), fontSize: "var(--fs-sm)" }}>{r.status}</span>
+          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtTime(r.started_at)}</span>
+          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{fmtTime(r.completed_at)}</span>
         </div>
       ))}
-    </div>
+    </>
   );
 }
 
@@ -55,23 +63,19 @@ function TaskServingRows({ taskId }: { taskId: number }) {
   );
 }
 
-function ExpandedRow({ task }: { task: DedupTaskRow }) {
+function ExpandedRow({ task, onOpenRun }: { task: DedupTaskRow; onOpenRun: (runId: number) => void }) {
   return (
     <div style={{
       gridColumn: "1 / -1",
-      padding: "12px 16px 12px 40px",
-      background: "color-mix(in srgb, var(--bg-panel) 60%, transparent)",
-      borderBottom: "1px solid var(--bg-panel)",
-      display: "flex",
-      gap: 32,
-      flexWrap: "wrap",
+      background: "var(--bg-panel)",
+      borderTop: "1px solid var(--bg-panel)",
+      padding: "6px 16px 6px 36px",
     }}>
-      <div style={{ minWidth: 200 }}>
-        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>运行历史</div>
-        <TaskRunHistory taskId={task.task_id} />
+      <div style={{ marginBottom: 10 }}>
+        <TaskRunHistory taskId={task.task_id} onOpenRun={onOpenRun} />
       </div>
-      <div style={{ minWidth: 200 }}>
-        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 600, marginBottom: 6 }}>服务中的队列行</div>
+      <div>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", padding: "4px 0", borderBottom: "1px solid var(--bg-panel)" }}>服务中的队列行</div>
         <TaskServingRows taskId={task.task_id} />
       </div>
     </div>
@@ -84,6 +88,7 @@ export function DedupTasksPanel() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [detailRunId, setDetailRunId] = useState<number | null>(null);
 
   const { data: tasks = [], refetch, isFetching } = useQuery<DedupTaskRow[]>({
     queryKey: ["dedupTasks", statusFilter === "all" ? undefined : statusFilter],
@@ -121,16 +126,6 @@ export function DedupTasksPanel() {
     });
   };
 
-  // Task statuses are pending/running/done/failed (no 'queued' on the Task
-  // itself; queued is at DedupQueue layer). Mirror article queue filter set.
-  const chips: { key: string; label: string }[] = [
-    { key: "all",     label: "全部" },
-    { key: "pending", label: "待执行" },
-    { key: "running", label: "运行中" },
-    { key: "done",    label: "完成" },
-    { key: "failed",  label: "失败" },
-  ];
-
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
@@ -163,22 +158,18 @@ export function DedupTasksPanel() {
 
       {/* Controls bar */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+        display: "flex", alignItems: "center", gap: 12, padding: "8px 16px",
         borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-panel)",
         flexWrap: "wrap", fontSize: "var(--fs-sm)",
       }}>
-        {chips.map((c) => (
-          <button key={c.key} onClick={() => setStatusFilter(c.key)}
-            style={{
-              background: statusFilter === c.key ? "var(--accent-gold)" : "var(--bg-base)",
-              color: statusFilter === c.key ? "#fff" : "var(--text-muted)",
-              border: "none", borderRadius: 10, padding: "2px 10px",
-              cursor: "pointer", fontSize: "var(--fs-xs)",
-              fontWeight: statusFilter === c.key ? 600 : 400,
-            }}>
-            {c.label}
-          </button>
-        ))}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
+          <option value="all">全部状态</option>
+          <option value="pending">待执行</option>
+          <option value="running">运行中</option>
+          <option value="done">完成</option>
+          <option value="failed">失败</option>
+        </select>
 
         <div style={{ flex: 1 }} />
 
@@ -278,7 +269,7 @@ export function DedupTasksPanel() {
               </div>
 
               {/* Expanded detail */}
-              {isOpen && <ExpandedRow task={task} />}
+              {isOpen && <ExpandedRow task={task} onOpenRun={setDetailRunId} />}
             </div>
           );
         })}
@@ -287,6 +278,10 @@ export function DedupTasksPanel() {
           <div style={{ padding: 40, textAlign: "center", color: "var(--text-faint)" }}>暂无数据</div>
         )}
       </div>
+      <RunDetailDrawer
+        runId={detailRunId}
+        onClose={() => setDetailRunId(null)}
+      />
     </div>
   );
 }
