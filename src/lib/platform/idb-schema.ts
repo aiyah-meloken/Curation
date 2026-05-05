@@ -24,7 +24,10 @@ export const DB_NAME = "curation_cache";
 // v3 (2026-05-05): local cache now stores dedup metadata and removes
 // superseded source cards when a deduped card arrives. Clear card state so
 // clients with stale source cards rebuild from server visibility.
-export const DB_VERSION = 3;
+// v4 (2026-05-05): dedup reruns can produce a new aggregate card ID for the
+// same source set. Clear stale cards once; new sync code also prunes older
+// local deduped cards with overlapping source_card_ids.
+export const DB_VERSION = 4;
 
 export interface ArticleContentRow {
   article_id: string;

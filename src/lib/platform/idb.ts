@@ -57,6 +57,11 @@ function getDb(): Promise<IDBPDatabase<CurationCacheSchema>> {
           try { tx.objectStore("wechat_articles").clear(); } catch { /* store may not exist */ }
           try { tx.objectStore("sync_state").delete("last_sync_ts"); } catch { /* store may not exist */ }
         }
+        if (oldVersion < 4) {
+          try { tx.objectStore("cards").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("wechat_articles").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("sync_state").delete("last_sync_ts"); } catch { /* store may not exist */ }
+        }
       },
     });
   }
@@ -101,6 +106,17 @@ export async function writeCardDelta(rows: CachedCard[]): Promise<void> {
   // A naive `put(r)` would clobber content_md back to undefined on
   // every sync — every card open would become a network call.
   for (const r of rows) {
+    if (r.kind === "deduped" && Array.isArray(r.source_card_ids) && r.source_card_ids.length > 0) {
+      const sourceSet = new Set(r.source_card_ids);
+      const existingCards = await tx.store.getAll();
+      for (const existing of existingCards) {
+        if (existing.card_id === r.card_id || existing.kind !== "deduped") continue;
+        const existingSources = Array.isArray(existing.source_card_ids) ? existing.source_card_ids : [];
+        if (existingSources.some((sourceId) => sourceSet.has(sourceId))) {
+          await tx.store.delete(existing.card_id);
+        }
+      }
+    }
     const existing = await tx.store.get(r.card_id);
     if (existing) {
       const merged: CachedCard = {

@@ -1,10 +1,14 @@
 import { useEffect } from "react";
 import { X, ExternalLink } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { useArticleContent } from "../hooks/useArticles";
 import { FavoriteButton } from "./FavoriteButton";
 import { AdminAnnotationFlag } from "./AdminAnnotationFlag";
 import { useAuth } from "../lib/authStore";
 import { openExternal } from "../lib/platform/url-opener";
+import { mdComponents, stripFrontmatter } from "../lib/markdown";
 import type { InboxItem } from "../types";
 
 interface ArticleDrawerProps {
@@ -58,6 +62,7 @@ export function ArticleDrawer({
   if (!isOpen || (!item && !articleIdOverride)) return null;
 
   const html = articleData?.rawHtml;
+  const markdown = articleData?.rawMarkdown;
   const headerTitle = articleTitleOverride ?? "原文";
   const externalUrl = articleUrlOverride ?? item?.article_meta.url ?? null;
 
@@ -154,6 +159,16 @@ export function ArticleDrawer({
               className="rich-text-content"
               dangerouslySetInnerHTML={{ __html: html }}
             />
+          ) : markdown ? (
+            <div className="markdown-body" style={{ padding: "18px 24px" }}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                components={mdComponents}
+              >
+                {stripFrontmatter(markdown)}
+              </ReactMarkdown>
+            </div>
           ) : (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
               暂无原文内容

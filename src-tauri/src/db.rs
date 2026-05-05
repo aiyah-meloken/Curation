@@ -479,6 +479,33 @@ impl CacheDb {
             .ok();
         }
 
+        // 2026-05-05: dedup reruns generate fresh aggregate card IDs. Older
+        // local caches can retain the previous aggregate because /sync only
+        // returns currently visible cards, not tombstones. Rebuild once; the
+        // sync upsert below also prunes overlapping old deduped cards.
+        const DEDUP_RERUN_MARKER: &str = "dedup_rerun_replacement_v1";
+        let rerun_done: bool = conn
+            .query_row(
+                "SELECT 1 FROM sync_state WHERE key = ?1",
+                [DEDUP_RERUN_MARKER],
+                |r| r.get::<_, i64>(0),
+            )
+            .is_ok();
+        if !rerun_done {
+            let _ = conn.execute_batch(
+                "DELETE FROM cards;
+                 DELETE FROM cards_fts;
+                 DELETE FROM wechat_articles;
+                 DELETE FROM favorites WHERE item_type = 'card';
+                 DELETE FROM sync_state WHERE key = 'last_sync_ts';",
+            );
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
+                [DEDUP_RERUN_MARKER],
+            )
+            .ok();
+        }
+
         Ok(())
     }
 
@@ -887,7 +914,36 @@ impl CacheDb {
             let source_card_ids_json = encode_string_array(&card["source_card_ids"]);
             let source_article_ids_json = encode_string_array(&card["source_article_ids"]);
             if card["kind"].as_str() == Some("deduped") {
-                for source_id in value_string_array(&card["source_card_ids"]) {
+                let source_ids = value_string_array(&card["source_card_ids"]);
+                for source_id in &source_ids {
+                    let mut stmt = conn
+                        .prepare(
+                            "SELECT card_id, rowid FROM cards
+                             WHERE kind = 'deduped'
+                               AND card_id <> ?1
+                               AND source_card_ids LIKE ?2",
+                        )
+                        .map_err(|e| e.to_string())?;
+                    let pattern = format!("%{}%", source_id.replace('%', "\\%").replace('_', "\\_"));
+                    let old_rows = stmt
+                        .query_map(rusqlite::params![card_id, pattern], |r| {
+                            Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
+                        })
+                        .map_err(|e| e.to_string())?
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|e| e.to_string())?;
+                    drop(stmt);
+                    for (old_card_id, old_rowid) in old_rows {
+                        conn.execute(
+                            "DELETE FROM cards_fts WHERE rowid = ?1",
+                            rusqlite::params![old_rowid],
+                        )
+                        .ok();
+                        conn.execute("DELETE FROM cards WHERE card_id = ?1", [old_card_id])
+                            .map_err(|e| e.to_string())?;
+                    }
+                }
+                for source_id in source_ids {
                     if source_id != card_id {
                         superseded_source_ids.push(source_id);
                     }
