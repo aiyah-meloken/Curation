@@ -11,3 +11,4 @@ server/.env
 .superpowers/
 .claude/
 auth-verification.json
+dist-atlas/
