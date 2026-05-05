@@ -322,6 +322,17 @@ export interface DedupQueueRow {
   updated_at: string;
 }
 
+export interface DedupQueueSummary {
+  user_id: number;
+  date: string;
+  n_scanned: number;
+  n_clusters: number;
+  n_same_article_clusters: number;
+  n_singletons: number;
+  n_forced_singletons: number;
+  cluster_card_counts: number[];
+}
+
 export interface DedupTaskRow {
   task_id: number;
   signature: string;

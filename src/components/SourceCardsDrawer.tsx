@@ -15,6 +15,8 @@ interface SourceCardsDrawerProps {
   clusterSignature?: string | null;
   isOpen: boolean;
   onClose: () => void;
+  title?: string;
+  subtitle?: string;
   /** Called when user clicks "查看原文" on a source frame.
    *  articleTitle / articleUrl come from WechatArticle (title may be null). */
   onOpenArticle: (
@@ -29,6 +31,8 @@ export function SourceCardsDrawer({
   clusterSignature,
   isOpen,
   onClose,
+  title,
+  subtitle,
   onOpenArticle,
 }: SourceCardsDrawerProps) {
   // Close on Escape
@@ -72,7 +76,14 @@ export function SourceCardsDrawer({
           display: "flex", alignItems: "center", justifyContent: "space-between",
           flexShrink: 0,
         }}>
-          <div style={{ fontWeight: 500 }}>原卡片（{sources.length}）</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 500 }}>{title ?? `原卡片（${sources.length}）`}</div>
+            {subtitle && (
+              <div style={{ marginTop: 2, color: "var(--text-muted)", fontSize: "var(--fs-xs)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {subtitle}
+              </div>
+            )}
+          </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
             <X size={18} />
           </button>
@@ -88,9 +99,28 @@ export function SourceCardsDrawer({
               padding: 16,
               background: "var(--bg-base)",
             }}>
-              <h3 style={{ fontSize: "var(--fs-md)", fontWeight: 500, margin: 0, marginBottom: 4 }}>
-                {s.title}
-              </h3>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 4 }}>
+                <h3 style={{ fontSize: "var(--fs-md)", fontWeight: 500, margin: 0, flex: 1, minWidth: 0 }}>
+                  {s.title}
+                </h3>
+                {s.article && (
+                  <button
+                    onClick={() => onOpenArticle(s.article!.short_id, s.article!.title, s.article!.url)}
+                    style={{
+                      padding: "3px 9px",
+                      fontSize: "var(--fs-xs)",
+                      border: "1px solid var(--border)",
+                      background: "transparent",
+                      color: "var(--text-primary)",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    查看原文
+                  </button>
+                )}
+              </div>
               {s.article && (
                 <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: 12 }}>
                   {s.article.account ?? ""}{s.article.publish_time ? ` · ${s.article.publish_time.slice(0, 10)}` : ""}
@@ -105,23 +135,6 @@ export function SourceCardsDrawer({
                   {stripFrontmatter(s.content ?? s.description ?? "")}
                 </ReactMarkdown>
               </div>
-              {s.article && (
-                <button
-                  onClick={() => onOpenArticle(s.article!.short_id, s.article!.title, s.article!.url)}
-                  style={{
-                    marginTop: 12,
-                    padding: "4px 10px",
-                    fontSize: "var(--fs-xs)",
-                    border: "1px solid var(--border)",
-                    background: "transparent",
-                    color: "var(--text-primary)",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                  }}
-                >
-                  查看原文
-                </button>
-              )}
             </article>
           ))}
         </div>

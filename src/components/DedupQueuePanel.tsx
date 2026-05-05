@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, RotateCcw, Trash2, RefreshCw, ChevronRight, ChevronDown, Eye } from "lucide-react";
 import {
   fetchDedupQueue, deleteDedupQueueRow, dispatchDedup, retryDedupQueueRow,
-  fetchDedupAutoConfig, setDedupAutoConfig, apiFetch,
+  fetchDedupAutoConfig, fetchDedupQueueSummary, setDedupAutoConfig, apiFetch,
 } from "../lib/api";
-import type { DedupQueueRow } from "../types";
+import type { DedupQueueRow, DedupQueueSummary } from "../types";
 import { cmp, fmtTime, SortableHeader, statusLabel } from "../lib/tableHelpers";
 import { SourceCardsDrawer } from "./SourceCardsDrawer";
 import { ArticleDrawer } from "./ArticleDrawer";
@@ -80,6 +80,35 @@ function decisionTitle(row: DedupQueueRow) {
     d.rationale || null,
   ].filter(Boolean);
   return parts.join("\n");
+}
+
+function QueueGroupSummary({ group }: { group: DedupQueueGroup }) {
+  const { data, isLoading } = useQuery<DedupQueueSummary>({
+    queryKey: ["dedupQueueSummary", group.user_id, group.card_date],
+    queryFn: () => fetchDedupQueueSummary(group.user_id, group.card_date),
+    staleTime: 30_000,
+  });
+  const done = group.rows.filter((r) => r.status === "done").length;
+  const withDecision = group.rows.filter((r) => r.last_decision).length;
+  const clusterCardCounts = data?.cluster_card_counts ?? group.rows.map(() => 0);
+  const avgCards = clusterCardCounts.length
+    ? (clusterCardCounts.reduce((sum, n) => sum + n, 0) / clusterCardCounts.length).toFixed(1)
+    : "0";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+      padding: "5px 0 8px", color: "var(--text-muted)", fontSize: "var(--fs-xs)",
+    }}>
+      <span>扫描 <b style={{ color: "var(--text-primary)" }}>{isLoading ? "…" : data?.n_scanned ?? "—"}</b> 张</span>
+      <span>候选 cluster <b style={{ color: "var(--accent-blue)" }}>{data?.n_clusters ?? group.rows.length}</b></span>
+      <span>已判决 <b style={{ color: "var(--accent-green)" }}>{withDecision}</b></span>
+      <span>完成 <b style={{ color: "var(--accent-green)" }}>{done}</b></span>
+      <span>平均 <b style={{ color: "var(--text-primary)" }}>{avgCards}</b> 张/cluster</span>
+      {data && data.n_singletons > 0 && <span>单张 {data.n_singletons}</span>}
+      {data && data.n_same_article_clusters > 0 && <span>同文跳过 {data.n_same_article_clusters}</span>}
+      {data && data.n_forced_singletons > 0 && <span>无向量 {data.n_forced_singletons}</span>}
+    </div>
+  );
 }
 
 export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }) {
@@ -274,9 +303,18 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
                   >
                     {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </span>
-                  <span style={{ color: "var(--text-primary)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <button
+                    onClick={() => setExpandedKey(isOpen ? null : group.key)}
+                    title="查看预聚合运行结果"
+                    style={{
+                      background: "none", border: "none", padding: 0, margin: 0,
+                      color: "var(--text-primary)", fontSize: "var(--fs-sm)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      cursor: "pointer", textAlign: "left",
+                    }}
+                  >
                     {u ? (u.username || u.email) : `user #${group.user_id}`}
-                  </span>
+                  </button>
                   <span style={{ color: "var(--text-faint)", fontSize: "var(--fs-xs)", flexShrink: 0 }}>#{group.user_id}</span>
                 </div>
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", textAlign: "center" }}>{group.card_date}</span>
@@ -300,6 +338,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
 
               {isOpen && (
                 <div style={{ background: "var(--bg-panel)", borderTop: "1px solid var(--bg-panel)", padding: "6px 16px 6px 36px" }}>
+                  <QueueGroupSummary group={group} />
                   <div style={{ display: "grid", gridTemplateColumns: CLUSTER_COLS, color: "var(--text-muted)", fontSize: "var(--fs-xs)", padding: "4px 0", borderBottom: "1px solid var(--border)" }}>
                     <span>Queue ID</span><span>Signature</span><span style={{ textAlign: "center" }}>判决</span><span style={{ textAlign: "center" }}>状态</span><span style={{ textAlign: "center" }}>Task</span><span style={{ textAlign: "center" }}>入队</span><span style={{ textAlign: "center" }}>更新</span><span style={{ textAlign: "center" }}>操作</span>
                   </div>
@@ -363,6 +402,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
         clusterSignature={drawerSig}
         isOpen={!!drawerSig}
         onClose={() => setDrawerSig(null)}
+        subtitle={drawerSig ? `${drawerSig} · 原卡片` : undefined}
         onOpenArticle={(aid, atitle, aurl) => {
           setArticleId(aid);
           setArticleTitle(atitle ?? null);

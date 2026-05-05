@@ -26,7 +26,7 @@ function computeWsBase(): string {
 }
 
 import { refreshAccessToken } from "./refreshAuth";
-import type { DedupQueueRow, DedupTaskRow, DedupTaskRun, CardSource } from "../types";
+import type { DedupQueueRow, DedupQueueSummary, DedupTaskRow, DedupTaskRun, CardSource } from "../types";
 
 export const API_BASE = computeApiBase();
 export const WS_BASE = computeWsBase();
@@ -384,6 +384,12 @@ export async function fetchDedupQueue(params: {
   if (params.status) qs.set("status", params.status);
   const path = qs.toString() ? `/dedup/queue?${qs}` : "/dedup/queue";
   const res = await apiFetch(path);
+  return res.json();
+}
+
+export async function fetchDedupQueueSummary(userId: number, date: string): Promise<DedupQueueSummary> {
+  const qs = new URLSearchParams({ user_id: String(userId), date });
+  const res = await apiFetch(`/dedup/queue/summary?${qs.toString()}`);
   return res.json();
 }
 

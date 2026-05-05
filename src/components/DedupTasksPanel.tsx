@@ -8,6 +8,8 @@ import {
 import type { DedupTaskRow, DedupTaskRun, DedupQueueRow } from "../types";
 import { fmtTime, runStatusColor, statusLabel } from "../lib/tableHelpers";
 import { RunDetailDrawer } from "./RunDetailDrawer";
+import { SourceCardsDrawer } from "./SourceCardsDrawer";
+import { ArticleDrawer } from "./ArticleDrawer";
 
 function TaskRunHistory({ taskId, onOpenRun }: { taskId: number; onOpenRun: (runId: number) => void }) {
   const { data: runs = [], isLoading } = useQuery<DedupTaskRun[]>({
@@ -120,6 +122,10 @@ export function DedupTasksPanel() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [detailRunId, setDetailRunId] = useState<number | null>(null);
+  const [drawerSig, setDrawerSig] = useState<string | null>(null);
+  const [articleId, setArticleId] = useState<string | null>(null);
+  const [articleTitle, setArticleTitle] = useState<string | null>(null);
+  const [articleUrl, setArticleUrl] = useState<string | null>(null);
 
   const { data: tasks = [], refetch, isFetching } = useQuery<DedupTaskRow[]>({
     queryKey: ["dedupTasks", statusFilter === "all" ? undefined : statusFilter],
@@ -272,9 +278,18 @@ export function DedupTasksPanel() {
                 </span>
 
                 {/* Signature */}
-                <span style={{ fontFamily: "monospace", fontSize: "var(--fs-xs)", color: "var(--text-muted)", letterSpacing: "0.02em" }}>
+                <button
+                  onClick={() => setDrawerSig(task.signature)}
+                  title="查看 signature 原卡片"
+                  style={{
+                    background: "none", border: "none", padding: 0, margin: 0,
+                    fontFamily: "monospace", fontSize: "var(--fs-xs)", color: "var(--accent-blue)",
+                    letterSpacing: "0.02em", cursor: "pointer", textAlign: "left",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}
+                >
                   {task.signature.slice(0, 8)}
-                </span>
+                </button>
 
                 {/* Decision */}
                 {(() => {
@@ -338,6 +353,28 @@ export function DedupTasksPanel() {
       <RunDetailDrawer
         runId={detailRunId}
         onClose={() => setDetailRunId(null)}
+      />
+      <SourceCardsDrawer
+        clusterSignature={drawerSig}
+        isOpen={!!drawerSig}
+        onClose={() => setDrawerSig(null)}
+        subtitle={drawerSig ? `${drawerSig} · signature` : undefined}
+        onOpenArticle={(aid, atitle, aurl) => {
+          setDrawerSig(null);
+          setArticleId(aid);
+          setArticleTitle(atitle ?? null);
+          setArticleUrl(aurl ?? null);
+        }}
+      />
+      <ArticleDrawer
+        isOpen={!!articleId}
+        onClose={() => { setArticleId(null); setArticleTitle(null); setArticleUrl(null); }}
+        item={null}
+        siblingCards={[]}
+        onSelectCard={() => {}}
+        articleIdOverride={articleId}
+        articleTitleOverride={articleTitle}
+        articleUrlOverride={articleUrl}
       />
     </div>
   );
