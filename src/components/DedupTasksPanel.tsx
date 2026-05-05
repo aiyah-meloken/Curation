@@ -63,6 +63,37 @@ function TaskServingRows({ taskId }: { taskId: number }) {
   );
 }
 
+function taskDecisionLabel(task: DedupTaskRow) {
+  const run = task.latest_run;
+  const d = run?.decision;
+  if (!run) return { text: "未判决", color: "var(--text-faint)" };
+  if (run.status === "failed") return { text: "判决失败", color: "var(--accent-red)" };
+  if (run.status !== "done") return { text: "判决中", color: "var(--accent-gold)" };
+  const labels: Record<string, { text: string; color: string }> = {
+    unified: { text: "统一聚合", color: "var(--accent-green)" },
+    mixed: { text: "部分聚合", color: "var(--accent-gold)" },
+    independent: { text: "互不相似", color: "var(--text-muted)" },
+  };
+  return labels[d?.verdict ?? ""] ?? { text: d?.verdict ?? "已完成", color: "var(--text-muted)" };
+}
+
+function taskDecisionTitle(task: DedupTaskRow) {
+  const run = task.latest_run;
+  const d = run?.decision;
+  if (!run) return "暂无 run 判决";
+  const parts = [
+    `run #${run.run_id}`,
+    d?.verdict ? `verdict: ${d.verdict}` : null,
+    d ? `outputs: ${d.outputs_count}` : null,
+    d ? `aggregated: ${d.aggregated_count}` : null,
+    d ? `passthrough: ${d.passthrough_count}` : null,
+    d ? `residual: ${d.residual_count}` : null,
+    d?.error_msg ? `error: ${d.error_msg}` : null,
+    d?.rationale || null,
+  ].filter(Boolean);
+  return parts.join("\n");
+}
+
 function ExpandedRow({ task, onOpenRun }: { task: DedupTaskRow; onOpenRun: (runId: number) => void }) {
   return (
     <div style={{
@@ -82,7 +113,7 @@ function ExpandedRow({ task, onOpenRun }: { task: DedupTaskRow; onOpenRun: (runI
   );
 }
 
-const COLS = "24px 110px 90px 80px 160px 110px 80px";
+const COLS = "24px 110px 100px 90px 80px 150px 110px 80px";
 
 export function DedupTasksPanel() {
   const qc = useQueryClient();
@@ -126,6 +157,11 @@ export function DedupTasksPanel() {
     });
   };
 
+  const totalPending = tasks.filter((t) => t.status === "pending").length;
+  const totalRunning = tasks.filter((t) => t.status === "running").length;
+  const totalDone    = tasks.filter((t) => t.status === "done").length;
+  const totalFailed  = tasks.filter((t) => t.status === "failed").length;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
@@ -154,6 +190,16 @@ export function DedupTasksPanel() {
             ))}
           </select>
         </label>
+      </div>
+
+      {/* Summary bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 16px", borderBottom: "1px solid var(--bg-panel)", background: "var(--bg-base)", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
+        <span>共 {tasks.length}</span>
+        <span style={{ color: "var(--border)" }}>|</span>
+        {totalPending > 0 && <span>待执行 <b style={{ color: "var(--text-primary)" }}>{totalPending}</b></span>}
+        {totalRunning > 0 && <span style={{ color: "var(--accent-gold)" }}>运行中 <b>{totalRunning}</b></span>}
+        {totalDone    > 0 && <span style={{ color: "var(--accent-green)" }}>完成 <b>{totalDone}</b></span>}
+        {totalFailed  > 0 && <span style={{ color: "var(--accent-red)" }}>失败 <b>{totalFailed}</b></span>}
       </div>
 
       {/* Controls bar */}
@@ -196,6 +242,7 @@ export function DedupTasksPanel() {
         }}>
           <span />
           <span>Signature</span>
+          <span style={{ textAlign: "center" }}>判决</span>
           <span style={{ textAlign: "center" }}>状态</span>
           <span style={{ textAlign: "center" }}>Served</span>
           <span>最近运行</span>
@@ -228,6 +275,16 @@ export function DedupTasksPanel() {
                 <span style={{ fontFamily: "monospace", fontSize: "var(--fs-xs)", color: "var(--text-muted)", letterSpacing: "0.02em" }}>
                   {task.signature.slice(0, 8)}
                 </span>
+
+                {/* Decision */}
+                {(() => {
+                  const label = taskDecisionLabel(task);
+                  return (
+                    <span title={taskDecisionTitle(task)} style={{ color: label.color, fontSize: "var(--fs-sm)", textAlign: "center", cursor: "help" }}>
+                      {label.text}
+                    </span>
+                  );
+                })()}
 
                 {/* Status */}
                 <span style={{ textAlign: "center" }}>
