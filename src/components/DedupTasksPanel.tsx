@@ -88,7 +88,7 @@ export function DedupTasksPanel() {
   const { data: tasks = [], refetch, isFetching } = useQuery<DedupTaskRow[]>({
     queryKey: ["dedupTasks", statusFilter === "all" ? undefined : statusFilter],
     queryFn: () => fetchDedupTasks({ status: statusFilter === "all" ? undefined : statusFilter }),
-    refetchInterval: 2000,
+    refetchInterval: 1000,
     staleTime: 500,
   });
 
@@ -103,8 +103,8 @@ export function DedupTasksPanel() {
   const { data: cfg } = useQuery({
     queryKey: ["dedupAutoConfig"],
     queryFn: fetchDedupAutoConfig,
-    refetchInterval: 5000,
-    staleTime: 2000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
   const cfgMut = useMutation({
     mutationFn: (patch: Partial<{ auto_launch: boolean; max_concurrency: number }>) =>

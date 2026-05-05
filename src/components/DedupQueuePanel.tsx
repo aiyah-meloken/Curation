@@ -38,8 +38,8 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
       status: statusFilter === "all" ? undefined : statusFilter,
       date:   dateFilter || undefined,
     }),
-    refetchInterval: 2000,
-    staleTime: 1000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
 
   // User lookup so the group rows can display username/email instead of raw id.
@@ -68,8 +68,8 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
   const { data: autoConfig } = useQuery({
     queryKey: ["dedupAutoConfig"],
     queryFn: fetchDedupAutoConfig,
-    refetchInterval: 5000,
-    staleTime: 2000,
+    refetchInterval: 1000,
+    staleTime: 500,
   });
   const autoToggleMut = useMutation({
     mutationFn: (patch: Partial<{ enabled: boolean; auto_launch: boolean; max_concurrency: number }>) =>
