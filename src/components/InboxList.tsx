@@ -70,6 +70,15 @@ function formatTime(t: string | null) {
   return t.replace("T", " ").slice(0, 16);
 }
 
+function formatDate(t: string | null) {
+  if (!t) return "";
+  return t.replace("T", " ").slice(0, 10);
+}
+
+function isAggregateKind(kind?: string) {
+  return kind === "aggregated" || kind === "residual" || kind === "deduped";
+}
+
 function InboxGroupHeader({
   group,
   isOpen,
@@ -130,6 +139,11 @@ function InboxItemRow({
     item.card_id ? s.byCard[item.card_id] : undefined,
   );
   const visuallyRead = !isAnalyzing && !!item.read_at && acpStatus !== "unread";
+  const isAggregated = isAggregateKind(item.kind);
+  const sourceCount = item.source_card_ids?.length ?? 0;
+  const metaText = isAggregated && sourceCount > 0
+    ? `聚合 ${sourceCount} 张卡片${formatDate(item.card_date) ? ` · ${formatDate(item.card_date)}` : ""}`
+    : `${item.article_meta.account}${item.article_meta.publish_time ? ` · ${formatTime(item.article_meta.publish_time)}` : ""}`;
   return (
     <div
       className={`inbox-item ${isSelected ? "selected" : ""} ${visuallyRead ? "read" : ""}`}
@@ -142,7 +156,7 @@ function InboxItemRow({
         )}
         <AcpRunningDot cardId={item.card_id ?? null} className="mt-[4px]" />
         <span className="inbox-item-title" style={{ flex: 1 }}>
-          {(item.kind === "aggregated" || item.kind === "residual" || item.kind === "deduped") &&
+          {isAggregated &&
            item.source_card_ids && item.source_card_ids.length > 0 && (
             <span style={{
               display: "inline-block",
@@ -165,10 +179,7 @@ function InboxItemRow({
         <div className="inbox-item-desc">{item.description}</div>
       )}
       <div className="inbox-item-meta">
-        {item.article_meta.account}
-        {item.article_meta.publish_time && (
-          <> · {formatTime(item.article_meta.publish_time)}</>
-        )}
+        {metaText}
       </div>
     </div>
   );
