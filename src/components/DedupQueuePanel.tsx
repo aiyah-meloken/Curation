@@ -106,7 +106,12 @@ function QueueGroupSummary({ group }: { group: DedupQueueGroup }) {
       <span>平均 <b style={{ color: "var(--text-primary)" }}>{avgCards}</b> 张/cluster</span>
       {data && data.n_singletons > 0 && <span>单张 {data.n_singletons}</span>}
       {data && data.n_same_article_clusters > 0 && <span>同文跳过 {data.n_same_article_clusters}</span>}
-      {data && data.n_forced_singletons > 0 && <span>无向量 {data.n_forced_singletons}</span>}
+      {data && (data.n_forced_non_ai_singletons ?? 0) > 0 && (
+        <span title="routing 不是 ai_curation 的卡片不参与聚合">非AI跳过 {data.n_forced_non_ai_singletons}</span>
+      )}
+      {data && (data.n_missing_embedding_singletons ?? data.n_forced_singletons) > 0 && (
+        <span title="AI梳理卡缺少 title/card embedding，无法进入向量聚类">无向量 {data.n_missing_embedding_singletons ?? data.n_forced_singletons}</span>
+      )}
     </div>
   );
 }
@@ -168,7 +173,7 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
     staleTime: 500,
   });
   const autoToggleMut = useMutation({
-    mutationFn: (patch: Partial<{ enabled: boolean; auto_launch: boolean; max_concurrency: number }>) =>
+    mutationFn: (patch: Partial<{ enabled: boolean; auto_user_concurrency: number; auto_launch: boolean; max_concurrency: number }>) =>
       setDedupAutoConfig(patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dedupAutoConfig"] }),
   });
@@ -223,19 +228,32 @@ export function DedupQueuePanel({ onOpenPreview }: { onOpenPreview: () => void }
         {totalDone    > 0 && <span style={{ color: "var(--accent-green)" }}>完成 <b>{totalDone}</b></span>}
         {totalFailed  > 0 && <span style={{ color: "var(--accent-red)" }}>失败 <b>{totalFailed}</b></span>}
         <div style={{ flex: 1 }} />
-        {/* Tab1 controls only the cluster auto-preview (whether 5am batch
+        {/* Tab1 controls only the cluster auto-preview (whether 4-5am batch
             generates clusters & enqueues them). Execution scheduler controls
             (auto_launch / max_concurrency) live on Tab2. */}
         <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
-          title={autoConfig?.schedule ?? "daily 05:00 CST"}>
+          title={autoConfig?.schedule ?? "daily 04:00-05:00 CST"}>
           <input type="checkbox"
             checked={!!autoConfig?.enabled}
             disabled={autoToggleMut.isPending}
             onChange={(e) => autoToggleMut.mutate({ enabled: e.target.checked })} />
-          <span>每日5点自动入队 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>开</b> : <b style={{ color: "var(--text-muted)" }}>关</b>}</span>
+          <span>每日4-5点自动入队 {autoConfig?.enabled ? <b style={{ color: "var(--accent-green)" }}>开</b> : <b style={{ color: "var(--text-muted)" }}>关</b>}</span>
           {autoConfig?.last_run_date && (
             <span style={{ color: "var(--text-faint)" }}>· {autoConfig.last_run_date}</span>
           )}
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}
+          title={`自动入队用户并发（硬顶 ${autoConfig?.auto_user_concurrency_hard_cap ?? 4}）`}>
+          <span>用户并发</span>
+          <select
+            value={autoConfig?.auto_user_concurrency ?? 1}
+            disabled={autoToggleMut.isPending}
+            onChange={(e) => autoToggleMut.mutate({ auto_user_concurrency: Number(e.target.value) })}
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 6px", fontSize: "var(--fs-xs)" }}>
+            {Array.from({ length: autoConfig?.auto_user_concurrency_hard_cap ?? 4 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
         </label>
       </div>
 

@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
 import {
   fetchDedupTasks, fetchDedupTaskRuns, fetchDedupTaskServing, forceDedupTaskRun,
-  fetchDedupAutoConfig, setDedupAutoConfig,
+  fetchDedupAutoConfig, setDedupAutoConfig, fetchBackends,
 } from "../lib/api";
-import type { DedupTaskRow, DedupTaskRun, DedupQueueRow } from "../types";
+import type { AgentBackends, DedupTaskRow, DedupTaskRun, DedupQueueRow } from "../types";
 import { fmtTime, runStatusColor, statusLabel } from "../lib/tableHelpers";
 import { RunDetailDrawer } from "./RunDetailDrawer";
 import { SourceCardsDrawer } from "./SourceCardsDrawer";
@@ -97,6 +97,20 @@ function taskDecisionTitle(task: DedupTaskRow) {
 }
 
 function ExpandedRow({ task, onOpenRun }: { task: DedupTaskRow; onOpenRun: (runId: number) => void }) {
+  if (task.task_id == null) {
+    return (
+      <div style={{
+        gridColumn: "1 / -1",
+        background: "var(--bg-panel)",
+        borderTop: "1px solid var(--bg-panel)",
+        padding: "6px 16px 6px 36px",
+        color: "var(--text-muted)",
+        fontSize: "var(--fs-xs)",
+      }}>
+        Queue #{task.queue_id} 尚未被 scheduler claim 成 Task；进入运行后会显示 run 历史。
+      </div>
+    );
+  }
   return (
     <div style={{
       gridColumn: "1 / -1",
@@ -120,7 +134,7 @@ const COLS = "24px 110px 100px 90px 80px 150px 110px 80px";
 export function DedupTasksPanel() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [detailRunId, setDetailRunId] = useState<number | null>(null);
   const [drawerSig, setDrawerSig] = useState<string | null>(null);
   const [articleId, setArticleId] = useState<string | null>(null);
@@ -148,25 +162,34 @@ export function DedupTasksPanel() {
     refetchInterval: 1000,
     staleTime: 500,
   });
+  const { data: backendsData } = useQuery<AgentBackends>({
+    queryKey: ["dedupBackends"],
+    queryFn: fetchBackends,
+    staleTime: 60_000,
+  });
   const cfgMut = useMutation({
-    mutationFn: (patch: Partial<{ auto_launch: boolean; max_concurrency: number }>) =>
+    mutationFn: (patch: Partial<{ auto_launch: boolean; max_concurrency: number; dedup_backend: string }>) =>
       setDedupAutoConfig(patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dedupAutoConfig"] }),
   });
 
-  const toggleExpand = (taskId: number) => {
+  const rowKey = (task: DedupTaskRow) => String(task.task_id ?? `q${task.queue_id ?? task.signature}`);
+
+  const toggleExpand = (key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
   const totalPending = tasks.filter((t) => t.status === "pending").length;
+  const totalQueued  = tasks.filter((t) => t.status === "queued").length;
   const totalRunning = tasks.filter((t) => t.status === "running").length;
   const totalDone    = tasks.filter((t) => t.status === "done").length;
   const totalFailed  = tasks.filter((t) => t.status === "failed").length;
+  const backendList = backendsData ? Object.keys(backendsData.backends ?? {}) : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
@@ -196,6 +219,20 @@ export function DedupTasksPanel() {
             ))}
           </select>
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}
+          title="聚合队列专用后端；不影响文章队列">
+          <span>后端</span>
+          <select
+            value={cfg?.dedup_backend ?? ""}
+            disabled={cfgMut.isPending || !cfg}
+            onChange={(e) => cfgMut.mutate({ dedup_backend: e.target.value })}
+            style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px", fontSize: "var(--fs-xs)", maxWidth: 280 }}>
+            {cfg?.dedup_backend && !backendList.includes(cfg.dedup_backend) && (
+              <option value={cfg.dedup_backend}>{cfg.dedup_backend}</option>
+            )}
+            {backendList.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </label>
       </div>
 
       {/* Summary bar */}
@@ -203,6 +240,7 @@ export function DedupTasksPanel() {
         <span>共 {tasks.length}</span>
         <span style={{ color: "var(--border)" }}>|</span>
         {totalPending > 0 && <span>待执行 <b style={{ color: "var(--text-primary)" }}>{totalPending}</b></span>}
+        {totalQueued  > 0 && <span style={{ color: "var(--accent-blue)" }}>已排队 <b>{totalQueued}</b></span>}
         {totalRunning > 0 && <span style={{ color: "var(--accent-gold)" }}>运行中 <b>{totalRunning}</b></span>}
         {totalDone    > 0 && <span style={{ color: "var(--accent-green)" }}>完成 <b>{totalDone}</b></span>}
         {totalFailed  > 0 && <span style={{ color: "var(--accent-red)" }}>失败 <b>{totalFailed}</b></span>}
@@ -218,6 +256,7 @@ export function DedupTasksPanel() {
           style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}>
           <option value="all">全部状态</option>
           <option value="pending">待执行</option>
+          <option value="queued">已排队</option>
           <option value="running">运行中</option>
           <option value="done">完成</option>
           <option value="failed">失败</option>
@@ -258,11 +297,12 @@ export function DedupTasksPanel() {
 
         {/* Rows */}
         {tasks.map((task) => {
-          const isOpen = expanded.has(task.task_id);
+          const key = rowKey(task);
+          const isOpen = expanded.has(key);
           const latestRun = task.latest_run;
 
           return (
-            <div key={task.task_id}>
+            <div key={key}>
               {/* Main row */}
               <div style={{
                 display: "grid", gridTemplateColumns: COLS,
@@ -272,7 +312,7 @@ export function DedupTasksPanel() {
               }}>
                 {/* Expand chevron */}
                 <span
-                  onClick={() => toggleExpand(task.task_id)}
+                  onClick={() => toggleExpand(key)}
                   style={{ cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center" }}>
                   {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </span>
@@ -326,12 +366,13 @@ export function DedupTasksPanel() {
                 {/* Actions */}
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   <button
-                    onClick={() => forceMut.mutate(task.task_id)}
-                    disabled={forceMut.isPending}
-                    title="强制重跑"
+                    onClick={() => task.task_id != null && forceMut.mutate(task.task_id)}
+                    disabled={forceMut.isPending || task.task_id == null}
+                    title={task.task_id == null ? "尚未生成 Task" : "强制重跑"}
                     style={{
                       background: "none", border: "none",
-                      color: "var(--accent-gold)", cursor: "pointer", padding: 2,
+                      color: task.task_id == null ? "var(--text-faint)" : "var(--accent-gold)",
+                      cursor: task.task_id == null ? "default" : "pointer", padding: 2,
                       display: "flex", alignItems: "center", gap: 3,
                       fontSize: "var(--fs-xs)",
                     }}>

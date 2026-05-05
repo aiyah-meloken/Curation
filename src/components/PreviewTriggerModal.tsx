@@ -54,6 +54,7 @@ export function PreviewTriggerModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PreviewSummaryRow[] | null>(null);
+  const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
     apiFetch("/users")
@@ -92,6 +93,7 @@ export function PreviewTriggerModal({
     try {
       const resp = await previewDedup(Array.from(selectedUsers), dates);
       const rows = (resp.summary as PreviewSummaryRow[]) || [];
+      setAccepted(!!resp.accepted);
       setResult(rows);
       // Eagerly invalidate so admin sees rows immediately, not on next poll.
       qc.invalidateQueries({ queryKey: ["dedupQueue"] });
@@ -253,12 +255,13 @@ export function PreviewTriggerModal({
             maxHeight: 200, overflowY: "auto",
           }}>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
-              触发结果：共 {result.length} 组 (user × 日期)，
+              {accepted ? "已提交后台预聚合：" : "触发结果："}共 {result.length} 组 (user × 日期)，
               入队 cluster 总数{" "}
               <b style={{ color: totalCandidates > 0 ? "var(--accent-green)" : "var(--text-faint)" }}>
-                {totalCandidates}
+                {accepted ? "计算中" : totalCandidates}
               </b>
-              {totalCandidates === 0 && "（说明：该范围内没有跨文章可合并的事件）"}
+              {accepted && "（队列表会自动刷新）"}
+              {!accepted && totalCandidates === 0 && "（说明：该范围内没有跨文章可合并的事件）"}
             </div>
             <table style={{ fontSize: "var(--fs-xs)", borderCollapse: "collapse" }}>
               <thead style={{ color: "var(--text-faint)" }}>
@@ -280,9 +283,9 @@ export function PreviewTriggerModal({
                       <td style={{ padding: "2px 6px", textAlign: "right",
                         color: r.n_candidates > 0 ? "var(--accent-green)" : "var(--text-faint)",
                         fontWeight: r.n_candidates > 0 ? 600 : 400,
-                      }}>{r.n_candidates}</td>
-                      <td style={{ padding: "2px 6px", textAlign: "right", color: "var(--text-muted)" }}>{r.n_singletons}</td>
-                      <td style={{ padding: "2px 6px", textAlign: "right", color: "var(--text-muted)" }}>{r.n_forced_singletons}</td>
+                      }}>{accepted ? "…" : r.n_candidates}</td>
+                      <td style={{ padding: "2px 6px", textAlign: "right", color: "var(--text-muted)" }}>{accepted ? "…" : r.n_singletons}</td>
+                      <td style={{ padding: "2px 6px", textAlign: "right", color: "var(--text-muted)" }}>{accepted ? "…" : r.n_forced_singletons}</td>
                     </tr>
                   );
                 })}
@@ -318,7 +321,7 @@ export function PreviewTriggerModal({
           )}
           {result && (
             <button
-              onClick={() => { setResult(null); setError(null); }}
+              onClick={() => { setResult(null); setError(null); setAccepted(false); }}
               style={{
                 background: "var(--bg-base)", border: "1px solid var(--border)",
                 color: "var(--text-primary)", borderRadius: 4,

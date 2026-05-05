@@ -397,7 +397,7 @@ export async function deleteDedupQueueRow(id: number): Promise<void> {
   await apiFetch(`/dedup/queue/${id}`, { method: "DELETE" });
 }
 
-export async function previewDedup(user_ids: number[], dates: string[]): Promise<{ summary: unknown[] }> {
+export async function previewDedup(user_ids: number[], dates: string[]): Promise<{ accepted?: boolean; summary: unknown[] }> {
   const res = await apiFetch("/dedup/preview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -461,9 +461,12 @@ export interface DedupAutoConfig {
   enabled: boolean;
   last_run_date: string | null;
   schedule: string;
+  auto_user_concurrency: number;
+  auto_user_concurrency_hard_cap: number;
   auto_launch: boolean;
   max_concurrency: number;
   max_concurrency_hard_cap: number;
+  dedup_backend: string;
 }
 
 export async function fetchDedupAutoConfig(): Promise<DedupAutoConfig> {
@@ -472,7 +475,7 @@ export async function fetchDedupAutoConfig(): Promise<DedupAutoConfig> {
 }
 
 export async function setDedupAutoConfig(
-  patch: Partial<{ enabled: boolean; auto_launch: boolean; max_concurrency: number }>,
+  patch: Partial<{ enabled: boolean; auto_user_concurrency: number; auto_launch: boolean; max_concurrency: number; dedup_backend: string }>,
 ): Promise<DedupAutoConfig> {
   const res = await apiFetch("/dedup/auto-config", {
     method: "POST",

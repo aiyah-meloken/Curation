@@ -330,13 +330,16 @@ export interface DedupQueueSummary {
   n_same_article_clusters: number;
   n_singletons: number;
   n_forced_singletons: number;
+  n_forced_non_ai_singletons?: number;
+  n_missing_embedding_singletons?: number;
   cluster_card_counts: number[];
 }
 
 export interface DedupTaskRow {
-  task_id: number;
+  task_id: number | null;
+  queue_id?: number;
   signature: string;
-  status: 'pending' | 'running' | 'done' | 'failed';
+  status: 'pending' | 'queued' | 'running' | 'done' | 'failed';
   created_at: string;
   served_count: number;
   latest_run: {
