@@ -4,12 +4,15 @@ import { X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { fetchCardSources } from "../lib/api";
+import { fetchCardSources, fetchClusterSources } from "../lib/api";
 import { mdComponents, stripFrontmatter } from "../lib/markdown";
 import type { CardSource } from "../types";
 
 interface SourceCardsDrawerProps {
-  cardId: string | null;
+  /** Aggregated card mode (inbox): drawer fetches sources via /cards/{id}/sources */
+  cardId?: string | null;
+  /** Cluster mode (admin queue, pre-dispatch): drawer fetches via /dedup/clusters/{sig}/sources */
+  clusterSignature?: string | null;
   isOpen: boolean;
   onClose: () => void;
   /** Called when user clicks "查看原文" on a source frame.
@@ -23,6 +26,7 @@ interface SourceCardsDrawerProps {
 
 export function SourceCardsDrawer({
   cardId,
+  clusterSignature,
   isOpen,
   onClose,
   onOpenArticle,
@@ -40,14 +44,22 @@ export function SourceCardsDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
+  const queryKey = cardId
+    ? ["cardSources", cardId]
+    : ["clusterSources", clusterSignature];
+
   const { data: sources = [], isLoading } = useQuery<CardSource[]>({
-    queryKey: ["cardSources", cardId],
-    queryFn: () => (cardId ? fetchCardSources(cardId) : Promise.resolve([])),
-    enabled: !!cardId && isOpen,
+    queryKey,
+    queryFn: () => {
+      if (cardId) return fetchCardSources(cardId);
+      if (clusterSignature) return fetchClusterSources(clusterSignature);
+      return Promise.resolve([]);
+    },
+    enabled: isOpen && (!!cardId || !!clusterSignature),
     staleTime: 60_000,
   });
 
-  if (!isOpen || !cardId) return null;
+  if (!isOpen || (!cardId && !clusterSignature)) return null;
 
   return (
     <div className="drawer-overlay" onClick={onClose}>

@@ -479,3 +479,10 @@ export async function runDedupAutoNow(target_date?: string): Promise<unknown> {
   });
   return res.json();
 }
+
+/** Admin-only: fetch source cards for a dedup cluster by signature. Used to
+ *  preview a pre-dispatch cluster's contents in the admin queue drawer. */
+export async function fetchClusterSources(signature: string): Promise<CardSource[]> {
+  const res = await apiFetch(`/dedup/clusters/${signature}/sources`);
+  return res.json();
+}
