@@ -31,6 +31,7 @@ function card(card_id, overrides = {}) {
     title: null,
     article_title: null,
     content_md: null,
+    additional_content: null,
     description: null,
     routing: "ai_curation",
     template: null,
@@ -129,6 +130,26 @@ test("updateCardRow: patches existing row", async () => {
   await updateCardRow("01A", { read_at: "2026-05-04T12:00:00Z" });
   const rows = await readCards({});
   assert.equal(rows[0].read_at, "2026-05-04T12:00:00Z");
+});
+
+test("cards: additional_content round-trip and delta overwrite", async () => {
+  await writeCardDelta([card("01A", {
+    routing: "original_content_with_pre_card",
+    additional_content: "<div>old</div>",
+  })]);
+  await writeCardDelta([card("01A", {
+    routing: "original_content_with_pre_card",
+    additional_content: "<div>new</div>",
+  })]);
+  const rows = await readCards({});
+  assert.equal(rows[0].additional_content, "<div>new</div>");
+});
+
+test("cards: content_md round-trip and delta overwrite", async () => {
+  await writeCardDelta([card("01A", { content_md: "old body" })]);
+  await writeCardDelta([card("01A", { content_md: "new body" })]);
+  const rows = await readCards({});
+  assert.equal(rows[0].content_md, "new body");
 });
 
 test("updateCardRow: silent no-op for missing card_id", async () => {

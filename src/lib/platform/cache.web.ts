@@ -85,13 +85,14 @@ export function searchCards(_query: string): Promise<SearchResult[]> {
 }
 
 export async function getCardContent(cardId: string): Promise<string | null> {
-  // Direct PK lookup (cheap). content_md is filled lazily by setCardContent
-  // on first open and persisted, so the second open and beyond hit IDB only.
+  // Direct PK lookup. content_md is populated by /sync so card opens are
+  // local-cache reads.
   const card = await idb.getCardById(cardId);
   return card?.content_md ?? null;
 }
 
 export async function setCardContent(cardId: string, contentMd: string): Promise<void> {
+  // Legacy fallback API kept for compatibility with older call sites.
   await idb.updateCardRow(cardId, { content_md: contentMd });
 }
 

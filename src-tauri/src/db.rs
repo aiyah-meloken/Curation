@@ -42,6 +42,7 @@ pub struct CardRow {
     pub title: Option<String>,
     pub article_title: Option<String>,
     pub content_md: Option<String>,
+    pub additional_content: Option<String>,
     pub description: Option<String>,
     pub routing: Option<String>,
     pub template: Option<String>,
@@ -165,6 +166,7 @@ impl CacheDb {
                 title TEXT,
                 article_title TEXT,
                 content_md TEXT,
+                additional_content TEXT,
                 description TEXT,
                 routing TEXT,
                 template TEXT,
@@ -317,6 +319,10 @@ impl CacheDb {
                 "ALTER TABLE cards ADD COLUMN template_reason TEXT",
             ),
             ("entities", "ALTER TABLE cards ADD COLUMN entities TEXT"),
+            (
+                "additional_content",
+                "ALTER TABLE cards ADD COLUMN additional_content TEXT",
+            ),
             ("kind", "ALTER TABLE cards ADD COLUMN kind TEXT"),
             (
                 "source_card_ids",
@@ -506,6 +512,56 @@ impl CacheDb {
             .ok();
         }
 
+        // 2026-05-06: /sync now carries cards.additional_content so
+        // original_content_with_* rows can render rich original HTML from
+        // local SQLite. Rebuild card cache once so existing rows receive it.
+        const ADDITIONAL_CONTENT_MARKER: &str = "additional_content_sync_v1";
+        let additional_content_done: bool = conn
+            .query_row(
+                "SELECT 1 FROM sync_state WHERE key = ?1",
+                [ADDITIONAL_CONTENT_MARKER],
+                |r| r.get::<_, i64>(0),
+            )
+            .is_ok();
+        if !additional_content_done {
+            let _ = conn.execute_batch(
+                "DELETE FROM cards;
+                 DELETE FROM cards_fts;
+                 DELETE FROM wechat_articles;
+                 DELETE FROM sync_state WHERE key = 'last_sync_ts';",
+            );
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
+                [ADDITIONAL_CONTENT_MARKER],
+            )
+            .ok();
+        }
+
+        // 2026-05-06: /sync now carries card.content as cards.content_md.
+        // Card body reads should be local-cache reads, not per-card lazy
+        // network fetches. Rebuild once so existing rows receive content_md.
+        const CONTENT_MD_SYNC_MARKER: &str = "content_md_sync_v1";
+        let content_md_done: bool = conn
+            .query_row(
+                "SELECT 1 FROM sync_state WHERE key = ?1",
+                [CONTENT_MD_SYNC_MARKER],
+                |r| r.get::<_, i64>(0),
+            )
+            .is_ok();
+        if !content_md_done {
+            let _ = conn.execute_batch(
+                "DELETE FROM cards;
+                 DELETE FROM cards_fts;
+                 DELETE FROM wechat_articles;
+                 DELETE FROM sync_state WHERE key = 'last_sync_ts';",
+            );
+            conn.execute(
+                "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?1, '1')",
+                [CONTENT_MD_SYNC_MARKER],
+            )
+            .ok();
+        }
+
         Ok(())
     }
 
@@ -521,7 +577,7 @@ impl CacheDb {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut sql = String::from(
             "SELECT card_id, article_id, kind, source_card_ids, source_article_ids,
-                    title, article_title, content_md, description, routing,
+                    title, article_title, content_md, additional_content, description, routing,
                     template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                     account_id, biz, cover_url, digest, word_count, is_original, entities
              FROM cards WHERE routing IS NOT NULL",
@@ -547,24 +603,25 @@ impl CacheDb {
                     title: row.get(5)?,
                     article_title: row.get(6)?,
                     content_md: row.get(7)?,
-                    description: row.get(8)?,
-                    routing: row.get(9)?,
-                    template: row.get(10)?,
-                    template_reason: row.get(11)?,
-                    card_date: row.get(12)?,
-                    account: row.get(13)?,
-                    author: row.get(14)?,
-                    url: row.get(15)?,
-                    read_at: row.get(16)?,
-                    updated_at: row.get(17)?,
-                    publish_time: row.get(18)?,
-                    account_id: row.get(19)?,
-                    biz: row.get(20)?,
-                    cover_url: row.get(21)?,
-                    digest: row.get(22)?,
-                    word_count: row.get(23)?,
-                    is_original: row.get(24)?,
-                    entities: row.get(25)?,
+                    additional_content: row.get(8)?,
+                    description: row.get(9)?,
+                    routing: row.get(10)?,
+                    template: row.get(11)?,
+                    template_reason: row.get(12)?,
+                    card_date: row.get(13)?,
+                    account: row.get(14)?,
+                    author: row.get(15)?,
+                    url: row.get(16)?,
+                    read_at: row.get(17)?,
+                    updated_at: row.get(18)?,
+                    publish_time: row.get(19)?,
+                    account_id: row.get(20)?,
+                    biz: row.get(21)?,
+                    cover_url: row.get(22)?,
+                    digest: row.get(23)?,
+                    word_count: row.get(24)?,
+                    is_original: row.get(25)?,
+                    entities: row.get(26)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -581,24 +638,25 @@ impl CacheDb {
                     title: row.get(5)?,
                     article_title: row.get(6)?,
                     content_md: row.get(7)?,
-                    description: row.get(8)?,
-                    routing: row.get(9)?,
-                    template: row.get(10)?,
-                    template_reason: row.get(11)?,
-                    card_date: row.get(12)?,
-                    account: row.get(13)?,
-                    author: row.get(14)?,
-                    url: row.get(15)?,
-                    read_at: row.get(16)?,
-                    updated_at: row.get(17)?,
-                    publish_time: row.get(18)?,
-                    account_id: row.get(19)?,
-                    biz: row.get(20)?,
-                    cover_url: row.get(21)?,
-                    digest: row.get(22)?,
-                    word_count: row.get(23)?,
-                    is_original: row.get(24)?,
-                    entities: row.get(25)?,
+                    additional_content: row.get(8)?,
+                    description: row.get(9)?,
+                    routing: row.get(10)?,
+                    template: row.get(11)?,
+                    template_reason: row.get(12)?,
+                    card_date: row.get(13)?,
+                    account: row.get(14)?,
+                    author: row.get(15)?,
+                    url: row.get(16)?,
+                    read_at: row.get(17)?,
+                    updated_at: row.get(18)?,
+                    publish_time: row.get(19)?,
+                    account_id: row.get(20)?,
+                    biz: row.get(21)?,
+                    cover_url: row.get(22)?,
+                    digest: row.get(23)?,
+                    word_count: row.get(24)?,
+                    is_original: row.get(25)?,
+                    entities: row.get(26)?,
                 })
             })
             .map_err(|e| e.to_string())?
@@ -644,10 +702,8 @@ impl CacheDb {
         }
     }
 
-    /// Lazy-cache card content fetched from the server (frontend calls
-    /// this after a network round-trip on a cache miss). Updates only
-    /// content_md, leaves all other columns alone — pairs with the
-    /// upsert_cards UPSERT which COALESCEs content_md from existing.
+    /// Legacy fallback for manually patching card content. Normal card body
+    /// reads are populated by /sync into content_md.
     pub fn set_card_content(&self, card_id: &str, content_md: &str) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute(
@@ -967,20 +1023,16 @@ impl CacheDb {
             let entities_json: Option<String> = match &card["entities"] {
                 v => encode_string_array(v),
             };
-            // UPSERT — preserve content_md when the incoming row's value
-            // is NULL. /sync intentionally omits content_md to keep payloads
-            // small; content is fetched lazily on first card-open and stored
-            // here. A bare INSERT OR REPLACE would clobber the lazy-fetched
-            // value back to NULL on every sync, forcing a network round-trip
-            // for every subsequent open. Use `excluded` to refer to the
-            // would-be-inserted row in the DO UPDATE clause.
+            // UPSERT. Server /sync owns content_md and additional_content;
+            // both overwrite local values so card bodies and rich original
+            // HTML are available from SQLite.
             conn.execute(
                 "INSERT INTO cards
                  (card_id, article_id, kind, source_card_ids, source_article_ids,
-                  title, article_title, content_md, description, routing,
+                  title, article_title, content_md, additional_content, description, routing,
                   template, template_reason, card_date, account, author, url, read_at, updated_at, publish_time,
                   account_id, biz, cover_url, digest, word_count, is_original, entities)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27)
                  ON CONFLICT(card_id) DO UPDATE SET
                    article_id      = excluded.article_id,
                    kind            = excluded.kind,
@@ -988,7 +1040,8 @@ impl CacheDb {
                    source_article_ids = excluded.source_article_ids,
                    title           = excluded.title,
                    article_title   = excluded.article_title,
-                   content_md      = COALESCE(excluded.content_md, cards.content_md),
+                   content_md      = excluded.content_md,
+                   additional_content = excluded.additional_content,
                    description     = excluded.description,
                    routing         = excluded.routing,
                    template        = excluded.template,
@@ -1016,6 +1069,7 @@ impl CacheDb {
                     card["title"].as_str(),
                     card["article_title"].as_str(),
                     card["content_md"].as_str(),
+                    card["additional_content"].as_str(),
                     card["description"].as_str(),
                     card["routing"].as_str(),
                     card["template"].as_str(),

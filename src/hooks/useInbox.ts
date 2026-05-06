@@ -15,6 +15,7 @@ function cachedToInbox(c: CachedCard): InboxItem {
     source_article_ids: c.source_article_ids ?? undefined,
     title: c.title ?? "",
     description: desc ?? null,
+    additional_content: c.additional_content ?? null,
     entities: parseEntities(c.entities),
     routing: (c.routing as InboxItem["routing"]) ?? null,
     template: c.template ?? null,

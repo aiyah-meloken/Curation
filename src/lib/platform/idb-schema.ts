@@ -27,7 +27,12 @@ export const DB_NAME = "curation_cache";
 // v4 (2026-05-05): dedup reruns can produce a new aggregate card ID for the
 // same source set. Clear stale cards once; new sync code also prunes older
 // local deduped cards with overlapping source_card_ids.
-export const DB_VERSION = 4;
+// v5 (2026-05-06): /sync now carries cards.additional_content so
+// original_content_with_* rows can render rich original HTML from local cache.
+// Force a card cache rebuild so existing rows receive that field.
+// v6 (2026-05-06): /sync now carries cards.content as content_md, so card
+// body reads are local and no longer lazy-loaded per card.
+export const DB_VERSION = 6;
 
 export interface ArticleContentRow {
   article_id: string;

@@ -62,6 +62,16 @@ function getDb(): Promise<IDBPDatabase<CurationCacheSchema>> {
           try { tx.objectStore("wechat_articles").clear(); } catch { /* store may not exist */ }
           try { tx.objectStore("sync_state").delete("last_sync_ts"); } catch { /* store may not exist */ }
         }
+        if (oldVersion < 5) {
+          try { tx.objectStore("cards").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("wechat_articles").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("sync_state").delete("last_sync_ts"); } catch { /* store may not exist */ }
+        }
+        if (oldVersion < 6) {
+          try { tx.objectStore("cards").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("wechat_articles").clear(); } catch { /* store may not exist */ }
+          try { tx.objectStore("sync_state").delete("last_sync_ts"); } catch { /* store may not exist */ }
+        }
       },
     });
   }
@@ -100,11 +110,9 @@ export async function writeCardDelta(rows: CachedCard[]): Promise<void> {
   const db = await getDb();
   const tx = db.transaction("cards", "readwrite");
   const superseded = new Set<string>();
-  // Merge with existing row instead of full overwrite. /sync doesn't
-  // return content_md (server keeps the payload light; content is
-  // fetched lazily by getCardContent and persisted via updateCardRow).
-  // A naive `put(r)` would clobber content_md back to undefined on
-  // every sync — every card open would become a network call.
+  // Merge with existing row instead of full overwrite. Server /sync owns
+  // content_md and additional_content; both should overwrite local values so
+  // card bodies and original-rich-text render from cache.
   for (const r of rows) {
     if (r.kind === "deduped" && Array.isArray(r.source_card_ids) && r.source_card_ids.length > 0) {
       const sourceSet = new Set(r.source_card_ids);
@@ -122,7 +130,8 @@ export async function writeCardDelta(rows: CachedCard[]): Promise<void> {
       const merged: CachedCard = {
         ...existing,
         ...r,
-        content_md: r.content_md ?? existing.content_md,
+        content_md: r.content_md ?? null,
+        additional_content: r.additional_content ?? null,
       };
       await tx.store.put(merged);
     } else {
