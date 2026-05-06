@@ -232,10 +232,49 @@ function CardContentView({ cardId }: { cardId: string }) {
   );
 }
 
-function ArticleHtmlView({ additionalContent }: { additionalContent?: string | null }) {
-  // additional_content is the original-article HTML attached to discard /
-  // original_content_with_* cards. New cards always have it; pre-redesign
-  // cards were backfilled. If still missing, the article was never fetched.
+function ArticleHtmlView({
+  additionalContent,
+  rawHtml,
+  rawMarkdown,
+  isLoading,
+}: {
+  additionalContent?: string | null;
+  rawHtml?: string;
+  rawMarkdown?: string;
+  isLoading?: boolean;
+}) {
+  const html = additionalContent || rawHtml;
+  if (html) {
+    return (
+      <div
+        className="rich-text-content"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+
+  if (rawMarkdown) {
+    return (
+      <div className="markdown-body" style={{ padding: "18px 24px" }}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight]}
+          components={mdComponents}
+        >
+          {stripFrontmatter(rawMarkdown)}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
+        正在加载原文…
+      </div>
+    );
+  }
+
   if (!additionalContent) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
@@ -243,13 +282,6 @@ function ArticleHtmlView({ additionalContent }: { additionalContent?: string | n
       </div>
     );
   }
-
-  return (
-    <div
-      className="rich-text-content"
-      dangerouslySetInnerHTML={{ __html: additionalContent }}
-    />
-  );
 }
 
 export function ReaderPane({
@@ -277,7 +309,7 @@ export function ReaderPane({
   const promptArticleId =
     selectedItem?.article_id ?? selectedDiscardedItem?.article_id ?? null;
   const { data: cardContentData } = useCardContent(selectedItem?.card_id ?? null, "source");
-  const { data: promptArticleData } = useArticleContent(promptArticleId);
+  const { data: promptArticleData, isLoading: isPromptArticleLoading } = useArticleContent(promptArticleId);
 
   // Chat hooks (must be called before any early returns)
   const { agents, selectedAgentId, setSelectedAgentId } = useAgentDetection();
@@ -551,7 +583,12 @@ ${notesSection}
               label={showsOriginalAlongside(item.routing) ? "原文" : undefined}
               force={showsOriginalAlongside(item.routing)}
             >
-              <ArticleHtmlView additionalContent={item.additional_content} />
+              <ArticleHtmlView
+                additionalContent={item.additional_content}
+                rawHtml={promptArticleData?.rawHtml}
+                rawMarkdown={promptArticleData?.rawMarkdown}
+                isLoading={isPromptArticleLoading}
+              />
             </CardFrame>
           )}
 

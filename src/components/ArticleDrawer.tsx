@@ -3,7 +3,7 @@ import { X, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { useArticleContent } from "../hooks/useArticles";
+import { useArticleRawContent } from "../hooks/useArticles";
 import { FavoriteButton } from "./FavoriteButton";
 import { AdminAnnotationFlag } from "./AdminAnnotationFlag";
 import { useAuth } from "../lib/authStore";
@@ -41,7 +41,7 @@ export function ArticleDrawer({
   articleUrlOverride,
 }: ArticleDrawerProps) {
   const articleId = articleIdOverride ?? item?.article_id ?? null;
-  const { data: articleData, isLoading } = useArticleContent(articleId);
+  const { data: articleData, isLoading } = useArticleRawContent(articleId);
   const { state: authState } = useAuth();
   const isAdmin = authState.status === "authenticated" && authState.user.role === "admin";
 

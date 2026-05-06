@@ -24,6 +24,21 @@ export interface ArticleContent {
   analysisStatus: "none" | "pending" | "running" | "done" | "failed";
 }
 
+export interface ArticleRawContent {
+  rawMarkdown?: string;
+  rawHtml?: string;
+  contentFormat?: "html" | "markdown";
+}
+
+export async function fetchArticleRawContent(articleId: string): Promise<ArticleRawContent> {
+  const rawResp = await apiFetch(`/articles/${articleId}/raw`).then(r => r.json());
+  return {
+    rawMarkdown: rawResp.content,
+    rawHtml: rawResp.format === "html" ? rawResp.content : undefined,
+    contentFormat: rawResp.format,
+  };
+}
+
 export async function fetchArticleContent(articleId: string): Promise<ArticleContent> {
   const [resp, rawResp, statusResp] = await Promise.all([
     apiFetch(`/articles/${articleId}/content`).then(r => r.json()),
@@ -100,6 +115,15 @@ export function useArticleContent(articleId: string | null) {
   });
 }
 
+export function useArticleRawContent(articleId: string | null) {
+  return useQuery({
+    queryKey: ["articleRawContent", articleId],
+    queryFn: () => fetchArticleRawContent(articleId!),
+    enabled: !!articleId,
+    staleTime: Infinity,
+  });
+}
+
 export function useAnalysisStatus(articleId: string | null, currentStatus: string) {
   const queryClient = useQueryClient();
   return useQuery({
@@ -119,4 +143,3 @@ export function useAnalysisStatus(articleId: string | null, currentStatus: strin
     refetchInterval: 5000,
   });
 }
-
