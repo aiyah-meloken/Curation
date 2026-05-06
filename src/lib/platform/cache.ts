@@ -1,7 +1,8 @@
 import * as tauriImpl from "./cache.tauri";
 import * as webImpl from "./cache.web";
+import { isTauriRuntime } from "./env";
 
-const impl = __IS_WEB__ ? webImpl : tauriImpl;
+const impl = isTauriRuntime() ? tauriImpl : webImpl;
 
 export type { CachedCard, CachedFavorite, SearchResult, CachedAccount } from "../cache";
 

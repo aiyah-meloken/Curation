@@ -1,7 +1,8 @@
 import * as tauriImpl from "./updater.tauri";
 import * as webImpl from "./updater.web";
+import { isTauriRuntime } from "./env";
 
-const impl = __IS_WEB__ ? webImpl : tauriImpl;
+const impl = isTauriRuntime() ? tauriImpl : webImpl;
 
 export const check = impl.check;
 export const relaunch = impl.relaunch;

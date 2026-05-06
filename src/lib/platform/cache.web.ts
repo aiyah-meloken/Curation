@@ -193,6 +193,7 @@ export async function toggleFavoriteLocal(
 // ---------------------------------------------------------------------------
 
 const LAST_SYNC_TS_KEY = "last_sync_ts";
+const PAGE_SIZE = 50;
 
 interface SyncBatch {
   cards?: CachedCard[];
@@ -205,28 +206,25 @@ interface SyncBatch {
 export async function runSync(): Promise<string[]> {
   const since = await idb.getSyncState(LAST_SYNC_TS_KEY);
   const changed = new Set<string>();
-  let cursor = 0;
-  let latestSyncTs: string | null = null;
-
-  // Loop until the server reports has_more=false. The server caps each
-  // batch at 500 rows; large initial syncs walk through several batches.
-  for (let i = 0; i < 50; i++) {
+  const fetchPage = async (cursor: number | null): Promise<SyncBatch> => {
     const params = new URLSearchParams();
+    params.set("limit", String(PAGE_SIZE));
     if (since) params.set("since", since);
-    if (cursor > 0) params.set("cursor", String(cursor));
+    if (cursor != null) params.set("cursor", String(cursor));
     const res = await apiFetch(`/sync?${params.toString()}`);
     if (!res.ok) {
-      console.error("[sync.web] /sync failed:", res.status);
-      break;
+      throw new Error(`/sync failed: ${res.status}`);
     }
-    const data: SyncBatch = await res.json();
+    return res.json();
+  };
+
+  const commitPage = async (data: SyncBatch): Promise<string[]> => {
+    const pageChanged = new Set<string>();
 
     if (data.cards && data.cards.length > 0) {
       await idb.writeCardDelta(data.cards);
       changed.add("cards");
-      console.log(`[sync.web] wrote ${data.cards.length} cards (cursor=${cursor}, has_more=${data.has_more})`);
-    } else {
-      console.log(`[sync.web] /sync batch had 0 cards (since=${since ?? "null"}, cursor=${cursor})`);
+      pageChanged.add("cards");
     }
 
     if (data.favorites && data.favorites.length > 0) {
@@ -247,16 +245,46 @@ export async function runSync(): Promise<string[]> {
         await idb.deleteFavorite(f.item_type as "card" | "article", f.item_id);
       }
       changed.add("favorites");
+      pageChanged.add("favorites");
     }
 
-    if (data.sync_ts) latestSyncTs = data.sync_ts;
-    if (!data.has_more || data.cursor == null) break;
-    cursor = data.cursor;
-  }
+    if (data.sync_ts) {
+      await idb.setSyncState(LAST_SYNC_TS_KEY, data.sync_ts);
+    }
 
-  // Advance the cursor for next call once the full batch loop has drained.
-  if (latestSyncTs) {
-    await idb.setSyncState(LAST_SYNC_TS_KEY, latestSyncTs);
+    const keys = Array.from(pageChanged);
+    if (keys.length > 0) {
+      window.dispatchEvent(new CustomEvent("sync-page-committed", {
+        detail: {
+          changedKeys: keys,
+          cards: data.cards?.length ?? 0,
+          favorites: data.favorites?.length ?? 0,
+        },
+      }));
+    }
+    return keys;
+  };
+
+  let inFlight: Promise<SyncBatch>[] = [fetchPage(null), fetchPage(PAGE_SIZE)];
+  let nextCursor = PAGE_SIZE * 2;
+  let stopScheduling = false;
+
+  while (inFlight.length > 0) {
+    const data = await inFlight.shift()!;
+    const hasMore = data.has_more === true;
+
+    if (hasMore && !stopScheduling) {
+      inFlight.push(fetchPage(nextCursor));
+      nextCursor += PAGE_SIZE;
+    } else if (!hasMore) {
+      stopScheduling = true;
+    }
+
+    await commitPage(data);
+
+    if (stopScheduling && inFlight.length === 0) {
+      break;
+    }
   }
 
   return Array.from(changed);

@@ -1,6 +1,7 @@
 import * as tauriImpl from "./dialog.tauri";
 import * as webImpl from "./dialog.web";
+import { isTauriRuntime } from "./env";
 
-const impl = __IS_WEB__ ? webImpl : tauriImpl;
+const impl = isTauriRuntime() ? tauriImpl : webImpl;
 
 export const openFolderPicker = impl.openFolderPicker;

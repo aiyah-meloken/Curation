@@ -1,7 +1,8 @@
 import * as tauriImpl from "./chat.tauri";
 import * as webImpl from "./chat.web";
+import { isTauriRuntime } from "./env";
 
-const impl = __IS_WEB__ ? webImpl : tauriImpl;
+const impl = isTauriRuntime() ? tauriImpl : webImpl;
 
 export const IS_CHAT_AVAILABLE = impl.IS_CHAT_AVAILABLE;
 export const detectAgents = impl.detectAgents;

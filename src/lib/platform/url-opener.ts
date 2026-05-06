@@ -1,6 +1,7 @@
 import * as tauriImpl from "./url-opener.tauri";
 import * as webImpl from "./url-opener.web";
+import { isTauriRuntime } from "./env";
 
-const impl = __IS_WEB__ ? webImpl : tauriImpl;
+const impl = isTauriRuntime() ? tauriImpl : webImpl;
 
 export const openExternal = impl.openExternal;

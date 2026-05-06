@@ -1,10 +1,12 @@
-// Web build has no Tauri event bus; sync push happens over WebSocket (see useSync.ts).
-// This is a no-op listener that returns an empty unlisten fn.
 export type UnlistenFn = () => void;
 
 export function listen<T = unknown>(
-  _event: string,
-  _handler: (ev: { payload: T }) => void,
+  event: string,
+  handler: (ev: { payload: T }) => void,
 ): Promise<UnlistenFn> {
-  return Promise.resolve(() => {});
+  const listener = (ev: Event) => {
+    handler({ payload: (ev as CustomEvent<T>).detail });
+  };
+  window.addEventListener(event, listener);
+  return Promise.resolve(() => window.removeEventListener(event, listener));
 }
