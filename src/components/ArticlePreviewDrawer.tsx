@@ -7,18 +7,10 @@ import { stripFrontmatter, mdComponents } from "../lib/markdown";
 import { useArticleContent } from "../hooks/useArticles";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import { routingPresentation } from "../lib/routingPresentation";
 
 function RoutingPill({ routing }: { routing: string | null }) {
-  if (!routing) {
-    return <span style={{ background: "var(--bg-base)", color: "var(--text-faint)", padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>未推送</span>;
-  }
-  const m: Record<string, { text: string; bg: string; color: string }> = {
-    ai_curation:                       { text: "AI 梳理",     bg: "var(--bg-panel)", color: "var(--accent-green)" },
-    original_content_with_pre_card:    { text: "原文 + 阅前卡", bg: "var(--bg-panel)", color: "var(--accent-green)" },
-    original_content_with_post_card:   { text: "原文 + 阅后卡", bg: "var(--bg-panel)", color: "var(--accent-gold)" },
-    discard:                           { text: "丢弃",         bg: "var(--bg-panel)", color: "var(--accent-gold)" },
-  };
-  const v = m[routing] ?? { text: routing, bg: "var(--bg-base)", color: "var(--text-faint)" };
+  const v = routingPresentation(routing);
   return <span style={{ background: v.bg, color: v.color, padding: "1px 8px", borderRadius: 10, fontSize: "0.68rem" }}>{v.text}</span>;
 }
 

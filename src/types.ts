@@ -128,8 +128,8 @@ export interface ArticleMeta {
 /**
  * Routing taxonomy (post-2026-05-02):
  *   - "ai_curation"                       — agent wrote a fresh card; replaces original
- *   - "original_content_with_pre_card"    — agent shipped a 阅前导览卡 alongside the original
- *   - "original_content_with_post_card"   — agent shipped a 阅后梳理卡 alongside the original
+ *   - "original_content_with_pre_card"    — original article push with an auxiliary card
+ *   - "original_content_with_post_card"   — original article push with an auxiliary card
  *   - null                                — pre-routing or in-flight item
  *
  * Earlier names ("original_push" / "reading_guide" / "post_read") are

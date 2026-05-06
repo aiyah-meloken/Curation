@@ -13,6 +13,7 @@ import {
   isInboxUnread,
   type CardStatus,
 } from "../lib/acp/cardStatusStore";
+import { isAggregateKind, routingPresentation } from "../lib/routingPresentation";
 
 interface InboxListProps {
   items: InboxItem[] | undefined;
@@ -43,35 +44,17 @@ function routingTag(
     );
   }
   if (isDiscarded) {
-    return <span className="inbox-tag" style={{ color: "var(--accent-red)" }}>丢弃</span>;
+    const v = routingPresentation("discard");
+    return <span className="inbox-tag" style={{ color: v.color }}>{v.text}</span>;
   }
-  if (routing === "ai_curation") {
-    // Deduped/aggregated cards (cross-article merge or residual) read "AI总结";
-    // single-article ai_curation cards keep "AI梳理".
-    const isAggregate = kind === "deduped" || kind === "aggregated" || kind === "residual";
-    return (
-      <span className="inbox-tag"
-        style={{ color: isAggregate ? "var(--accent-blue)" : "var(--accent-green)" }}>
-        {isAggregate ? "AI总结" : "AI梳理"}
-      </span>
-    );
-  }
-  if (routing === "original_content_with_pre_card") {
-    return <span className="inbox-tag" style={{ color: "var(--accent-green)" }}>阅前</span>;
-  }
-  if (routing === "original_content_with_post_card") {
-    return <span className="inbox-tag" style={{ color: "var(--accent-gold)" }}>阅后</span>;
-  }
-  return null;
+  if (!routing) return null;
+  const v = routingPresentation(routing, { kind });
+  return <span className="inbox-tag" style={{ color: v.color }}>{v.text}</span>;
 }
 
 function formatTime(t: string | null) {
   if (!t) return "";
   return t.replace("T", " ").slice(0, 16);
-}
-
-function isAggregateKind(kind?: string) {
-  return kind === "aggregated" || kind === "residual" || kind === "deduped";
 }
 
 function InboxGroupHeader({

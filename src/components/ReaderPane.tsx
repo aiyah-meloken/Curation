@@ -20,6 +20,7 @@ import { useChat, useAgentDetection } from "../hooks/useChat";
 import { useCardStatusStore } from "../lib/acp/cardStatusStore";
 import type { InboxItem, DiscardedItem, Routing } from "../types";
 import { ORIGINAL_ALONGSIDE_ROUTINGS } from "../types";
+import { isAggregateKind, routingPresentation } from "../lib/routingPresentation";
 
 /** True when the routing is one of the "show original article alongside our card" variants. */
 function showsOriginalAlongside(routing: Routing): boolean {
@@ -28,25 +29,12 @@ function showsOriginalAlongside(routing: Routing): boolean {
 
 function sourceBarTag(routing: Routing, isDiscarded: boolean, kind?: string) {
   if (isDiscarded) {
-    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-red)" }}>丢弃</span>;
+    const v = routingPresentation("discard");
+    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: v.color }}>{v.text}</span>;
   }
-  if (routing === "ai_curation") {
-    // Distinguish single-article 梳理 from aggregated 总结
-    const isAggregate = kind === "deduped" || kind === "aggregated" || kind === "residual";
-    return (
-      <span className="inbox-tag"
-        style={{ fontSize: "0.72rem", color: isAggregate ? "var(--accent-blue)" : "var(--accent-green)" }}>
-        {isAggregate ? "AI总结" : "AI梳理"}
-      </span>
-    );
-  }
-  if (routing === "original_content_with_pre_card") {
-    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-green)" }}>阅前导读</span>;
-  }
-  if (routing === "original_content_with_post_card") {
-    return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: "var(--accent-gold)" }}>阅后梳理</span>;
-  }
-  return null;
+  if (!routing) return null;
+  const v = routingPresentation(routing, { kind });
+  return <span className="inbox-tag" style={{ fontSize: "0.72rem", color: v.color }}>{v.text}</span>;
 }
 
 function formatTime(t: string | null) {
@@ -93,7 +81,7 @@ function SourceBar({
   sourceCount?: number;
   cardDate?: string | null;
 }) {
-  const isAggregated = kind === "aggregated" || kind === "residual" || kind === "deduped";
+  const isAggregated = isAggregateKind(kind);
   const aggregateMeta = sourceCount && sourceCount > 0
     ? `聚合 ${sourceCount} 张相似卡片${formatDate(cardDate ?? null) ? ` · ${formatDate(cardDate ?? null)}` : ""}`
     : `聚合相似卡片${formatDate(cardDate ?? null) ? ` · ${formatDate(cardDate ?? null)}` : ""}`;
@@ -348,23 +336,23 @@ export function ReaderPane({
     const template = selectedItem?.template ?? null;
 
     const routingLabel =
-      routing === "ai_curation" ? "AI 梳理"
-        : routing === "original_content_with_pre_card" ? "原文 + 阅前卡"
-        : routing === "original_content_with_post_card" ? "原文 + 阅后卡"
+      routing === "ai_curation" ? "AI梳理"
+        : routing === "original_content_with_pre_card" ? "原文推送"
+        : routing === "original_content_with_post_card" ? "原文推送"
         : routing === "discard" ? "丢弃"
         : "未知";
 
-    // 阅读焦点：AI 梳理 → 卡片；原文推送（pre/post）→ 原文
+    // 阅读焦点：AI梳理 → 卡片；原文推送（pre/post）→ 原文
     const focus = routing === "ai_curation" ? "卡片" : "原文";
 
     // Per-card template label (article_cards.template column).
     let cardKindLabel = "—";
     if (routing === "ai_curation") {
-      cardKindLabel = template ? `AI 梳理（${template}）` : "AI 梳理";
+      cardKindLabel = template ? `AI梳理（${template}）` : "AI梳理";
     } else if (routing === "original_content_with_pre_card") {
-      cardKindLabel = "阅前导读卡";
+      cardKindLabel = "原文推送卡";
     } else if (routing === "original_content_with_post_card") {
-      cardKindLabel = "阅后梳理卡";
+      cardKindLabel = "原文推送卡";
     }
 
     // Article markdown — soft cap at 40k chars. Sized off the prod dataset:
@@ -406,9 +394,9 @@ export function ReaderPane({
 
 - **AI梳理**（ai_curation）：原文信息密度高但读起来累，AI 提炼出一张主卡片代替原文阅读。
   → 读者主要读卡片，原文是补充资料，遇到细节存疑时回查。
-- **阅前导读**（reading_guide）：原文本身值得逐字读（叙事/思想/一手材料），AI 在进入原文前给一份导读，提出问题与框架。
+- **原文推送**（original_content_with_pre_card）：原文本身值得逐字读（叙事/思想/一手材料），AI 卡片辅助进入原文。
   → 读者主要读原文，卡片是进入原文前的准备。
-- **阅后梳理**（post_read）：原文值得读但行文冗余，AI 在读完原文后给一份回顾/延伸/串联。
+- **原文推送**（original_content_with_post_card）：原文值得读但行文冗余，AI 卡片辅助回顾、延伸或串联。
   → 读者主要读原文，卡片是读完后的收尾。
 - **丢弃**（discard）：AI 判断信息密度低或与读者主题无关，不生成卡片；只有当读者主动展开"已丢弃"列表时才会看到这里的原文。
 

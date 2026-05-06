@@ -68,9 +68,9 @@ export function AdminAnnotationTab() {
           style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: "var(--fs-xs)" }}
         >
           <option value="">全部</option>
-          <option value="ai_curation">AI 梳理</option>
-          <option value="original_content_with_pre_card">原文 + 阅前卡</option>
-          <option value="original_content_with_post_card">原文 + 阅后卡</option>
+          <option value="ai_curation">AI梳理</option>
+          <option value="original_content_with_pre_card">原文推送</option>
+          <option value="original_content_with_post_card">原文推送</option>
           <option value="discarded">丢弃</option>
         </select>
 
