@@ -26,7 +26,7 @@ function computeWsBase(): string {
 }
 
 import { refreshAccessToken } from "./refreshAuth";
-import type { DedupQueueRow, DedupQueueSummary, DedupTaskRow, DedupTaskRun, CardSource } from "../types";
+import type { DedupQueueGroup, DedupQueueRow, DedupQueueSummary, DedupTaskRow, DedupTaskRun, CardSource } from "../types";
 
 export const API_BASE = computeApiBase();
 export const WS_BASE = computeWsBase();
@@ -383,6 +383,20 @@ export async function fetchDedupQueue(params: {
   if (params.date) qs.set("date", params.date);
   if (params.status) qs.set("status", params.status);
   const path = qs.toString() ? `/dedup/queue?${qs}` : "/dedup/queue";
+  const res = await apiFetch(path);
+  return res.json();
+}
+
+export async function fetchDedupQueueGroups(params: {
+  user_id?: number;
+  date?: string;
+  status?: string;
+} = {}): Promise<DedupQueueGroup[]> {
+  const qs = new URLSearchParams();
+  if (params.user_id !== undefined) qs.set("user_id", String(params.user_id));
+  if (params.date) qs.set("date", params.date);
+  if (params.status) qs.set("status", params.status);
+  const path = qs.toString() ? `/dedup/queue/groups?${qs}` : "/dedup/queue/groups";
   const res = await apiFetch(path);
   return res.json();
 }

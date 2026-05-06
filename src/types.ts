@@ -335,6 +335,16 @@ export interface DedupQueueSummary {
   cluster_card_counts: number[];
 }
 
+export interface DedupQueueGroup {
+  key: string;
+  user_id: number;
+  card_date: string;
+  rows: DedupQueueRow[];
+  status: DedupQueueRow['status'];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface DedupTaskRow {
   task_id: number | null;
   queue_id?: number;
