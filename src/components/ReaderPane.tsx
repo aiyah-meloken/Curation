@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Copy, Share2 } from "lucide-react";
 import { stripFrontmatter, mdComponents } from "../lib/markdown";
 import { useCardContent } from "../hooks/useCards";
 import { useArticleContent } from "../hooks/useArticles";
@@ -47,6 +47,89 @@ function formatDate(t: string | null) {
   return t.replace("T", " ").slice(0, 10);
 }
 
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
+}
+
+function ShareButton({ markdown }: { markdown?: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const canCopy = !!markdown?.trim();
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  async function handleCopy() {
+    if (!canCopy) return;
+    await copyText(markdown!);
+    setCopied(true);
+    setOpen(false);
+    window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  return (
+    <div ref={rootRef} className="reader-share">
+      <button
+        type="button"
+        className="reader-action-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        title="分享"
+      >
+        <Share2 size={12} />
+        {copied ? "已复制" : "分享"}
+      </button>
+      {open && (
+        <div className="reader-share-menu">
+          <button
+            type="button"
+            className="reader-share-menu-item"
+            disabled={!canCopy}
+            onClick={handleCopy}
+          >
+            <Copy size={13} />
+            复制卡片 Markdown
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ReaderPaneProps {
   selectedItem: InboxItem | null;
   selectedDiscardedItem: DiscardedItem | null;
@@ -69,6 +152,7 @@ function SourceBar({
   kind,
   sourceCount,
   cardDate,
+  cardMarkdown,
 }: {
   title: string;
   meta: { title: string; account: string; author: string | null; publish_time: string | null; url: string };
@@ -80,6 +164,7 @@ function SourceBar({
   kind?: string;
   sourceCount?: number;
   cardDate?: string | null;
+  cardMarkdown?: string | null;
 }) {
   const isAggregated = isAggregateKind(kind);
   const aggregateMeta = sourceCount && sourceCount > 0
@@ -115,7 +200,10 @@ function SourceBar({
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           {cardId && (
-            <FavoriteButton itemType="card" itemId={cardId} />
+            <>
+              <ShareButton markdown={cardMarkdown} />
+              <FavoriteButton itemType="card" itemId={cardId} />
+            </>
           )}
           {routing === "ai_curation" && (
             isAggregated && onOpenSources ? (
@@ -545,6 +633,7 @@ ${notesSection}
         kind={(item as InboxItem).kind}
         sourceCount={(item as InboxItem).source_card_ids?.length ?? 0}
         cardDate={item.card_date}
+        cardMarkdown={cardContentData?.content ?? null}
       />
       <div ref={scrollRef} style={{ overflowY: "auto", flex: 1 }}>
         <div className="reader-content animate-in" style={{ paddingBottom: 140 }}>
