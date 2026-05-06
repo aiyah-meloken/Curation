@@ -96,6 +96,13 @@ function taskDecisionTitle(task: DedupTaskRow) {
   return parts.join("\n");
 }
 
+function cardDatesLabel(dates: string[] | null | undefined) {
+  const clean = Array.from(new Set((dates ?? []).filter(Boolean)));
+  if (clean.length === 0) return "—";
+  if (clean.length === 1) return clean[0];
+  return `${clean[0]} +${clean.length - 1}`;
+}
+
 function ExpandedRow({ task, onOpenRun }: { task: DedupTaskRow; onOpenRun: (runId: number) => void }) {
   if (task.task_id == null) {
     return (
@@ -129,7 +136,7 @@ function ExpandedRow({ task, onOpenRun }: { task: DedupTaskRow; onOpenRun: (runI
   );
 }
 
-const COLS = "24px 110px 100px 90px 80px 150px 110px 80px";
+const COLS = "24px 110px 100px 90px 70px 120px 140px 105px 105px 70px";
 
 export function DedupTasksPanel() {
   const qc = useQueryClient();
@@ -290,8 +297,10 @@ export function DedupTasksPanel() {
           <span style={{ textAlign: "center" }}>判决</span>
           <span style={{ textAlign: "center" }}>状态</span>
           <span style={{ textAlign: "center" }}>Served</span>
+          <span>卡片日期</span>
           <span>最近运行</span>
-          <span>创建时间</span>
+          <span>创建日期</span>
+          <span>最后更新</span>
           <span style={{ textAlign: "center" }}>操作</span>
         </div>
 
@@ -351,6 +360,13 @@ export function DedupTasksPanel() {
                   {task.served_count}
                 </span>
 
+                {/* Card dates */}
+                <span
+                  title={(task.card_dates ?? []).join("\n")}
+                  style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {cardDatesLabel(task.card_dates)}
+                </span>
+
                 {/* Latest run */}
                 <span style={{ fontSize: "var(--fs-xs)", color: latestRun ? "var(--text-muted)" : "var(--text-faint)" }}>
                   {latestRun
@@ -361,6 +377,11 @@ export function DedupTasksPanel() {
                 {/* Created */}
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>
                   {fmtTime(task.created_at)}
+                </span>
+
+                {/* Updated */}
+                <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>
+                  {fmtTime(task.updated_at)}
                 </span>
 
                 {/* Actions */}

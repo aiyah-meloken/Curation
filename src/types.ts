@@ -350,7 +350,9 @@ export interface DedupTaskRow {
   queue_id?: number;
   signature: string;
   status: 'pending' | 'queued' | 'running' | 'done' | 'failed';
-  created_at: string;
+  created_at: string | null;
+  updated_at: string | null;
+  card_dates: string[];
   served_count: number;
   latest_run: {
     run_id: number;
